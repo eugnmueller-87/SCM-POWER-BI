@@ -10,9 +10,11 @@ indirect + IT/cloud-heavy spend). Audience: a non-technical CEO ("Cleo") decidin
 The dashboard wired to a **live, authenticated API** — Power BI logs in on each refresh and
 pulls fresh forecast-accuracy data from the deployed backend.
 
-https://github.com/eugnmueller-87/SCM-POWER-BI/raw/main/docs/demo.mp4
+<!-- VIDEO: To get an inline player, edit this README on github.com, delete this comment block,
+     and drag docs/demo.mp4 into the editor here. GitHub will insert a user-attachments URL
+     that plays inline. (A raw/LFS link below only downloads, it does not play in-page.) -->
 
-> If the player doesn't load inline, [**download / watch the clip here**](docs/demo.mp4).
+▶️ **[Watch the demo clip](docs/demo.mp4)** &nbsp;·&nbsp; *(download — for an inline player see the note above)*
 
 ### Headline result (from the live data)
 > **AI demand forecast accuracy ≈ 85%** — backtested across **78 forecasts over 12 months**.

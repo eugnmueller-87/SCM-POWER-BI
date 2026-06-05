@@ -1,0 +1,15 @@
+# Python dependencies for the SCM Master Tool
+# Data generation + analysis. Install: pip install -r requirements.txt
+
+pandas>=2.0
+numpy>=1.24
+python-dateutil>=2.8
+
+# Optional — for ad-hoc analysis / a Python dashboard variant
+matplotlib>=3.7
+plotly>=5.18
+
+# Optional — forecasting in the pilot (Phase 2 of the implementation plan)
+# scikit-learn>=1.3
+# statsforecast>=1.7
+# prophet>=1.1

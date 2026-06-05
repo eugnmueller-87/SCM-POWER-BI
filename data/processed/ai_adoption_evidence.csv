@@ -1,0 +1,20 @@
+metric,value,unit,year,scope,source,source_type,claim_strength
+Orgs using AI in >=1 business function,78,percent,2024,Global cross-industry,Stanford AI Index 2025,Academic index,Strong
+Orgs using AI in >=1 business function,88,percent,2025,Global cross-industry,McKinsey State of AI 2025,Consulting survey,Strong
+Orgs reporting cost savings from GenAI in supply chain / inventory,61,percent,2024,Supply chain function,Stanford AI Index 2025,Academic index,Moderate
+Orgs reporting revenue gains from GenAI in supply chain mgmt,63,percent,2024,Supply chain function,Stanford AI Index 2025,Academic index,Moderate
+Supply-chain cost savings from GenAI that are under 10 percent,70,percent,2024,Supply chain function,Stanford AI Index 2025,Academic index,Caveat
+Orgs achieving first-year ROI on AI,74,percent,2025,Global cross-industry,McKinsey State of AI 2025,Consulting survey,Moderate
+Orgs attributing any enterprise EBIT impact to AI,39,percent,2025,Global cross-industry,McKinsey State of AI 2025,Consulting survey,Caveat
+Orgs still in pilot/experiment mode (not scaled),64,percent,2025,Global cross-industry,McKinsey State of AI 2025,Consulting survey,Caveat
+AI high performers (>5 percent EBIT impact from AI),6,percent,2025,Global cross-industry,McKinsey State of AI 2025,Consulting survey,Caveat
+Forecast-error reduction from AI demand forecasting (low),30,percent,2024,Supply chain demand planning,AIMultiple / ToolsGroup synthesis,Vendor synthesis,Moderate
+Forecast-error reduction from AI demand forecasting (high),50,percent,2024,Supply chain demand planning,AIMultiple / ToolsGroup synthesis,Vendor synthesis,Vendor-leaning
+Lost-sales reduction from fewer stockouts,65,percent,2024,Supply chain demand planning,AIMultiple synthesis,Vendor synthesis,Vendor-leaning
+Inventory reduction possible with AI forecasting (high),50,percent,2024,Supply chain inventory,AIMultiple synthesis,Vendor synthesis,Vendor-leaning
+AI-in-supply-chain market size,13.93,USD billion,2025,Global market,MarketsandMarkets 2025,Market research,Directional
+AI-in-supply-chain market size,50.41,USD billion,2032,Global market (projected),MarketsandMarkets 2025,Market research,Speculative
+AI-in-supply-chain market CAGR 2025-2032,20.1,percent,2025,Global market,MarketsandMarkets 2025,Market research,Directional
+Most advanced chips manufactured in Taiwan,90,percent,2025,Semiconductor supply,ORF / ScienceDirect 2025,Academic/think-tank,Strong
+Memory price increase Sep-Nov 2025,300,percent,2025,Semiconductor memory,Sourceability 2025,Industry tracker,Strong
+China share of global tungsten (chip input) production,79,percent,2025,Semiconductor materials,Sourceability 2025,Industry tracker,Strong

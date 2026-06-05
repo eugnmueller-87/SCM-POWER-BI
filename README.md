@@ -112,6 +112,68 @@ supply-chain frameworks (SCOR, WMAPE, reorder-point theory) rather than invented
 board is *explainable* — every figure drills to its formula and its raw rows. It's built to
 survive a sceptical CEO asking "where does that number come from?"
 
+---
+
+## 🎓 The consulting case (Project 5 deliverable)
+
+This repo is a full **AI-adoption consulting case**: advising **Cleo (a non-technical CEO)**
+whether to invest in AI for procurement & supply-chain.
+
+### Use-case discovery summary
+- **Sector:** Cloud / hosting & data-center infrastructure (DACH, Microsoft-365 ecosystem).
+- **Company size:** Large enterprise — **~5,000 employees (IONOS-scale)**, ~€640m managed spend.
+- **Stakeholders & pain:** Procurement, capacity planners, finance and ops all suffer when demand
+  forecasts are wrong *and* chip lead times swing unpredictably. (Full discovery:
+  [`research/use_case_discovery.md`](research/use_case_discovery.md).)
+- **Primary use case selected:** **AI demand forecasting + a dynamic reorder point** — strongest
+  evidence, lowest lift (working PoC already exists), clearest ROI, and it de-risks the geopolitical
+  chip lead-time problem that hits a hardware-heavy cloud business hardest.
+
+### Market research summary
+- AI is mainstream: **78% (2024) → 88% (2025)** of orgs use AI in ≥1 function (Stanford AI Index;
+  McKinsey). Supply chain is a **proven** savings area — **61%** report cost savings.
+- AI demand forecasting cuts error **30–50%** (vendor evidence — treated as upper bound).
+- **Why now:** ~**90%** of advanced chips come from Taiwan; **memory prices rose ~4×** Sep–Nov 2025
+  — static reorder points fail when lead times swing. Full analysis + sources:
+  [`research/market_research.md`](research/market_research.md) · [`sources.md`](sources.md).
+
+### Hype vs. evidence → recommendation
+- The honest read: adoption is real, but **only 39%** see EBIT impact and **~64% stall in pilot**;
+  most SC savings are **<10%**. (See [`research/hype_vs_evidence.md`](research/hype_vs_evidence.md).)
+- > **🟡 Recommendation for Cleo: RUN A 10-WEEK PILOT — don't invest at full scale yet, don't wait.**
+  > Validate the 30–50% improvement on *our* SKUs before committing. Full reasoning, cost (~€43k
+  > pilot / ~€135k year-1) and timeline:
+  > [`implementation/solution_proposal.md`](implementation/solution_proposal.md) ·
+  > [`implementation/implementation_plan.md`](implementation/implementation_plan.md) ·
+  > [`cost_estimation/`](cost_estimation/).
+
+### Dataset information
+- **Operational data (dashboard):** *synthetic*, reproducible via
+  [`scripts/generate_data.py`](scripts/generate_data.py) → [`data/raw/`](data/raw/). Chosen for
+  reproducibility and no-NDA review; documented in [`research/01_data_assumptions.md`](research/01_data_assumptions.md).
+- **Market-evidence data:** *public*, compiled from cited sources into
+  [`data/processed/ai_adoption_evidence.csv`](data/processed/ai_adoption_evidence.csv).
+- **Public Kaggle analogs** (to validate the model on third-party data in the pilot) are listed in
+  [`sources.md`](sources.md) (section F).
+
+### 📋 Deliverables map (Project 5 rubric)
+
+| Deliverable | File |
+|---|---|
+| Use-case discovery & selection | [`research/use_case_discovery.md`](research/use_case_discovery.md) |
+| Market research & data gathering | [`research/market_research.md`](research/market_research.md) |
+| Opportunity & risk map | [`research/opportunities_risks.md`](research/opportunities_risks.md) |
+| Hype-vs-evidence analysis | [`research/hype_vs_evidence.md`](research/hype_vs_evidence.md) |
+| Source list | [`sources.md`](sources.md) |
+| Dashboard (Power BI) | [`Order_Accuracy_Forecast_2026.pbix`](Order_Accuracy_Forecast_2026.pbix) |
+| Dashboard documentation | [`dashboard/dashboard_documentation.md`](dashboard/dashboard_documentation.md) |
+| Solution proposal (invest/wait/pilot) | [`implementation/solution_proposal.md`](implementation/solution_proposal.md) |
+| Implementation plan | [`implementation/implementation_plan.md`](implementation/implementation_plan.md) |
+| Cost analysis | [`cost_estimation/cost_analysis.md`](cost_estimation/cost_analysis.md) |
+| Timeline estimate | [`cost_estimation/timeline_estimate.md`](cost_estimation/timeline_estimate.md) |
+
+---
+
 ## What's inside
 
 | Layer | Where | What |
@@ -121,7 +183,9 @@ survive a sceptical CEO asking "where does that number come from?"
 | **3. Data model** | [`dashboard/data_model.md`](dashboard/data_model.md) | Star schema, relationships, helper tables — how to wire the `.pbix`. |
 | **4. Dashboard spec** | [`dashboard/dashboard_spec.md`](dashboard/dashboard_spec.md) | 4 pages, every visual specified (chart type, fields, CEO-readability). |
 | **5. Hype-vs-value** | [`dashboard/hype_vs_value.md`](dashboard/hype_vs_value.md) | Per-page "robust vs needs-validation" note → a "pilot / wait / invest" recommendation. |
-| **6. Research notes** | [`research/`](research/) | Reusable assumptions for project write-ups. |
+| **6. Research & adoption analysis** | [`research/`](research/) | Use-case discovery, market research, opportunity/risk map, hype-vs-evidence — all cited ([`sources.md`](sources.md)). |
+| **6b. Implementation & cost** | [`implementation/`](implementation/), [`cost_estimation/`](cost_estimation/) | Solution proposal (invest/wait/pilot), phased plan, cost & timeline estimates. |
+| **6c. Public evidence data** | [`data/processed/ai_adoption_evidence.csv`](data/processed/ai_adoption_evidence.csv) | Cited public AI-adoption / chip-risk figures powering the market-evidence layer. |
 | **7. Live API connection** | [`dashboard/live_api_connection.md`](dashboard/live_api_connection.md) | Paste-ready Power Query (M) to connect Power BI to the deployed backend — auto-login on every refresh (OAuth2 → Bearer). |
 | **8. Built dashboard** | [`Order_Accuracy_Forecast_2026.pbix`](Order_Accuracy_Forecast_2026.pbix) | The Power BI report itself, wired to the live API. *(Git LFS)* |
 | **9. Live web cockpit** | [`deploy/`](deploy/) → [**hosted**](https://scm-power-bi-production.up.railway.app) | Node server + Chart.js. Server-side API login, in-memory cache, auto-refresh. Cross-filtering, click-to-drill KPIs, reorder alerts, forecast diagnostics. Deployed on Railway. |
@@ -146,8 +210,9 @@ survive a sceptical CEO asking "where does that number come from?"
 ## Quick start
 
 ```bash
-# 1. Generate the data (Python 3.12 + pandas/numpy)
-pip install pandas numpy python-dateutil
+# 1. Generate the data (Python 3.12)
+python -m venv venv && source venv/bin/activate   # Windows: venv\Scripts\activate
+pip install -r requirements.txt
 python scripts/generate_data.py          # writes CSVs to data/raw/
 
 # 2. Build the .pbix
@@ -164,6 +229,40 @@ python scripts/generate_data.py          # writes CSVs to data/raw/
 Power BI Desktop is **free**, native to the **Microsoft-365** stack this company runs, and
 the brief's measure layer is authored in **DAX**. The synthetic CSV layer is tool-agnostic
 and could feed Tableau later; only the measures would need re-authoring.
+
+## Project structure
+
+```
+SCM-POWER-BI/
+├── data/
+│   ├── raw/                    # 7 synthetic CSVs (operational data)
+│   └── processed/              # ai_adoption_evidence.csv (public, cited)
+├── research/
+│   ├── use_case_discovery.md   # sector, size, stakeholders, why this use case
+│   ├── market_research.md      # sector trends, AI adoption signals, sources
+│   ├── opportunities_risks.md  # 2-3 opportunities + risk map + priority
+│   ├── hype_vs_evidence.md     # AI claims: supported vs overhyped
+│   └── 01_data_assumptions.md  # synthetic-data methodology
+├── dashboard/
+│   ├── dashboard_documentation.md  # metrics, design rationale, screenshots
+│   ├── dashboard_spec.md / data_model.md / measures (see measures/)
+│   └── live_api_connection.md      # Power Query to the live API
+├── implementation/
+│   ├── solution_proposal.md    # invest / wait / pilot recommendation
+│   └── implementation_plan.md  # validation → pilot → rollout
+├── cost_estimation/
+│   ├── cost_analysis.md        # pilot ~€43k / year-1 ~€135k
+│   └── timeline_estimate.md    # ~10-week pilot
+├── measures/measures_dax.md    # every KPI: formula + DAX
+├── deploy/                     # live web cockpit (Node + Chart.js, Railway)
+├── clip/                       # walkthrough GIFs + mp4
+├── Order_Accuracy_Forecast_2026.pbix   # Power BI report (Git LFS)
+├── scripts/generate_data.py    # synthetic data generator
+├── sources.md                  # all sources, labelled by type
+├── requirements.txt
+├── .env.example
+└── README.md
+```
 
 ## Status
 - [x] Synthetic data generator + validated CSVs

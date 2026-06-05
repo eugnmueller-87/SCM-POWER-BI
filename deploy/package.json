@@ -1,0 +1,12 @@
+{
+  "name": "scm-master-dashboard",
+  "version": "1.0.0",
+  "description": "Live executive cockpit for the SCM Master API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

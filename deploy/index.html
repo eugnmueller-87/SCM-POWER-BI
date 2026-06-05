@@ -677,13 +677,31 @@ document.querySelectorAll("nav.tabs button").forEach(b=>{
 });
 
 // ---------- live data loading + auto-refresh ----------
+function showError(msg){
+  let b=document.getElementById("errbanner");
+  if(!b){
+    b=document.createElement("div");
+    b.id="errbanner";
+    b.style.cssText="position:fixed;left:0;right:0;bottom:0;z-index:9999;background:#7f1d1d;color:#fff;font:13px/1.4 monospace;padding:10px 16px;white-space:pre-wrap;box-shadow:0 -2px 12px rgba(0,0,0,.3)";
+    document.body.appendChild(b);
+  }
+  b.textContent="⚠ Dashboard render error — "+msg;
+}
 async function loadData(){
+  let src;
   try{
     const r = await fetch("/api/data", {cache:"no-store"});
-    const src = await r.json();
-    if(src && !src.error){ buildModel(src); renderFilterBar(); renderAll(); }
-    else { console.error("data error", src && src.error); }
-  }catch(e){ console.error("fetch failed", e); }
+    if(!r.ok){ showError("API HTTP "+r.status); return; }
+    src = await r.json();
+  }catch(e){ showError("fetch failed: "+(e&&e.message||e)); return; }
+  if(!src || src.error){ showError("API returned: "+(src&&src.error||"empty")); return; }
+  try{
+    buildModel(src); renderFilterBar(); renderAll();
+    var eb=document.getElementById("errbanner"); if(eb) eb.remove();
+  }catch(e){
+    console.error("render failed", e);
+    showError((e&&e.message||e)+"  @  "+((e&&e.stack||"").split("\n")[1]||"").trim());
+  }
 }
 loadData();
 setInterval(loadData, 60000); // auto-refresh every 60s — the board updates itself

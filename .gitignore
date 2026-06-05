@@ -14,5 +14,9 @@ env/
 Thumbs.db
 .DS_Store
 
+# Private handover / working notes — never commit
+HANDOVER.private.md
+*.private.md
+
 # Note: data/raw/*.csv ARE committed on purpose — they're synthetic and reproducible,
 # and the repo is meant to be self-contained for review.

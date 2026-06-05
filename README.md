@@ -44,7 +44,10 @@ pip install pandas numpy python-dateutil
 python scripts/generate_data.py          # writes CSVs to data/raw/
 
 # 2. Build the .pbix
-#    - Power BI Desktop ▸ Get Data ▸ Text/CSV ▸ load data/raw/*.csv
+#    - Data source — pick ONE:
+#        a) Static: Get Data ▸ Text/CSV ▸ load data/raw/*.csv
+#        b) Live API: follow dashboard/live_api_connection.md (paste-ready Power Query,
+#           auto-login on refresh against the deployed backend)
 #    - Wire relationships per dashboard/data_model.md
 #    - Add measures from measures/measures_dax.md to a _Measures table
 #    - Build the 4 pages per dashboard/dashboard_spec.md
@@ -60,4 +63,5 @@ and could feed Tableau later; only the measures would need re-authoring.
 - [x] Measure layer (formulas + DAX)
 - [x] Data model + 4-page dashboard spec
 - [x] Hype-vs-value layer + research notes
-- [ ] `.pbix` built in Power BI Desktop (manual step — specs are build-ready)
+- [x] Live API connection guide (`dashboard/live_api_connection.md`) — verified against the deployed backend
+- [ ] `.pbix` built in Power BI Desktop (manual step — specs + live-API queries are build-ready)

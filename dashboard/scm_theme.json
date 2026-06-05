@@ -1,0 +1,70 @@
+{
+  "name": "SCM Master Tool",
+  "dataColors": [
+    "#1F6F54",
+    "#5B7B9A",
+    "#E8B23A",
+    "#C44536",
+    "#2E3A46",
+    "#7FA99B",
+    "#A7C4BC",
+    "#8C6A4A"
+  ],
+  "good": "#1F6F54",
+  "neutral": "#5B7B9A",
+  "bad": "#C44536",
+  "maximum": "#1F6F54",
+  "center": "#E8B23A",
+  "minimum": "#C44536",
+  "null": "#CCCCCC",
+  "background": "#F4F6F8",
+  "foreground": "#2E3A46",
+  "tableAccent": "#1F6F54",
+  "textClasses": {
+    "title": {
+      "fontFace": "Segoe UI Semibold",
+      "fontSize": 14,
+      "color": "#2E3A46"
+    },
+    "header": {
+      "fontFace": "Segoe UI Semibold",
+      "fontSize": 12,
+      "color": "#2E3A46"
+    },
+    "label": {
+      "fontFace": "Segoe UI",
+      "fontSize": 10,
+      "color": "#2E3A46"
+    },
+    "callout": {
+      "fontFace": "Segoe UI Semibold",
+      "fontSize": 28,
+      "color": "#1F6F54"
+    }
+  },
+  "visualStyles": {
+    "*": {
+      "*": {
+        "background": [
+          { "show": true, "color": { "solid": { "color": "#FFFFFF" } }, "transparency": 0 }
+        ],
+        "border": [
+          { "show": true, "color": { "solid": { "color": "#E3E8ED" } }, "radius": 6 }
+        ],
+        "visualHeader": [
+          { "show": false }
+        ],
+        "title": [
+          { "show": true, "fontColor": { "solid": { "color": "#2E3A46" } }, "fontSize": 12, "fontFamily": "Segoe UI Semibold" }
+        ]
+      }
+    },
+    "page": {
+      "*": {
+        "background": [
+          { "color": { "solid": { "color": "#F4F6F8" } }, "transparency": 0 }
+        ]
+      }
+    }
+  }
+}

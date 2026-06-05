@@ -1,7 +1,7 @@
 # SCM Master Tool — Procurement & Supply Chain Analytics Cockpit
 
 An executive-facing cockpit for **procurement & supply-chain analytics**, built for a
-mid-to-large cloud/hosting company (profile: IONOS-like, DACH, Microsoft-365 ecosystem,
+mid-to-large cloud/hosting company (profile: DACH, Microsoft-365 ecosystem,
 indirect + IT/cloud-heavy spend). Audience: a non-technical CEO ("Cleo") deciding whether
 **AI/analytics investment is worth it**.
 
@@ -19,14 +19,21 @@ API server-side and **auto-refreshes**, so the board is always current.
 
 ## 🎥 Walkthrough
 
-<!-- ▶︎ INLINE VIDEO GOES HERE — drag clip/hosted-dashboard.mp4 into the GitHub README editor
-     on this line; GitHub uploads it to its CDN and replaces this comment with a player. -->
+![SCM Master live cockpit walkthrough](https://raw.githubusercontent.com/eugnmueller-87/SCM-POWER-BI/main/clip/hosted-dashboard.gif)
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/eugnmueller-87/SCM-POWER-BI/main/clip/demo.gif" alt="SCM Master Tool live dashboard walkthrough — animated preview" width="100%">
-</p>
+> The live, hosted cockpit in motion. For the full-quality clip with audio,
+> ▶︎ **[open `clip/hosted-dashboard.mp4`](https://github.com/eugnmueller-87/SCM-POWER-BI/blob/main/clip/hosted-dashboard.mp4)**.
 
-> *(Animated preview above — the full narrated walkthrough video plays inline once uploaded.)*
+### What you're looking at — KPIs and where they live
+
+| Tab | KPI / visual | What it answers |
+|---|---|---|
+| **Overview** | **Forecast Accuracy** (1 − WMAPE), **Total Spend**, **Top Supplier Share**, **Stockout Risk** | The four numbers a CEO checks first — is the AI forecast trustworthy, how much are we spending, are we over-reliant on one supplier, and is anything about to run out. |
+| **Overview** | **Predicted vs Actual Demand** (12-month line) + **Supplier Concentration** (donut) + **Spend by Category** (bars) + **AI-Generated Insights** | The forecast "money shot" against 12 months of actuals, plus a click-to-filter spend/supplier breakdown and the AI's plain-English read on the data. |
+| **SC Scorecard** | **Inventory Turns**, **Days of Supply**, **Fill Rate**, **Forecast Bias**, **HHI concentration**, **Avg Lead Time**, **On-Order**, **SKUs below safety** … | The full supply-chain health panel — every tile is **click-to-drill**: it opens a slide-out with the exact formula and the underlying rows. |
+| **Spend** | Spend **by category / supplier / product**, **maverick & tail-spend %**, **top-supplier concentration** | Where the money goes and the concrete savings levers. Cross-filters the whole board on click. |
+| **Inventory** | On-hand, daily burn, **Reorder Point** (`burn × lead + safety`), **Days-to-reorder**, **Action** column (🔴 ORDER NOW / 🟡 order in N d / ✅ on order / 🟢 ok) | Tells planners *when* to reorder each SKU, not just what the stock is. |
+| **Forecast** | **MAPE / WMAPE**, accuracy by category, worst-category flag, **error trend by month**, click-to-drill **why-it-missed / how-to-fix** diagnostic | Why the forecast was wrong (bias direction, demand volatility) and how to predict better (bias correction, aggregation, safety stock, seasonal model). |
 
 ### Headline result (from the live data)
 > **AI demand forecast accuracy ≈ 85%** — backtested across **78 forecasts over 12 months**.

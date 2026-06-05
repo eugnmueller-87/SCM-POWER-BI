@@ -4,7 +4,7 @@ Reusable assumptions behind [`scripts/generate_data.py`](../scripts/generate_dat
 Drop these into project write-ups. **All data is synthetic; no real company data is used.**
 
 ## Company profile (synthetic)
-- Mid-to-large **cloud/hosting** company, **DACH**, Microsoft-365 ecosystem (IONOS-like).
+- Mid-to-large **cloud/hosting** company, **DACH**, Microsoft-365 ecosystem.
 - Procurement is **indirect + IT/cloud heavy**.
 - ~**€640m/year** managed spend (→ ~€1.34bn over the 24-month history).
 

@@ -3,7 +3,7 @@ generate_data.py
 ================
 Synthetic data generator for the **SCM Master Tool** — an executive procurement &
 supply-chain analytics cockpit for a mid-to-large cloud/hosting company
-(profile: IONOS-like, DACH, Microsoft-365 ecosystem, indirect + IT/cloud heavy).
+(profile: DACH, Microsoft-365 ecosystem, indirect + IT/cloud heavy).
 
 ALL DATA IS SYNTHETIC. No real company data is used. Numbers are calibrated to be
 *plausible* for a company with ~€600-700m annual indirect/IT addressable spend, but

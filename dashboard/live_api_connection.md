@@ -164,3 +164,113 @@ Each **Refresh** re-runs `fnGetToken` (fresh login → fresh token) then pulls c
 expiry babysitting. For scheduled refresh in the Power BI Service you'll need the API reachable from
 the cloud (it is — public Railway URL) and the same Anonymous + Bearer-in-query setup; configure
 credentials on the dataset as **Anonymous**.
+
+---
+
+# BOARD 2 — Spend Analysis (live JSON endpoints)
+
+These power the **Spend board**. They use the JSON analytics endpoints (cleaner than the CSV).
+Each query reuses `fnGetToken`. For each: **Neue Quelle ▸ Leere Abfrage ▸ Erweiterter Editor**,
+paste, **Fertig**, then rename.
+
+Live snapshot (2026-06-05): total spend **€2,191,170** across **787 units**, 4 suppliers, 6 categories.
+Servers = 47% of spend (Dell). This is the concentration story.
+
+### Query `SpendByCategory`  → rename to **SpendByCategory**
+```m
+let
+    Token  = fnGetToken,
+    Source = Json.Document(
+        Web.Contents(
+            ApiBase,
+            [
+                RelativePath = "/api/v1/analytics/spend/by-category",
+                Headers = [ Authorization = "Bearer " & Token ]
+            ]
+        )
+    ),
+    Table0 = Table.FromList(Source, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+    Expanded = Table.ExpandRecordColumn(Table0, "Column1", {"category", "units", "spend"}),
+    Typed = Table.TransformColumnTypes(Expanded, {
+        {"category", type text},
+        {"units", Int64.Type},
+        {"spend", type number}
+    }, "en-US")
+in
+    Typed
+```
+
+### Query `SpendBySupplier`  → rename to **SpendBySupplier**
+```m
+let
+    Token  = fnGetToken,
+    Source = Json.Document(
+        Web.Contents(
+            ApiBase,
+            [
+                RelativePath = "/api/v1/analytics/spend/by-supplier",
+                Headers = [ Authorization = "Bearer " & Token ]
+            ]
+        )
+    ),
+    Table0 = Table.FromList(Source, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+    Expanded = Table.ExpandRecordColumn(Table0, "Column1", {"supplier_id", "supplier_name", "units", "spend"}),
+    Typed = Table.TransformColumnTypes(Expanded, {
+        {"supplier_id", type text},
+        {"supplier_name", type text},
+        {"units", Int64.Type},
+        {"spend", type number}
+    }, "en-US")
+in
+    Typed
+```
+
+### Query `SpendByProduct`  → rename to **SpendByProduct**
+The `product_name` has a `·` separator that arrives mojibake-encoded (`Â·`); we clean it.
+```m
+let
+    Token  = fnGetToken,
+    Source = Json.Document(
+        Web.Contents(
+            ApiBase,
+            [
+                RelativePath = "/api/v1/analytics/spend/by-product",
+                Headers = [ Authorization = "Bearer " & Token ]
+            ]
+        )
+    ),
+    Table0 = Table.FromList(Source, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+    Expanded = Table.ExpandRecordColumn(Table0, "Column1", {"product_id", "product_name", "category", "units", "spend"}),
+    CleanName = Table.TransformColumns(Expanded, {{"product_name", each Text.Replace(_, "Â·", "·"), type text}}),
+    Typed = Table.TransformColumnTypes(CleanName, {
+        {"product_id", type text},
+        {"product_name", type text},
+        {"category", type text},
+        {"units", Int64.Type},
+        {"spend", type number}
+    }, "en-US")
+in
+    Typed
+```
+
+## Spend board visuals & measures
+
+Measures (create on `SpendBySupplier`, right-click ▸ Neues Measure):
+```DAX
+Total Spend = SUM ( SpendBySupplier[spend] )
+```
+```DAX
+Top Supplier Share % =
+DIVIDE ( MAX ( SpendBySupplier[spend] ), [Total Spend] )
+```
+Format `Total Spend` as **Currency (€), 0 decimals**; `Top Supplier Share %` as **% 0 dec**.
+
+| Visual | Type | Fields | So-what |
+|---|---|---|---|
+| **Total Spend** | Card | `[Total Spend]` | "€2.19M total addressable spend." |
+| **Spend by category** | Bar (horizontal), sorted desc | Axis `SpendByCategory[category]`, Value `spend` | "Servers = 47% — one category dominates." |
+| **Supplier concentration** | Donut | Legend `SpendBySupplier[supplier_name]`, Value `spend` | "Dell = 50% of spend → single-vendor risk." |
+| **Top products** | Bar | Axis `SpendByProduct[product_name]`, Value `spend` | "PowerEdge R760 is the single biggest line item." |
+| **Spend detail** | Table | supplier/category/spend/units | Lets finance verify the numbers. |
+
+Color bars with the theme: good `#1F6F54`, watch `#E8B23A`, act `#C44536`.

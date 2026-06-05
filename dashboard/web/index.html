@@ -4,7 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>SCM Master — Executive Cockpit</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="chart.umd.min.js"></script>
+<script src="data.js"></script>
 <style>
   :root{
     --bg:#f1f5f9; --card:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0;
@@ -116,7 +117,7 @@ const PCT = n => (n*100).toFixed(1) + "%";
 const arr = x => Array.isArray(x) ? x : (x && Array.isArray(x.value) ? x.value : []);
 const num = s => Number(String(s).replace(/[^0-9.\-]/g,""));
 
-fetch("data.json").then(r=>r.json()).then(d=>{
+(function(d){
   document.getElementById("genDate").textContent  = d.generated_at;
   document.getElementById("genDate2").textContent = d.generated_at;
 
@@ -206,7 +207,7 @@ fetch("data.json").then(r=>r.json()).then(d=>{
     li.innerHTML=`<strong>${it.title||""}</strong>`;
     ul.appendChild(li);
   });
-});
+})(window.SCM_DATA);
 </script>
 </body>
 </html>

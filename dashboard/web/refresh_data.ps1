@@ -17,6 +17,8 @@ $out.insights          = Invoke-RestMethod -Uri "$base/api/v1/agent/insights"   
 $out.forecast          = (Invoke-RestMethod -Uri "$base/api/v1/analytics/exports/forecast-accuracy.csv" -Headers $h) | ConvertFrom-Csv
 
 $json = $out | ConvertTo-Json -Depth 6
-$path = Join-Path $PSScriptRoot "data.json"
-[System.IO.File]::WriteAllText($path, $json, (New-Object System.Text.UTF8Encoding $false))
-Write-Host "Refreshed -> $path  ($($out.forecast.Count) forecast rows)" -ForegroundColor Green
+$enc  = New-Object System.Text.UTF8Encoding $false
+[System.IO.File]::WriteAllText((Join-Path $PSScriptRoot "data.json"), $json, $enc)
+# Also write data.js (inlined) so index.html works when opened directly (file://)
+[System.IO.File]::WriteAllText((Join-Path $PSScriptRoot "data.js"), "window.SCM_DATA = $json;", $enc)
+Write-Host "Refreshed data.json + data.js  ($($out.forecast.Count) forecast rows)" -ForegroundColor Green

@@ -60,6 +60,14 @@
   .insights li.warn::before{background:var(--amber)}
   .page{display:none}.page.active{display:block}
   footer{margin-top:28px;text-align:center;color:var(--muted);font-size:12px}
+  .scsec{margin-bottom:8px;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;padding-left:2px}
+  .sc6{grid-template-columns:repeat(3,1fr)}
+  .sckpi{position:relative;overflow:hidden}
+  .sckpi .label{font-size:12px;color:var(--muted);font-weight:600}
+  .sckpi .value{font-size:30px;font-weight:700;margin:6px 0 3px;line-height:1}
+  .sckpi .note{font-size:11.5px;color:var(--muted)}
+  .sckpi .edge{position:absolute;left:0;top:0;bottom:0;width:4px}
+  .e-good{background:var(--green)}.e-warn{background:var(--amber)}.e-bad{background:var(--red)}.e-neut{background:var(--slate,#94a3b8)}
   .barlabel{font-size:12px}
 </style>
 </head>
@@ -74,6 +82,7 @@
   </div>
   <nav class="tabs">
     <button data-tab="overview" class="active">Overview</button>
+    <button data-tab="scorecard">SC Scorecard</button>
     <button data-tab="spend">Spend</button>
     <button data-tab="inventory">Inventory</button>
     <button data-tab="forecast">Forecast</button>
@@ -101,6 +110,23 @@
       <div class="card"><h3>Spend by category <span style="font-weight:400;text-transform:none;font-size:11px">(click to filter)</span></h3><div class="chart-box"><canvas id="catBar"></canvas></div></div>
       <div class="card"><h3>🤖 AI-generated insights</h3><div class="insights"><ul id="insightList"></ul></div></div>
     </div>
+  </section>
+
+  <!-- ===================== SC SCORECARD ===================== -->
+  <section class="page" id="page-scorecard">
+    <div class="scsec">📦 Inventory &amp; warehouse cycle</div>
+    <div class="grid sc6" id="scInv"></div>
+    <div class="scsec" style="margin-top:22px">🎯 Demand planning &amp; forecast</div>
+    <div class="grid sc6" id="scPlan"></div>
+    <div class="scsec" style="margin-top:22px">🏭 Sourcing &amp; supplier risk</div>
+    <div class="grid sc6" id="scSrc"></div>
+    <div class="grid" style="margin-top:18px"><div class="card"><h3>How to read this scorecard</h3>
+      <div style="font-size:13px;color:#475569;line-height:1.6">
+        🟢 on target · 🟡 watch · 🔴 act. Metrics are computed live from the SCM Master API
+        (inventory, spend, and 12-month forecast backtest). Metrics that require PO / receipt /
+        GL data not exposed by the API (Perfect Order %, OTIF, Cash-to-Cash, PPV) are intentionally
+        omitted rather than fabricated.
+      </div></div></div>
   </section>
 
   <!-- ===================== SPEND ===================== -->
@@ -174,6 +200,35 @@ const RAW = {
 };
 document.getElementById("genDate").textContent = D.generated_at;
 document.getElementById("genDate2").textContent = D.generated_at;
+
+// ---------- Supply-chain KPI engine (all derived from live data, none fabricated) ----------
+const KPI = (()=> {
+  const inv=RAW.inv, sup=RAW.sups, fc=RAW.fc;
+  const onHand=inv.reduce((s,x)=>s+x.on_hand,0);
+  const burn=inv.reduce((s,x)=>s+x.burn,0);
+  const invValue=inv.reduce((s,x)=>s+x.on_hand*x.price,0);
+  const dos = burn? onHand/burn : 0;                          // days of supply
+  const turns = dos? 365/dos : 0;                             // inventory turns
+  const fillRate = inv.filter(x=>x.on_hand>=x.safety).length/inv.length;
+  const stockRisk = inv.filter(x=>x.burn>0 && (x.on_hand/x.burn)<x.lead).length;
+  const belowSafety = inv.filter(x=>x.on_hand<x.safety).length;
+  const avgLead = inv.reduce((s,x)=>s+x.lead,0)/inv.length;
+  const onOrder = inv.reduce((s,x)=>s+x.on_order,0);
+  const sumP=fc.reduce((s,x)=>s+x.pred,0), sumA=fc.reduce((s,x)=>s+x.act,0), sumE=fc.reduce((s,x)=>s+x.err,0);
+  const bias = sumA? sumP/sumA : 0;                           // forecast bias
+  const wmape = sumA? sumE/sumA : 0;
+  const accuracy = 1-wmape;
+  const mape = fc.reduce((s,x)=>s+x.ape,0)/fc.length;
+  const totalSpend=sup.reduce((s,x)=>s+x.spend,0);
+  const hhi=sup.reduce((s,x)=>s+Math.pow(x.spend/totalSpend,2),0); // Herfindahl
+  const sorted=sup.slice().sort((a,b)=>b.spend-a.spend);
+  const top1=sorted[0].spend/totalSpend;
+  const top2=(sorted[0].spend+(sorted[1]?sorted[1].spend:0))/totalSpend;
+  const totalUnits=sup.reduce((s,x)=>s+x.units,0);
+  return {onHand,burn,invValue,dos,turns,fillRate,stockRisk,belowSafety,avgLead,onOrder,
+          bias,wmape,accuracy,mape,totalSpend,hhi,top1,top2,totalUnits,
+          supplierCount:sup.length, skuCount:inv.length};
+})();
 
 // ---------- global filter ----------
 let FILTER = null; // {type:'category'|'supplier'|'product', value:''}
@@ -367,9 +422,46 @@ function renderForecast(){
       scales:{x:{grid:{display:false}},y:{grid:{color:"#f1f5f9"},ticks:{callback:v=>v+"%"},beginAtZero:true}}}});
 }
 
+function scCard(label,value,note,status){
+  const e={good:"e-good",warn:"e-warn",bad:"e-bad",neut:"e-neut"}[status]||"e-neut";
+  return `<div class="card sckpi"><span class="edge ${e}"></span>
+    <div class="label">${label}</div><div class="value">${value}</div><div class="note">${note}</div></div>`;
+}
+function renderScorecard(){
+  const k=KPI;
+  // Inventory & warehouse cycle
+  document.getElementById("scInv").innerHTML=[
+    scCard("Inventory Turns", k.turns.toFixed(1)+"×", "annualised · higher = leaner", k.turns>=12?"good":k.turns>=6?"warn":"bad"),
+    scCard("Days of Supply", k.dos.toFixed(1)+" d", "on-hand ÷ daily burn", k.dos<=20?"good":k.dos<=35?"warn":"bad"),
+    scCard("In-Stock / Fill Rate", PCT(k.fillRate), "SKUs at/above safety stock", k.fillRate>=0.9?"good":k.fillRate>=0.7?"warn":"bad"),
+    scCard("Inventory Value", EUR(k.invValue), k.onHand+" units on hand", "neut"),
+    scCard("Stockout Risk", k.stockRisk+" / "+k.skuCount, "cover below lead time", k.stockRisk===0?"good":k.stockRisk<=2?"warn":"bad"),
+    scCard("Below Safety Stock", k.belowSafety+" / "+k.skuCount, "need replenishment", k.belowSafety===0?"good":k.belowSafety<=2?"warn":"bad"),
+  ].join("");
+  // Demand planning
+  document.getElementById("scPlan").innerHTML=[
+    scCard("Forecast Accuracy", PCT(k.accuracy), "1 − WMAPE (volume-weighted)", k.accuracy>=0.85?"good":k.accuracy>=0.75?"warn":"bad"),
+    scCard("MAPE", PCT(k.mape), "mean absolute % error", k.mape<=0.15?"good":k.mape<=0.25?"warn":"bad"),
+    scCard("Forecast Bias", PCT(k.bias), k.bias>1?"over-forecasting":"under-forecasting", (k.bias>=0.95&&k.bias<=1.05)?"good":(k.bias>=0.9&&k.bias<=1.1)?"warn":"bad"),
+    scCard("Avg Lead Time", k.avgLead.toFixed(0)+" d", "supplier replenishment", k.avgLead<=14?"good":k.avgLead<=21?"warn":"bad"),
+    scCard("Units On Order", k.onOrder.toLocaleString(), "inbound pipeline", "neut"),
+    scCard("Demand Coverage", k.burn.toFixed(1)+" u/d", "total daily burn rate", "neut"),
+  ].join("");
+  // Sourcing & supplier risk
+  document.getElementById("scSrc").innerHTML=[
+    scCard("Total Spend", EUR(k.totalSpend), k.totalUnits.toLocaleString()+" units procured", "neut"),
+    scCard("Active Suppliers", k.supplierCount, "in current scope", "neut"),
+    scCard("Supplier HHI", k.hhi.toFixed(3), ">0.25 = concentrated", k.hhi<=0.25?"good":k.hhi<=0.4?"warn":"bad"),
+    scCard("Top-Supplier Share", PCT(k.top1), "single-vendor dependency", k.top1<=0.3?"good":k.top1<=0.5?"warn":"bad"),
+    scCard("Top-2 Share", PCT(k.top2), "concentration in 2 vendors", k.top2<=0.5?"good":k.top2<=0.75?"warn":"bad"),
+    scCard("Avg Spend / Unit", EUR(k.totalSpend/k.totalUnits), "blended unit cost", "neut"),
+  ].join("");
+}
+
 let CURRENT="overview";
 function renderAll(){
   if(CURRENT==="overview")renderOverview();
+  else if(CURRENT==="scorecard")renderScorecard();
   else if(CURRENT==="spend")renderSpend();
   else if(CURRENT==="inventory")renderInventory();
   else if(CURRENT==="forecast")renderForecast();

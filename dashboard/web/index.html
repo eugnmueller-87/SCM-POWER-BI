@@ -123,7 +123,8 @@ const num = s => Number(String(s).replace(/[^0-9.\-]/g,""));
 
   const cats = arr(d.spend_by_category).map(x=>({k:x.category, units:+x.units, spend:num(x.spend)}));
   const sups = arr(d.spend_by_supplier).map(x=>({k:x.supplier_name, units:+x.units, spend:num(x.spend)}));
-  const prods= arr(d.spend_by_product).map(x=>({k:x.product_name, cat:x.category, units:+x.units, spend:num(x.spend)}));
+  const fixTxt = s => String(s).replace(/Ã.?Â.?·|Ã¢â‚¬Â·|Â·|Ã·/g,"·").replace(/Ã‚|Ã¢|â‚¬/g,"").trim();
+  const prods= arr(d.spend_by_product).map(x=>({k:fixTxt(x.product_name), cat:x.category, units:+x.units, spend:num(x.spend)}));
   const inv  = arr(d.inventory).map(x=>({...x, on_hand:+x.on_hand, daily_burn:num(x.daily_burn), lead:+x.lead_time_days, unit_price:num(x.unit_price), safety:+x.safety_stock}));
   const fc   = arr(d.forecast).map(x=>({date:x.as_of_date, pred:num(x.predicted_demand), act:num(x.actual_demand), ape:num(x.ape), cat:x.category, err:num(x.abs_error)}));
   const ins  = arr(d.insights);

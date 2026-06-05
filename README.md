@@ -19,14 +19,14 @@ API server-side and **auto-refreshes**, so the board is always current.
 
 ## 🎥 Walkthrough
 
+<!-- ▶︎ INLINE VIDEO GOES HERE — drag clip/hosted-dashboard.mp4 into the GitHub README editor
+     on this line; GitHub uploads it to its CDN and replaces this comment with a player. -->
+
 <p align="center">
-  <a href="https://raw.githubusercontent.com/eugnmueller-87/SCM-POWER-BI/main/clip/hosted-dashboard.mp4">
-    <img src="https://raw.githubusercontent.com/eugnmueller-87/SCM-POWER-BI/main/clip/demo.gif" alt="SCM Master Tool live dashboard walkthrough" width="100%">
-  </a>
+  <img src="https://raw.githubusercontent.com/eugnmueller-87/SCM-POWER-BI/main/clip/demo.gif" alt="SCM Master Tool live dashboard walkthrough — animated preview" width="100%">
 </p>
 
-> The animated preview above plays inline. For the **full walkthrough of the hosted dashboard**
-> (with audio), ▶︎ **[watch `clip/hosted-dashboard.mp4`](https://raw.githubusercontent.com/eugnmueller-87/SCM-POWER-BI/main/clip/hosted-dashboard.mp4)**.
+> *(Animated preview above — the full narrated walkthrough video plays inline once uploaded.)*
 
 ### Headline result (from the live data)
 > **AI demand forecast accuracy ≈ 85%** — backtested across **78 forecasts over 12 months**.

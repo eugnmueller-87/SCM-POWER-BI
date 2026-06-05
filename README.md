@@ -19,10 +19,20 @@ API server-side and **auto-refreshes**, so the board is always current.
 
 ## 🎥 Walkthrough
 
+### 1 · Live web cockpit (hosted, auto-refreshing)
+
 ![SCM Master live cockpit walkthrough](https://raw.githubusercontent.com/eugnmueller-87/SCM-POWER-BI/main/clip/hosted-dashboard.gif)
 
-> The live, hosted cockpit in motion. For the full-quality clip with audio,
-> ▶︎ **[open `clip/hosted-dashboard.mp4`](https://github.com/eugnmueller-87/SCM-POWER-BI/blob/main/clip/hosted-dashboard.mp4)**.
+> The live, hosted cockpit in motion — [**scm-power-bi-production.up.railway.app**](https://scm-power-bi-production.up.railway.app).
+> For the full-quality clip with audio, ▶︎ **[open `clip/hosted-dashboard.mp4`](https://github.com/eugnmueller-87/SCM-POWER-BI/blob/main/clip/hosted-dashboard.mp4)**.
+
+### 2 · Power BI report (lab deliverable)
+
+![SCM Master Power BI report demo](https://raw.githubusercontent.com/eugnmueller-87/SCM-POWER-BI/main/clip/demo.gif)
+
+> The Power BI report wired to the **same live API** — forecast-accuracy measures and the
+> predicted-vs-actual view, with a DAX `Forecast Quality` flag. For the full clip,
+> ▶︎ **[open `docs/demo.mp4`](https://github.com/eugnmueller-87/SCM-POWER-BI/blob/main/docs/demo.mp4)**.
 
 ### What you're looking at — KPIs and where they live
 

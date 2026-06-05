@@ -5,6 +5,29 @@ a mid-to-large cloud/hosting company (profile: IONOS-like, DACH, Microsoft-365 e
 indirect + IT/cloud-heavy spend). Audience: a non-technical CEO ("Cleo") deciding whether
 **AI/analytics investment is worth it**.
 
+## 🎥 Demo
+
+The dashboard wired to a **live, authenticated API** — Power BI logs in on each refresh and
+pulls fresh forecast-accuracy data from the deployed backend.
+
+https://github.com/eugnmueller-87/SCM-POWER-BI/raw/main/docs/demo.mp4
+
+> If the player doesn't load inline, [**download / watch the clip here**](docs/demo.mp4).
+
+### Headline result (from the live data)
+> **AI demand forecast accuracy ≈ 85%** — backtested across **78 forecasts over 12 months**.
+> Mean Absolute % Error (MAPE) = **14.6%**; volume-weighted (WMAPE) = **13.9%**.
+> *"Our AI demand forecast has been right within ~15% on average, proven against 12 months of actuals."*
+
+| Category | MAPE | Read |
+|---|---|---|
+| Storage | 8.5% | 🟢 excellent |
+| Servers | 9.6% | 🟢 excellent |
+| Memory | 12.7% | 🟢 good |
+| Processors | 17.3% | 🟡 watch |
+| Power | 18.1% | 🟡 watch |
+| Networking | 21.5% | 🔴 weakest — improvement target |
+
 > ⚠️ **All data in this repo is synthetic.** It is randomly generated to be *plausible*, not
 > real. No real company data is used. See [research/01_data_assumptions.md](research/01_data_assumptions.md).
 
@@ -18,6 +41,8 @@ indirect + IT/cloud-heavy spend). Audience: a non-technical CEO ("Cleo") decidin
 | **4. Dashboard spec** | [`dashboard/dashboard_spec.md`](dashboard/dashboard_spec.md) | 4 pages, every visual specified (chart type, fields, CEO-readability). |
 | **5. Hype-vs-value** | [`dashboard/hype_vs_value.md`](dashboard/hype_vs_value.md) | Per-page "robust vs needs-validation" note → a "pilot / wait / invest" recommendation. |
 | **6. Research notes** | [`research/`](research/) | Reusable assumptions for project write-ups. |
+| **7. Live API connection** | [`dashboard/live_api_connection.md`](dashboard/live_api_connection.md) | Paste-ready Power Query (M) to connect Power BI to the deployed backend — auto-login on every refresh (OAuth2 → Bearer). |
+| **8. Built dashboard** | [`Order_Accuracy_Forecast_2026.pbix`](Order_Accuracy_Forecast_2026.pbix) | The Power BI report itself, wired to the live API. *(Git LFS)* |
 
 ## Frameworks anchored (no ad-hoc KPIs)
 - **SCOR DS** Level-1 metrics: Perfect Order Fulfillment %, Order Fulfillment Cycle Time,
@@ -64,4 +89,4 @@ and could feed Tableau later; only the measures would need re-authoring.
 - [x] Data model + 4-page dashboard spec
 - [x] Hype-vs-value layer + research notes
 - [x] Live API connection guide (`dashboard/live_api_connection.md`) — verified against the deployed backend
-- [ ] `.pbix` built in Power BI Desktop (manual step — specs + live-API queries are build-ready)
+- [x] **`.pbix` built in Power BI Desktop** — wired to the live API, forecast-accuracy measures + visuals live

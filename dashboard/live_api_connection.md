@@ -274,3 +274,76 @@ Format `Total Spend` as **Currency (€), 0 decimals**; `Top Supplier Share %` a
 | **Spend detail** | Table | supplier/category/spend/units | Lets finance verify the numbers. |
 
 Color bars with the theme: good `#1F6F54`, watch `#E8B23A`, act `#C44536`.
+
+---
+
+# KPI cards per board (live values, 2026-06-05)
+
+Each KPI is a DAX measure → drop on a **Card** visual. Thresholds drive the green/amber/red color
+(set via conditional formatting on the card's value, or a companion status measure).
+
+## Forecast board KPIs
+| KPI | Measure | Live value | Good / Watch / Act |
+|---|---|---|---|
+| **Forecast Accuracy** | `Forecast Accuracy % = 1 - [WMAPE %]` | **86.1%** | ≥85 🟢 / 75–85 🟡 / <75 🔴 |
+| **MAPE** | `MAPE % = AVERAGE(ForecastAccuracy[ape])` | **14.6%** | ≤15 🟢 / 15–25 🟡 / >25 🔴 |
+| **WMAPE (weighted)** | `WMAPE % = DIVIDE(SUM[abs_error],SUM[actual_demand])` | **13.9%** | ≤15 🟢 / 15–25 🟡 / >25 🔴 |
+| **Forecasts evaluated** | `Forecasts = COUNTROWS(ForecastAccuracy)` | **78** | — (context) |
+| **Worst category MAPE** | `Worst Cat MAPE = MAXX(VALUES(ForecastAccuracy[category]), [MAPE %])` | **21.5%** (Networking) | flags the weak spot |
+
+## Spend board KPIs
+| KPI | Measure | Live value | Good / Watch / Act |
+|---|---|---|---|
+| **Total Spend** | `Total Spend = SUM(SpendBySupplier[spend])` | **€2,191,170** | — (headline) |
+| **Active Suppliers** | `Active Suppliers = DISTINCTCOUNT(SpendBySupplier[supplier_id])` | **4** | — (context) |
+| **Top Supplier Share** | `Top Supplier Share % = DIVIDE(MAX(SpendBySupplier[spend]),[Total Spend])` | **50%** (Dell) | <30 🟢 / 30–50 🟡 / >50 🔴 |
+| **Top Category Share** | `Top Category Share % = DIVIDE(MAX(SpendByCategory[spend]),SUM(SpendByCategory[spend]))` | **48%** (Servers) | <40 🟢 / 40–60 🟡 / >60 🔴 |
+| **Avg Spend / Unit** | `Avg Spend per Unit = DIVIDE([Total Spend], SUM(SpendBySupplier[units]))` | **€2,784** | — (context) |
+
+## Inventory board KPIs *(needs `Inventory` query — see Board 3 below)*
+| KPI | Measure | Live value | Good / Watch / Act |
+|---|---|---|---|
+| **SKUs tracked** | `SKUs = COUNTROWS(Inventory)` | **6** | — |
+| **Below safety stock** | `Below Safety = COUNTROWS(FILTER(Inventory, Inventory[on_hand] < Inventory[safety_stock]))` | **3** | 0 🟢 / 1–2 🟡 / ≥3 🔴 |
+| **Stockout risk** (cover < lead time) | `Stockout Risk = COUNTROWS(FILTER(Inventory, Inventory[daily_burn]>0 && DIVIDE(Inventory[on_hand],Inventory[daily_burn]) < Inventory[lead_time_days]))` | **5** | 0 🟢 / 1–2 🟡 / ≥3 🔴 |
+| **Avg lead time** | `Avg Lead Time = AVERAGE(Inventory[lead_time_days])` | **22 days** | ≤14 🟢 / 14–21 🟡 / >21 🔴 |
+| **Inventory value** | `Inventory Value = SUMX(Inventory, Inventory[on_hand] * Inventory[unit_price])` | **€60,980** | — (headline) |
+
+---
+
+# BOARD 3 — Inventory & Stock Risk (live)
+
+### Query `Inventory`  → rename to **Inventory**
+```m
+let
+    Token  = fnGetToken,
+    Source = Json.Document(
+        Web.Contents(
+            ApiBase,
+            [
+                RelativePath = "/api/v1/planning/inventory",
+                Headers = [ Authorization = "Bearer " & Token ]
+            ]
+        )
+    ),
+    Table0 = Table.FromList(Source, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+    Expanded = Table.ExpandRecordColumn(Table0, "Column1",
+        {"product_id","product_code","name","category","on_hand","capacity","safety_stock","daily_burn","lead_time_days","on_order","next_eta","unit_price"}),
+    Typed = Table.TransformColumnTypes(Expanded, {
+        {"product_id", type text}, {"product_code", type text}, {"name", type text}, {"category", type text},
+        {"on_hand", Int64.Type}, {"capacity", Int64.Type}, {"safety_stock", Int64.Type},
+        {"daily_burn", type number}, {"lead_time_days", Int64.Type}, {"on_order", Int64.Type},
+        {"unit_price", type number}
+    }, "en-US"),
+    TypedEta = Table.TransformColumnTypes(Typed, {{"next_eta", type date}}, "en-US")
+in
+    TypedEta
+```
+
+### Inventory board visuals
+| Visual | Type | Fields | So-what |
+|---|---|---|---|
+| 4 KPI cards | Card | the inventory measures above | response scorecard |
+| **On-hand vs safety stock** | Clustered bar | Axis `name`, Values `on_hand` + `safety_stock` | bars below safety = red |
+| **Days of cover** | Bar | Axis `name`, Value `DIVIDE(on_hand, daily_burn)` w/ ref line at avg lead time | below the line = stockout risk |
+| **Incoming POs** | Table | `name`, `on_order`, `next_eta` | what's arriving and when |

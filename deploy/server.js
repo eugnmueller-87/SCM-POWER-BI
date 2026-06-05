@@ -42,18 +42,26 @@ async function getCSV(token, p) {
   });
 }
 
+// Best-effort fetch: returns `fallback` (and logs) instead of throwing, so one
+// flaky non-critical endpoint can't blank the whole dashboard.
+async function safe(label, p, fallback) {
+  try { return await p; }
+  catch (e) { console.warn(`[refresh] non-critical '${label}' failed: ${e.message || e} — using fallback`); return fallback; }
+}
+
 async function refresh() {
   try {
     const token = await login();
-    const [byCat, bySup, byProd, spendTotal, inventory, insights, forecast] = await Promise.all([
+    const [byCat, bySup, byProd, spendTotal, inventory, forecast] = await Promise.all([
       getJSON(token, "/api/v1/analytics/spend/by-category"),
       getJSON(token, "/api/v1/analytics/spend/by-supplier"),
       getJSON(token, "/api/v1/analytics/spend/by-product"),
       getJSON(token, "/api/v1/analytics/spend"),
       getJSON(token, "/api/v1/planning/inventory"),
-      getJSON(token, "/api/v1/agent/insights"),
       getCSV(token, "/api/v1/analytics/exports/forecast-accuracy.csv"),
     ]);
+    // AI insights are nice-to-have — never let a 502 here take down the board.
+    const insights = await safe("agent/insights", getJSON(token, "/api/v1/agent/insights"), []);
     cache = {
       generated_at: new Date().toISOString().replace("T", " ").slice(0, 16) + " UTC",
       error: null,

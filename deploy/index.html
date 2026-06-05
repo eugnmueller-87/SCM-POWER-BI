@@ -350,6 +350,7 @@ function renderOverview(){
 
   // insights
   const ul=document.getElementById("insightList"); ul.innerHTML="";
+  if(!RAW.ins.length){ ul.innerHTML='<li style="color:#94a3b8">AI insights temporarily unavailable — core metrics below are live.</li>'; }
   RAW.ins.slice(0,5).forEach((it,i)=>{const li=document.createElement("li");if(i>=3)li.className="warn";li.innerHTML=`<strong>${fixTxt(it.title||"")}</strong>`;ul.appendChild(li);});
 }
 

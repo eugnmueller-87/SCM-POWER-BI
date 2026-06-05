@@ -1,5 +1,15 @@
 # SCM Master Tool — Procurement & Supply Chain Analytics Cockpit
 
+[![Live Dashboard](https://img.shields.io/badge/Live_Dashboard-online-22c55e?style=flat&logo=railway&logoColor=white)](https://scm-power-bi-production.up.railway.app)
+[![Power BI](https://img.shields.io/badge/Power_BI-report-F2C811?style=flat&logo=powerbi&logoColor=black)](Order_Accuracy_Forecast_2026.pbix)
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat&logo=python&logoColor=white)](requirements.txt)
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?style=flat&logo=nodedotjs&logoColor=white)](deploy/)
+[![Chart.js](https://img.shields.io/badge/Chart.js-4.4-FF6384?style=flat&logo=chartdotjs&logoColor=white)](deploy/)
+[![Deployed on Railway](https://img.shields.io/badge/Deployed-Railway-0B0D0E?style=flat&logo=railway&logoColor=white)](https://scm-power-bi-production.up.railway.app)
+[![Data](https://img.shields.io/badge/data-synthetic_%2B_public-8b5cf6?style=flat)](sources.md)
+[![Recommendation](https://img.shields.io/badge/recommendation-pilot-eab308?style=flat)](implementation/solution_proposal.md)
+[![License](https://img.shields.io/badge/license-educational-lightgrey?style=flat)](#)
+
 An executive-facing cockpit for **procurement & supply-chain analytics**, built for a
 mid-to-large cloud/hosting company (profile: DACH, Microsoft-365 ecosystem,
 indirect + IT/cloud-heavy spend). Audience: a non-technical CEO ("Cleo") deciding whether

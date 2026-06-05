@@ -34,11 +34,10 @@ Deterministic: a fixed RNG seed makes every run reproducible.
 from __future__ import annotations
 
 import os
-from datetime import date
-from dateutil.relativedelta import relativedelta  # noqa: F401  (fallback below if missing)
 
 import numpy as np
 import pandas as pd
+from dateutil.relativedelta import relativedelta  # noqa: F401  (fallback below if missing)
 
 # --------------------------------------------------------------------------------------
 # 0. CONFIG & REPRODUCIBILITY
@@ -79,7 +78,7 @@ categories_def = [
     ("Logistics",             1, 1, 0.12),
     ("Facilities",            1, 1, 0.10),
     ("Marketing",             0, 1, 0.14),  # ASSUMPTION: marketing semi-owned by business
-    ("Professional Services", 0, 1, 0.12),  # ASSUMPTION: prof. services influenceable, not fully addressable
+    ("Professional Services", 0, 1, 0.12),  # ASSUMPTION: influenceable, not fully addressable
 ]
 categories = pd.DataFrame(
     [
@@ -273,7 +272,7 @@ for m_i, m in enumerate(MONTH_STARTS):
         # split cat_total across n_txn transactions with dirichlet noise
         parts = rng.dirichlet(np.ones(n_txn) * 2.0) * cat_total
         chosen = rng.choice(sup_list, size=n_txn, p=w)
-        for amt, sup in zip(parts, chosen):
+        for amt, sup in zip(parts, chosen, strict=False):
             has_active = sup in active_contract_suppliers
             # on-contract probability: high if supplier has an active contract at M3,
             # much lower otherwise. Marketing / Prof. Services carry more maverick spend.
@@ -397,7 +396,9 @@ for e in range(N_EVENTS):
     # action: 0.5-4 days after awareness
     ttact = max(0.2, rng.normal(1.5, 0.8))
     # recovery duration anchored on supplier TTR_days (+ noise; +penalty if single-source)
-    recover_dur = max(1.0, rng.normal(s["TTR_days"] * (1.2 if single else 1.0), s["TTR_days"] * 0.2))
+    recover_dur = max(
+        1.0, rng.normal(s["TTR_days"] * (1.2 if single else 1.0), s["TTR_days"] * 0.2)
+    )
 
     detected_at = start + pd.Timedelta(days=float(tta))
     action_at = detected_at + pd.Timedelta(days=float(ttact))
@@ -493,7 +494,7 @@ print(f"  Disruptions where TTS<=TTR:     {(disruptions['tts_gt_ttr_flag']==0).m
 def wmape(df):
     return (df["planned_volume"] - df["actual_volume"]).abs().sum() / df["planned_volume"].sum()
 
-for label, m in zip(["M1", "M2", "M3"], REPORTING_MONTHS):
+for label, m in zip(["M1", "M2", "M3"], REPORTING_MONTHS, strict=False):
     sub = forecast[forecast["month"] == month_key(m)]
     log_sub = sub[sub["category_name"] == disrupted_cat]
     print(

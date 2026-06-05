@@ -3,6 +3,7 @@
 [![Live Dashboard](https://img.shields.io/badge/Live_Dashboard-online-22c55e?style=flat&logo=railway&logoColor=white)](https://scm-power-bi-production.up.railway.app)
 [![Power BI](https://img.shields.io/badge/Power_BI-report-F2C811?style=flat&logo=powerbi&logoColor=black)](Order_Accuracy_Forecast_2026.pbix)
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat&logo=python&logoColor=white)](requirements.txt)
+[![Ruff](https://img.shields.io/badge/lint-ruff-D7FF64?style=flat&logo=ruff&logoColor=black)](ruff.toml)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?style=flat&logo=nodedotjs&logoColor=white)](deploy/)
 [![Chart.js](https://img.shields.io/badge/Chart.js-4.4-FF6384?style=flat&logo=chartdotjs&logoColor=white)](deploy/)
 [![Deployed on Railway](https://img.shields.io/badge/Deployed-Railway-0B0D0E?style=flat&logo=railway&logoColor=white)](https://scm-power-bi-production.up.railway.app)

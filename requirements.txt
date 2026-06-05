@@ -9,6 +9,9 @@ python-dateutil>=2.8
 matplotlib>=3.7
 plotly>=5.18
 
+# Dev — lint/format (config in ruff.toml). Run: ruff check . && ruff format .
+ruff>=0.15
+
 # Optional — forecasting in the pilot (Phase 2 of the implementation plan)
 # scikit-learn>=1.3
 # statsforecast>=1.7

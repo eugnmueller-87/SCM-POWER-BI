@@ -1,0 +1,15 @@
+# Ruff config — linter + formatter for the Python in this repo.
+# Run:  ruff check .      (lint)
+#       ruff format .     (auto-format)
+line-length = 100
+target-version = "py312"
+
+[lint]
+# A pragmatic, useful set: pyflakes (F), pycodestyle (E/W), import sort (I),
+# pyupgrade (UP), and flake8-bugbear (B). Aligned-comment line-length noise is
+# tamed by line-length=100 above rather than by disabling E501.
+select = ["E", "W", "F", "I", "UP", "B"]
+
+[format]
+# Keep the carefully aligned tables / # ASSUMPTION comments readable.
+quote-style = "double"

@@ -1,0 +1,7 @@
+category_id,name,addressable_flag,influenceable_flag,spend_share
+CAT01,IT & Cloud,1,1,0.34
+CAT02,Hardware,1,1,0.18
+CAT03,Logistics,1,1,0.12
+CAT04,Facilities,1,1,0.1
+CAT05,Marketing,0,1,0.14
+CAT06,Professional Services,0,1,0.12

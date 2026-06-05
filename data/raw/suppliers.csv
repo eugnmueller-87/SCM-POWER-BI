@@ -1,0 +1,81 @@
+supplier_id,name,country,category_id,tier,single_source_flag,risk_score,TTR_days,TTS_days,on_time_pct,otif_pct,category_name,tts_gt_ttr_flag
+SUP001,Supplier 05-001,US,CAT05,2,0,17.6,7.9,12.7,90.9,88.1,Marketing,1
+SUP002,Supplier 02-002,US,CAT02,2,0,54.5,28.0,33.7,86.3,83.9,Hardware,1
+SUP003,Supplier 05-003,FR,CAT05,2,0,55.7,25.9,35.7,83.9,79.1,Marketing,1
+SUP004,Supplier 01-004,NL,CAT01,1,0,42.1,19.7,24.1,89.3,86.1,IT & Cloud,1
+SUP005,Supplier 01-005,DE,CAT01,2,0,49.9,26.6,34.2,86.7,82.4,IT & Cloud,1
+SUP006,Supplier 01-006,DE,CAT01,3,0,35.8,20.7,37.3,84.2,77.5,IT & Cloud,1
+SUP007,Supplier 02-007,DE,CAT02,2,1,48.6,35.9,10.5,85.2,79.4,Hardware,0
+SUP008,Supplier 03-008,DE,CAT03,2,1,53.5,37.1,35.8,81.6,78.1,Logistics,0
+SUP009,Supplier 01-009,DE,CAT01,2,0,35.9,20.2,36.3,87.6,80.7,IT & Cloud,1
+SUP010,Supplier 01-010,DE,CAT01,1,0,52.8,23.6,36.7,86.9,80.8,IT & Cloud,1
+SUP011,Supplier 02-011,DE,CAT02,2,0,20.8,8.5,8.7,88.3,80.8,Hardware,1
+SUP012,Supplier 04-012,IE,CAT04,2,0,49.9,20.7,30.4,83.2,75.8,Facilities,1
+SUP013,Supplier 02-013,DE,CAT02,1,0,39.9,15.2,24.0,86.2,81.6,Hardware,1
+SUP014,Supplier 03-014,NL,CAT03,2,1,61.2,37.3,62.0,86.5,83.6,Logistics,1
+SUP015,Supplier 01-015,DE,CAT01,2,0,36.3,14.2,25.6,87.8,80.0,IT & Cloud,1
+SUP016,Supplier 02-016,DE,CAT02,3,0,70.0,33.1,38.3,76.0,72.4,Hardware,1
+SUP017,Supplier 01-017,AT,CAT01,2,1,71.8,40.8,39.9,79.0,76.3,IT & Cloud,0
+SUP018,Supplier 04-018,NL,CAT04,2,0,42.6,25.8,34.9,83.8,81.6,Facilities,1
+SUP019,Supplier 03-019,PL,CAT03,2,0,30.2,21.3,36.3,89.1,85.6,Logistics,1
+SUP020,Supplier 06-020,DE,CAT06,1,0,31.7,18.8,41.0,89.8,82.4,Professional Services,1
+SUP021,Supplier 02-021,FR,CAT02,2,0,54.3,27.7,60.0,85.8,78.2,Hardware,1
+SUP022,Supplier 01-022,PL,CAT01,1,1,60.4,42.0,23.2,81.4,74.8,IT & Cloud,0
+SUP023,Supplier 06-023,DE,CAT06,2,1,75.9,41.9,56.2,75.2,70.2,Professional Services,1
+SUP024,Supplier 04-024,DE,CAT04,2,0,52.0,19.9,31.1,84.2,80.4,Facilities,1
+SUP025,Supplier 02-025,IE,CAT02,3,0,26.6,15.4,25.4,90.7,88.1,Hardware,1
+SUP026,Supplier 01-026,IE,CAT01,2,0,30.8,16.6,16.0,87.7,85.6,IT & Cloud,0
+SUP027,Supplier 01-027,PL,CAT01,3,0,33.0,14.3,19.2,86.4,80.5,IT & Cloud,1
+SUP028,Supplier 05-028,DE,CAT05,2,0,27.8,24.1,65.3,86.5,80.9,Marketing,1
+SUP029,Supplier 01-029,DE,CAT01,3,0,44.3,24.3,33.9,86.6,83.9,IT & Cloud,1
+SUP030,Supplier 01-030,DE,CAT01,1,1,70.7,43.8,49.0,83.3,78.3,IT & Cloud,1
+SUP031,Supplier 05-031,DE,CAT05,3,0,68.8,39.4,86.0,83.8,81.5,Marketing,1
+SUP032,Supplier 02-032,DE,CAT02,2,0,44.2,24.4,20.8,89.8,82.4,Hardware,0
+SUP033,Supplier 06-033,FR,CAT06,3,0,31.5,17.6,25.5,89.8,82.6,Professional Services,1
+SUP034,Supplier 02-034,NL,CAT02,2,0,36.5,12.8,21.5,93.6,89.4,Hardware,1
+SUP035,Supplier 02-035,DE,CAT02,2,0,37.0,25.1,44.8,93.5,89.6,Hardware,1
+SUP036,Supplier 03-036,NL,CAT03,3,0,31.4,18.3,23.2,92.3,89.1,Logistics,1
+SUP037,Supplier 04-037,DE,CAT04,3,0,44.0,29.7,54.7,82.4,79.5,Facilities,1
+SUP038,Supplier 06-038,CH,CAT06,3,0,26.6,12.3,19.2,86.6,84.0,Professional Services,1
+SUP039,Supplier 03-039,CH,CAT03,1,0,19.5,15.0,23.8,92.7,87.8,Logistics,1
+SUP040,Supplier 03-040,DE,CAT03,3,0,52.7,26.9,50.8,83.8,77.8,Logistics,1
+SUP041,Supplier 01-041,FR,CAT01,3,0,24.6,15.0,22.4,91.7,84.1,IT & Cloud,1
+SUP042,Supplier 02-042,FR,CAT02,2,0,31.1,18.7,35.3,89.4,81.5,Hardware,1
+SUP043,Supplier 04-043,DE,CAT04,3,0,32.5,10.4,22.7,87.8,85.7,Facilities,1
+SUP044,Supplier 02-044,DE,CAT02,3,0,25.5,17.7,31.1,91.2,88.6,Hardware,1
+SUP045,Supplier 06-045,DE,CAT06,3,0,43.4,22.8,42.2,87.9,85.7,Professional Services,1
+SUP046,Supplier 01-046,FR,CAT01,1,1,60.3,38.2,35.5,83.8,81.5,IT & Cloud,0
+SUP047,Supplier 03-047,DE,CAT03,3,0,26.9,19.4,27.9,90.8,84.6,Logistics,1
+SUP048,Supplier 05-048,DE,CAT05,1,1,63.8,42.8,46.7,81.0,78.1,Marketing,1
+SUP049,Supplier 04-049,DE,CAT04,1,0,67.6,25.1,42.9,79.7,77.4,Facilities,1
+SUP050,Supplier 06-050,DE,CAT06,3,0,28.6,12.7,16.4,91.1,85.3,Professional Services,1
+SUP051,Supplier 03-051,US,CAT03,1,1,47.3,35.8,32.3,89.8,86.9,Logistics,0
+SUP052,Supplier 02-052,AT,CAT02,2,1,59.8,36.6,56.1,81.7,76.0,Hardware,1
+SUP053,Supplier 03-053,DE,CAT03,2,0,16.1,8.2,11.2,91.2,86.4,Logistics,1
+SUP054,Supplier 01-054,CH,CAT01,2,0,37.6,20.9,37.6,87.2,81.9,IT & Cloud,1
+SUP055,Supplier 02-055,DE,CAT02,2,0,58.2,27.7,49.4,84.4,79.2,Hardware,1
+SUP056,Supplier 05-056,PL,CAT05,2,0,48.3,26.6,52.7,87.4,83.7,Marketing,1
+SUP057,Supplier 01-057,DE,CAT01,1,0,43.0,14.1,13.4,91.4,88.4,IT & Cloud,0
+SUP058,Supplier 03-058,DE,CAT03,1,0,76.0,35.4,46.9,82.7,76.5,Logistics,1
+SUP059,Supplier 02-059,DE,CAT02,2,0,45.1,25.5,32.5,89.6,81.6,Hardware,1
+SUP060,Supplier 03-060,IE,CAT03,3,0,51.8,23.4,49.8,86.1,81.5,Logistics,1
+SUP061,Supplier 02-061,DE,CAT02,1,0,52.4,19.1,34.5,83.9,78.4,Hardware,1
+SUP062,Supplier 02-062,DE,CAT02,1,0,50.0,23.8,34.4,85.5,83.2,Hardware,1
+SUP063,Supplier 02-063,DE,CAT02,2,0,47.7,24.9,58.8,86.2,78.7,Hardware,1
+SUP064,Supplier 03-064,DE,CAT03,3,0,28.8,13.5,20.6,90.8,85.0,Logistics,1
+SUP065,Supplier 01-065,DE,CAT01,2,1,51.2,35.1,39.8,81.4,79.4,IT & Cloud,1
+SUP066,Supplier 01-066,NL,CAT01,3,0,51.0,29.9,43.3,86.9,80.6,IT & Cloud,1
+SUP067,Supplier 06-067,US,CAT06,3,0,59.0,22.9,27.9,85.1,77.3,Professional Services,1
+SUP068,Supplier 06-068,FR,CAT06,2,0,35.9,13.0,13.4,87.3,82.3,Professional Services,1
+SUP069,Supplier 06-069,IE,CAT06,2,0,34.1,24.0,31.2,87.0,79.4,Professional Services,1
+SUP070,Supplier 05-070,DE,CAT05,1,1,52.6,34.3,14.1,86.9,79.7,Marketing,0
+SUP071,Supplier 04-071,DE,CAT04,3,0,52.4,23.6,36.9,86.4,80.3,Facilities,1
+SUP072,Supplier 01-072,US,CAT01,2,0,28.5,7.3,16.1,97.5,93.7,IT & Cloud,1
+SUP073,Supplier 03-073,DE,CAT03,2,0,27.6,19.0,33.4,85.5,78.7,Logistics,1
+SUP074,Supplier 06-074,DE,CAT06,2,1,66.4,31.3,35.2,81.9,76.9,Professional Services,1
+SUP075,Supplier 01-075,DE,CAT01,2,0,44.8,19.2,31.1,90.6,86.0,IT & Cloud,1
+SUP076,Supplier 06-076,CH,CAT06,3,0,34.0,12.1,10.9,90.3,85.1,Professional Services,0
+SUP077,Supplier 05-077,NL,CAT05,2,0,25.2,19.2,32.4,97.6,92.2,Marketing,1
+SUP078,Supplier 05-078,AT,CAT05,3,0,50.0,22.4,30.8,84.6,79.2,Marketing,1
+SUP079,Supplier 01-079,IE,CAT01,3,0,32.1,22.0,14.3,86.8,84.5,IT & Cloud,0
+SUP080,Supplier 01-080,AT,CAT01,1,0,60.4,27.1,30.9,84.0,81.6,IT & Cloud,1

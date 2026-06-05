@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Power BI temp / recovery
+*.tmp
+~$*.pbix
+*.pbix.bak
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Note: data/raw/*.csv ARE committed on purpose — they're synthetic and reproducible,
+# and the repo is meant to be self-contained for review.

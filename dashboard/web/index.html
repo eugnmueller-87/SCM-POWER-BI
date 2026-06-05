@@ -68,6 +68,29 @@
   .sckpi .note{font-size:11.5px;color:var(--muted)}
   .sckpi .edge{position:absolute;left:0;top:0;bottom:0;width:4px}
   .e-good{background:var(--green)}.e-warn{background:var(--amber)}.e-bad{background:var(--red)}.e-neut{background:var(--slate,#94a3b8)}
+  .sckpi{cursor:pointer;transition:transform .12s,box-shadow .12s}
+  .sckpi:hover{transform:translateY(-2px);box-shadow:0 4px 10px rgba(15,23,42,.10),0 14px 34px rgba(15,23,42,.10)}
+  .sckpi .drillhint{position:absolute;right:14px;top:14px;color:#cbd5e1;font-size:14px}
+  .drawer-bg{position:fixed;inset:0;background:rgba(15,23,42,.45);opacity:0;pointer-events:none;transition:.2s;z-index:40}
+  .drawer-bg.open{opacity:1;pointer-events:auto}
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,92vw);background:#fff;box-shadow:-12px 0 40px rgba(15,23,42,.18);
+    transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);z-index:50;display:flex;flex-direction:column}
+  .drawer.open{transform:translateX(0)}
+  .drawer-head{padding:20px 24px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;justify-content:space-between}
+  .drawer-head h2{margin:0;font-size:19px}
+  .drawer-head .big{font-size:30px;font-weight:700;margin-top:6px}
+  .drawer-head .sub{color:var(--muted);font-size:13px;margin-top:4px}
+  .drawer-x{cursor:pointer;border:none;background:#f1f5f9;border-radius:8px;width:32px;height:32px;font-size:18px;color:#475569}
+  .drawer-body{padding:18px 24px;overflow-y:auto}
+  .drawer-body .chart-box{height:220px;margin-bottom:18px}
+  .drawer-body table{font-size:12.5px}
+  .barrow{display:flex;align-items:center;gap:10px;margin:7px 0}
+  .barrow .nm{width:160px;font-size:12.5px;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .barrow .track{flex:1;background:#f1f5f9;border-radius:5px;height:18px;position:relative;overflow:hidden}
+  .barrow .fill{position:absolute;left:0;top:0;bottom:0;border-radius:5px}
+  .barrow .vv{width:90px;text-align:right;font-size:12.5px;font-variant-numeric:tabular-nums;color:#0f172a;font-weight:600}
+  .formula{background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:12.5px;color:#475569;margin-bottom:16px}
+  .formula b{color:#0f172a}
   .barlabel{font-size:12px}
 </style>
 </head>
@@ -156,7 +179,7 @@
       <div class="card"><h3>On-hand vs safety stock</h3><div class="chart-box tall"><canvas id="invStock"></canvas></div></div>
       <div class="card"><h3>Days of cover <span style="font-weight:400;text-transform:none;font-size:11px">(red = below lead time)</span></h3><div class="chart-box tall"><canvas id="invCover"></canvas></div></div>
     </div>
-    <div class="grid"><div class="card"><h3>Replenishment pipeline</h3><table id="invTable"><thead><tr><th>Product</th><th>Category</th><th class="num">On hand</th><th class="num">Safety</th><th class="num">On order</th><th class="num">Lead (d)</th><th>Next ETA</th></tr></thead><tbody></tbody></table></div></div>
+    <div class="grid"><div class="card"><h3>Replenishment pipeline <span style="font-weight:400;text-transform:none;font-size:11px">· Reorder Point = burn × lead + safety</span></h3><table id="invTable"><thead><tr><th>Product</th><th class="num">On hand</th><th class="num">Safety</th><th class="num">Lead (d)</th><th class="num">Reorder pt</th><th class="num">Days to reorder</th><th>Action</th><th>Next ETA</th></tr></thead><tbody></tbody></table></div></div>
   </section>
 
   <!-- ===================== FORECAST ===================== -->
@@ -177,6 +200,19 @@
   <footer>Data: live SCM Master API · snapshot <span id="genDate2"></span> · Demo / illustrative.</footer>
 </div>
 
+<div class="drawer-bg" id="drawerBg"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div>
+      <h2 id="dwTitle">—</h2>
+      <div class="big" id="dwValue">—</div>
+      <div class="sub" id="dwSub">—</div>
+    </div>
+    <button class="drawer-x" id="dwClose">×</button>
+  </div>
+  <div class="drawer-body" id="dwBody"></div>
+</aside>
+
 <script>
 const EUR = n => "€" + Number(n).toLocaleString("en-US",{maximumFractionDigits:0});
 const PCT = n => (n*100).toFixed(1) + "%";
@@ -189,20 +225,24 @@ Chart.defaults.font.family = "Segoe UI, system-ui, sans-serif";
 Chart.defaults.color = "#64748b";
 Chart.defaults.font.size = 12;
 
-const D = window.SCM_DATA;
-const RAW = {
-  cats: arr(D.spend_by_category).map(x=>({k:x.category, units:+x.units, spend:num(x.spend)})),
-  sups: arr(D.spend_by_supplier).map(x=>({k:x.supplier_name, units:+x.units, spend:num(x.spend)})),
-  prods: arr(D.spend_by_product).map(x=>({k:fixTxt(x.product_name), cat:x.category, units:+x.units, spend:num(x.spend)})),
-  inv: arr(D.inventory).map(x=>({name:fixTxt(x.name), cat:x.category, on_hand:+x.on_hand, safety:+x.safety_stock, burn:num(x.daily_burn), lead:+x.lead_time_days, on_order:+x.on_order, eta:x.next_eta, price:num(x.unit_price)})),
-  fc: arr(D.forecast).map(x=>({date:x.as_of_date, pred:num(x.predicted_demand), act:num(x.actual_demand), ape:num(x.ape), cat:x.category, prod:fixTxt(x.name), err:num(x.abs_error)})),
-  ins: arr(D.insights)
-};
-document.getElementById("genDate").textContent = D.generated_at;
-document.getElementById("genDate2").textContent = D.generated_at;
+let D = null, RAW = null, KPI = null;
+function buildModel(src){
+  D = src;
+  RAW = {
+    cats: arr(D.spend_by_category).map(x=>({k:x.category, units:+x.units, spend:num(x.spend)})),
+    sups: arr(D.spend_by_supplier).map(x=>({k:x.supplier_name, units:+x.units, spend:num(x.spend)})),
+    prods: arr(D.spend_by_product).map(x=>({k:fixTxt(x.product_name), cat:x.category, units:+x.units, spend:num(x.spend)})),
+    inv: arr(D.inventory).map(x=>({name:fixTxt(x.name), cat:x.category, on_hand:+x.on_hand, safety:+x.safety_stock, burn:num(x.daily_burn), lead:+x.lead_time_days, on_order:+x.on_order, eta:x.next_eta, price:num(x.unit_price)})),
+    fc: arr(D.forecast).map(x=>({date:x.as_of_date, pred:num(x.predicted_demand), act:num(x.actual_demand), ape:num(x.ape), cat:x.category, prod:fixTxt(x.name), err:num(x.abs_error)})),
+    ins: arr(D.insights)
+  };
+  document.getElementById("genDate").textContent = D.generated_at;
+  document.getElementById("genDate2").textContent = D.generated_at;
+  KPI = computeKPI();
+}
 
 // ---------- Supply-chain KPI engine (all derived from live data, none fabricated) ----------
-const KPI = (()=> {
+function computeKPI(){ return (()=> {
   const inv=RAW.inv, sup=RAW.sups, fc=RAW.fc;
   const onHand=inv.reduce((s,x)=>s+x.on_hand,0);
   const burn=inv.reduce((s,x)=>s+x.burn,0);
@@ -228,7 +268,7 @@ const KPI = (()=> {
   return {onHand,burn,invValue,dos,turns,fillRate,stockRisk,belowSafety,avgLead,onOrder,
           bias,wmape,accuracy,mape,totalSpend,hhi,top1,top2,totalUnits,
           supplierCount:sup.length, skuCount:inv.length};
-})();
+})(); }
 
 // ---------- global filter ----------
 let FILTER = null; // {type:'category'|'supplier'|'product', value:''}
@@ -376,10 +416,28 @@ function renderInventory(){
       scales:{x:{grid:{color:"#f1f5f9"},title:{display:true,text:"days of cover"}},y:{grid:{display:false}}}}});
 
   const tb=document.querySelector("#invTable tbody"); tb.innerHTML="";
-  inv.slice().sort((a,b)=>(a.on_hand-a.safety)-(b.on_hand-b.safety)).forEach(x=>{
-    const low=x.on_hand<x.safety;
+  // Reorder Point = (daily burn × lead time) + safety stock. Days-to-reorder = (on-hand − ROP) ÷ burn.
+  const withRop = inv.map(x=>{
+    const rop = Math.ceil(x.burn*x.lead + x.safety);
+    const daysToReorder = x.burn>0 ? (x.on_hand - rop)/x.burn : 999;
+    return {...x, rop, daysToReorder};
+  }).sort((a,b)=>a.daysToReorder-b.daysToReorder);
+  withRop.forEach(x=>{
+    let action, col;
+    if(x.on_order>0){ action="✅ on order"; col="#15803d"; }
+    else if(x.daysToReorder<=0){ action="🔴 ORDER NOW"; col="#b91c1c"; }
+    else if(x.daysToReorder<=7){ action="🟡 order in "+Math.round(x.daysToReorder)+"d"; col="#b45309"; }
+    else { action="🟢 ok ("+Math.round(x.daysToReorder)+"d)"; col="#15803d"; }
+    const belowRop = x.on_hand<=x.rop;
     const tr=document.createElement("tr");
-    tr.innerHTML=`<td>${x.name}</td><td>${x.cat}</td><td class="num"${low?' style="color:#b91c1c;font-weight:700"':''}>${x.on_hand}</td><td class="num">${x.safety}</td><td class="num">${x.on_order}</td><td class="num">${x.lead}</td><td>${x.eta||"—"}</td>`;
+    tr.innerHTML=`<td>${x.name}</td>`+
+      `<td class="num"${belowRop?' style="color:#b91c1c;font-weight:700"':''}>${x.on_hand}</td>`+
+      `<td class="num">${x.safety}</td>`+
+      `<td class="num">${x.lead}</td>`+
+      `<td class="num">${x.rop}</td>`+
+      `<td class="num">${x.daysToReorder>=999?'—':Math.round(x.daysToReorder)}</td>`+
+      `<td style="color:${col};font-weight:600">${action}</td>`+
+      `<td>${x.eta||"—"}</td>`;
     tb.appendChild(tr);
   });
 }
@@ -409,7 +467,9 @@ function renderForecast(){
   charts.fMapeBar=new Chart(document.getElementById("fMapeBar"),{type:"bar",
     data:{labels:mapeCat.map(x=>x.k),datasets:[{data:mapeCat.map(x=>x.m*100),
       backgroundColor:mapeCat.map(x=>x.m<=0.13?C.green:x.m<=0.18?C.amber:C.red),borderRadius:6}]},
-    options:{maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toFixed(1)+"% error"}}},
+    options:{maintainAspectRatio:false,
+      onClick:(e,el)=>{if(el.length)openForecastDrill(mapeCat[el[0].index].k);},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toFixed(1)+"% error — click to drill"}}},
       scales:{x:{grid:{display:false}},y:{grid:{color:"#f1f5f9"},ticks:{callback:v=>v+"%"}}}}});
 
   // error trend by month
@@ -420,43 +480,182 @@ function renderForecast(){
     data:{labels:trend.map(x=>x.k),datasets:[{label:"MAPE",data:trend.map(x=>x.m*100),borderColor:C.violet,backgroundColor:"rgba(139,92,246,.1)",fill:true,borderWidth:2.4,tension:.35,pointRadius:3,pointBackgroundColor:C.violet}]},
     options:{maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toFixed(1)+"% mean error"}}},
       scales:{x:{grid:{display:false}},y:{grid:{color:"#f1f5f9"},ticks:{callback:v=>v+"%"},beginAtZero:true}}}});
+
+  // make the worst-category KPI card drill too
+  document.getElementById("fWorst").parentElement.style.cursor="pointer";
+  document.getElementById("fWorst").parentElement.onclick=()=>openForecastDrill(worst.k);
 }
 
-function scCard(label,value,note,status){
+// ---------- FORECAST DRILL-DOWN: why was it inaccurate + how to predict better ----------
+function openForecastDrill(category){
+  const rows=RAW.fc.filter(x=>x.cat===category);
+  if(!rows.length) return;
+  // diagnostics
+  const n=rows.length;
+  const meanApe=rows.reduce((s,x)=>s+x.ape,0)/n;
+  const sumP=rows.reduce((s,x)=>s+x.pred,0), sumA=rows.reduce((s,x)=>s+x.act,0);
+  const bias=sumP/sumA;                                   // >1 over, <1 under
+  const overCount=rows.filter(x=>x.pred>x.act).length;
+  const underCount=rows.filter(x=>x.pred<x.act).length;
+  // volatility of actuals (coefficient of variation) — explains intrinsic hardness
+  const meanAct=sumA/n;
+  const sd=Math.sqrt(rows.reduce((s,x)=>s+Math.pow(x.act-meanAct,2),0)/n);
+  const cv=meanAct? sd/meanAct : 0;
+  // worst misses
+  const worst=rows.slice().sort((a,b)=>b.ape-a.ape).slice(0,6);
+
+  // build a "why" diagnosis
+  let why=[], fix=[];
+  if(bias>1.05){ why.push(`Systematic <b>over-forecasting</b> — predictions averaged ${PCT(bias)} of actual (${overCount}/${n} forecasts too high).`);
+    fix.push("Apply a downward bias correction (multiply forecasts by ~"+(1/bias).toFixed(2)+") or retrain with a recency-weighted average."); }
+  else if(bias<0.95){ why.push(`Systematic <b>under-forecasting</b> — predictions averaged ${PCT(bias)} of actual (${underCount}/${n} too low).`);
+    fix.push("Add an upward correction (×"+(1/bias).toFixed(2)+") and check for unmodelled growth/seasonality."); }
+  else { why.push(`<b>Low bias</b> (${PCT(bias)}) — errors are roughly symmetric, so the problem is variance, not direction.`); }
+  if(cv>0.3){ why.push(`<b>High demand volatility</b> — actuals swing ±${PCT(cv)} around their mean, so this category is intrinsically hard to forecast.`);
+    fix.push("Increase safety stock for this category and forecast at a more aggregate level (smooths noise)."); }
+  else { why.push(`Demand is relatively <b>stable</b> (±${PCT(cv)}), so remaining error is model error, not noise — tightening the model should pay off.`);
+    fix.push("A simple seasonal model (e.g. last-year-same-period × trend) would likely beat the current forecast here."); }
+  if(meanApe>0.18) fix.push("Treat this category as a priority for model improvement — it's the biggest accuracy drag.");
+
+  document.getElementById("dwTitle").textContent="Forecast: "+category;
+  document.getElementById("dwValue").textContent=PCT(meanApe)+" MAPE";
+  document.getElementById("dwSub").textContent=`${n} forecasts · bias ${PCT(bias)} · volatility ±${PCT(cv)}`;
+  document.getElementById("dwBody").innerHTML=`
+    <div class="formula"><b>Why the inaccuracy?</b><ul style="margin:8px 0 0;padding-left:18px">${why.map(w=>`<li style="margin:5px 0">${w}</li>`).join("")}</ul></div>
+    <div class="formula" style="background:#f0fdf4;border-color:#bbf7d0"><b>How to predict better</b><ul style="margin:8px 0 0;padding-left:18px">${fix.map(f=>`<li style="margin:5px 0">${f}</li>`).join("")}</ul></div>
+    <h3 style="margin:14px 0 8px;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.5px">Biggest misses</h3>
+    ${tableHTML([{t:"As of"},{t:"Pred",num:1},{t:"Actual",num:1},{t:"Error",num:1},{t:"APE",num:1}],
+      worst.map(x=>[x.date,{t:x.pred.toFixed(1),num:1},{t:x.act,num:1},{t:(x.pred>x.act?'+':'')+(x.pred-x.act).toFixed(1),num:1,style:' style="color:'+(x.pred>x.act?'#b45309':'#1d4ed8')+'"'},{t:PCT(x.ape),num:1,style:' style="font-weight:700"'}]))}
+    <p style="font-size:11.5px;color:#94a3b8;margin-top:14px">Over-forecast = predicted &gt; actual (amber). Under-forecast = predicted &lt; actual (blue).</p>`;
+  document.getElementById("drawer").classList.add("open");
+  document.getElementById("drawerBg").classList.add("open");
+}
+
+function scCard(key,label,value,note,status){
   const e={good:"e-good",warn:"e-warn",bad:"e-bad",neut:"e-neut"}[status]||"e-neut";
-  return `<div class="card sckpi"><span class="edge ${e}"></span>
+  return `<div class="card sckpi" data-drill="${key}"><span class="edge ${e}"></span>
+    <span class="drillhint">⤢</span>
     <div class="label">${label}</div><div class="value">${value}</div><div class="note">${note}</div></div>`;
 }
 function renderScorecard(){
   const k=KPI;
-  // Inventory & warehouse cycle
   document.getElementById("scInv").innerHTML=[
-    scCard("Inventory Turns", k.turns.toFixed(1)+"×", "annualised · higher = leaner", k.turns>=12?"good":k.turns>=6?"warn":"bad"),
-    scCard("Days of Supply", k.dos.toFixed(1)+" d", "on-hand ÷ daily burn", k.dos<=20?"good":k.dos<=35?"warn":"bad"),
-    scCard("In-Stock / Fill Rate", PCT(k.fillRate), "SKUs at/above safety stock", k.fillRate>=0.9?"good":k.fillRate>=0.7?"warn":"bad"),
-    scCard("Inventory Value", EUR(k.invValue), k.onHand+" units on hand", "neut"),
-    scCard("Stockout Risk", k.stockRisk+" / "+k.skuCount, "cover below lead time", k.stockRisk===0?"good":k.stockRisk<=2?"warn":"bad"),
-    scCard("Below Safety Stock", k.belowSafety+" / "+k.skuCount, "need replenishment", k.belowSafety===0?"good":k.belowSafety<=2?"warn":"bad"),
+    scCard("turns","Inventory Turns", k.turns.toFixed(1)+"×", "annualised · higher = leaner", k.turns>=12?"good":k.turns>=6?"warn":"bad"),
+    scCard("dos","Days of Supply", k.dos.toFixed(1)+" d", "on-hand ÷ daily burn", k.dos<=20?"good":k.dos<=35?"warn":"bad"),
+    scCard("fill","In-Stock / Fill Rate", PCT(k.fillRate), "SKUs at/above safety stock", k.fillRate>=0.9?"good":k.fillRate>=0.7?"warn":"bad"),
+    scCard("invval","Inventory Value", EUR(k.invValue), k.onHand+" units on hand", "neut"),
+    scCard("stockrisk","Stockout Risk", k.stockRisk+" / "+k.skuCount, "cover below lead time", k.stockRisk===0?"good":k.stockRisk<=2?"warn":"bad"),
+    scCard("safety","Below Safety Stock", k.belowSafety+" / "+k.skuCount, "need replenishment", k.belowSafety===0?"good":k.belowSafety<=2?"warn":"bad"),
   ].join("");
-  // Demand planning
   document.getElementById("scPlan").innerHTML=[
-    scCard("Forecast Accuracy", PCT(k.accuracy), "1 − WMAPE (volume-weighted)", k.accuracy>=0.85?"good":k.accuracy>=0.75?"warn":"bad"),
-    scCard("MAPE", PCT(k.mape), "mean absolute % error", k.mape<=0.15?"good":k.mape<=0.25?"warn":"bad"),
-    scCard("Forecast Bias", PCT(k.bias), k.bias>1?"over-forecasting":"under-forecasting", (k.bias>=0.95&&k.bias<=1.05)?"good":(k.bias>=0.9&&k.bias<=1.1)?"warn":"bad"),
-    scCard("Avg Lead Time", k.avgLead.toFixed(0)+" d", "supplier replenishment", k.avgLead<=14?"good":k.avgLead<=21?"warn":"bad"),
-    scCard("Units On Order", k.onOrder.toLocaleString(), "inbound pipeline", "neut"),
-    scCard("Demand Coverage", k.burn.toFixed(1)+" u/d", "total daily burn rate", "neut"),
+    scCard("accuracy","Forecast Accuracy", PCT(k.accuracy), "1 − WMAPE (volume-weighted)", k.accuracy>=0.85?"good":k.accuracy>=0.75?"warn":"bad"),
+    scCard("mape","MAPE", PCT(k.mape), "mean absolute % error", k.mape<=0.15?"good":k.mape<=0.25?"warn":"bad"),
+    scCard("bias","Forecast Bias", PCT(k.bias), k.bias>1?"over-forecasting":"under-forecasting", (k.bias>=0.95&&k.bias<=1.05)?"good":(k.bias>=0.9&&k.bias<=1.1)?"warn":"bad"),
+    scCard("lead","Avg Lead Time", k.avgLead.toFixed(0)+" d", "supplier replenishment", k.avgLead<=14?"good":k.avgLead<=21?"warn":"bad"),
+    scCard("onorder","Units On Order", k.onOrder.toLocaleString(), "inbound pipeline", "neut"),
+    scCard("burn","Demand Coverage", k.burn.toFixed(1)+" u/d", "total daily burn rate", "neut"),
   ].join("");
-  // Sourcing & supplier risk
   document.getElementById("scSrc").innerHTML=[
-    scCard("Total Spend", EUR(k.totalSpend), k.totalUnits.toLocaleString()+" units procured", "neut"),
-    scCard("Active Suppliers", k.supplierCount, "in current scope", "neut"),
-    scCard("Supplier HHI", k.hhi.toFixed(3), ">0.25 = concentrated", k.hhi<=0.25?"good":k.hhi<=0.4?"warn":"bad"),
-    scCard("Top-Supplier Share", PCT(k.top1), "single-vendor dependency", k.top1<=0.3?"good":k.top1<=0.5?"warn":"bad"),
-    scCard("Top-2 Share", PCT(k.top2), "concentration in 2 vendors", k.top2<=0.5?"good":k.top2<=0.75?"warn":"bad"),
-    scCard("Avg Spend / Unit", EUR(k.totalSpend/k.totalUnits), "blended unit cost", "neut"),
+    scCard("spend","Total Spend", EUR(k.totalSpend), k.totalUnits.toLocaleString()+" units procured", "neut"),
+    scCard("suppliers","Active Suppliers", k.supplierCount, "in current scope", "neut"),
+    scCard("hhi","Supplier HHI", k.hhi.toFixed(3), ">0.25 = concentrated", k.hhi<=0.25?"good":k.hhi<=0.4?"warn":"bad"),
+    scCard("top1","Top-Supplier Share", PCT(k.top1), "single-vendor dependency", k.top1<=0.3?"good":k.top1<=0.5?"warn":"bad"),
+    scCard("top2","Top-2 Share", PCT(k.top2), "concentration in 2 vendors", k.top2<=0.5?"good":k.top2<=0.75?"warn":"bad"),
+    scCard("avgunit","Avg Spend / Unit", EUR(k.totalSpend/k.totalUnits), "blended unit cost", "neut"),
   ].join("");
+  // wire clicks
+  document.querySelectorAll("#page-scorecard .sckpi").forEach(c=>c.onclick=()=>openDrill(c.dataset.drill));
 }
+
+// ---------- drill-down ----------
+function miniBars(rows){ // rows: [{nm,val,disp,color,max}]
+  const max=Math.max(...rows.map(r=>r.val),1);
+  return rows.map(r=>`<div class="barrow"><div class="nm" title="${r.nm}">${r.nm}</div>
+    <div class="track"><div class="fill" style="width:${Math.max(2,r.val/max*100)}%;background:${r.color||C.blue}"></div></div>
+    <div class="vv">${r.disp}</div></div>`).join("");
+}
+function tableHTML(head,rows){
+  return `<table><thead><tr>${head.map(h=>`<th${h.num?' class="num"':''}>${h.t}</th>`).join("")}</tr></thead>
+    <tbody>${rows.map(r=>`<tr>${r.map((c,i)=>`<td${head[i].num?' class="num"':''}${c.style||''}>${c.t!==undefined?c.t:c}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+}
+const DRILL={
+  turns:()=>({title:"Inventory Turns",value:KPI.turns.toFixed(1)+"×",sub:"365 ÷ days-of-supply · per SKU",
+    formula:"<b>Turns</b> = 365 ÷ (on-hand ÷ daily burn). Higher = leaner inventory.",
+    body:()=>{const r=RAW.inv.map(x=>{const dos=x.burn>0?x.on_hand/x.burn:999;return{nm:x.name,val:dos>0?365/dos:0,disp:(dos>0?(365/dos).toFixed(1):"∞")+"×",color:(365/dos)>=12?C.green:(365/dos)>=6?C.amber:C.red};}).sort((a,b)=>b.val-a.val);return miniBars(r);}}),
+  dos:()=>({title:"Days of Supply",value:KPI.dos.toFixed(1)+" d",sub:"on-hand ÷ daily burn · per SKU",
+    formula:"<b>DOS</b> = on-hand units ÷ daily burn rate. How long stock lasts.",
+    body:()=>{const r=RAW.inv.map(x=>({nm:x.name,val:x.burn>0?x.on_hand/x.burn:999,disp:(x.burn>0?(x.on_hand/x.burn).toFixed(1):"∞")+" d",color:(x.burn>0&&x.on_hand/x.burn<x.lead)?C.red:C.blue})).sort((a,b)=>a.val-b.val);return miniBars(r);}}),
+  fill:()=>({title:"In-Stock / Fill Rate",value:PCT(KPI.fillRate),sub:"SKUs at/above safety stock",
+    formula:"<b>Fill rate</b> = SKUs with on-hand ≥ safety stock, ÷ total SKUs.",
+    body:()=>tableHTML([{t:"Product"},{t:"On hand",num:1},{t:"Safety",num:1},{t:"Status"}],
+      RAW.inv.map(x=>{const ok=x.on_hand>=x.safety;return[x.name,{t:x.on_hand,num:1},{t:x.safety,num:1},ok?"🟢 in stock":"🔴 below"];}))}),
+  invval:()=>({title:"Inventory Value",value:EUR(KPI.invValue),sub:"on-hand × unit price · per SKU",
+    formula:"<b>Value</b> = Σ (on-hand units × unit price).",
+    body:()=>{const r=RAW.inv.map(x=>({nm:x.name,val:x.on_hand*x.price,disp:EUR(x.on_hand*x.price)})).sort((a,b)=>b.val-a.val);return miniBars(r);}}),
+  stockrisk:()=>({title:"Stockout Risk",value:KPI.stockRisk+" / "+KPI.skuCount,sub:"SKUs whose days-of-cover < lead time",
+    formula:"<b>At risk</b> when days-of-cover (on-hand ÷ burn) < supplier lead time — could run out before resupply arrives.",
+    body:()=>{const at=RAW.inv.filter(x=>x.burn>0&&(x.on_hand/x.burn)<x.lead);
+      return (at.length?"":"<p>No SKUs at stockout risk. 🟢</p>")+tableHTML([{t:"Product"},{t:"Cover (d)",num:1},{t:"Lead (d)",num:1},{t:"Gap",num:1}],
+      at.map(x=>{const cov=x.on_hand/x.burn;return[x.name,{t:cov.toFixed(1),num:1},{t:x.lead,num:1},{t:"−"+(x.lead-cov).toFixed(1),num:1,style:' style="color:#b91c1c;font-weight:700"'}];}));}}),
+  safety:()=>({title:"Below Safety Stock",value:KPI.belowSafety+" / "+KPI.skuCount,sub:"SKUs needing replenishment",
+    formula:"<b>Below safety</b> = on-hand < safety stock level.",
+    body:()=>{const lo=RAW.inv.filter(x=>x.on_hand<x.safety);
+      return tableHTML([{t:"Product"},{t:"On hand",num:1},{t:"Safety",num:1},{t:"On order",num:1},{t:"ETA"}],
+      lo.map(x=>[x.name,{t:x.on_hand,num:1,style:' style="color:#b91c1c;font-weight:700"'},{t:x.safety,num:1},{t:x.on_order,num:1},x.eta||"—"]));}}),
+  accuracy:()=>({title:"Forecast Accuracy",value:PCT(KPI.accuracy),sub:"1 − WMAPE · by category",
+    formula:"<b>Accuracy</b> = 1 − WMAPE = 1 − (Σ|error| ÷ Σ actual). Volume-weighted.",
+    body:()=>{const bc={};RAW.fc.forEach(x=>{(bc[x.cat]=bc[x.cat]||{e:0,a:0});bc[x.cat].e+=x.err;bc[x.cat].a+=x.act;});
+      const r=Object.entries(bc).map(([k,v])=>({nm:k,val:1-v.e/v.a,disp:PCT(1-v.e/v.a),color:(1-v.e/v.a)>=0.85?C.green:(1-v.e/v.a)>=0.75?C.amber:C.red})).sort((a,b)=>b.val-a.val);return miniBars(r);}}),
+  mape:()=>({title:"MAPE",value:PCT(KPI.mape),sub:"mean absolute % error · by category",
+    formula:"<b>MAPE</b> = mean of per-forecast |predicted−actual| ÷ actual.",
+    body:()=>{const bc={};RAW.fc.forEach(x=>{(bc[x.cat]=bc[x.cat]||[]).push(x.ape);});
+      const r=Object.entries(bc).map(([k,v])=>({nm:k,val:v.reduce((s,a)=>s+a,0)/v.length,disp:PCT(v.reduce((s,a)=>s+a,0)/v.length),color:(v.reduce((s,a)=>s+a,0)/v.length)<=0.15?C.green:C.amber})).sort((a,b)=>a.val-b.val);return miniBars(r);}}),
+  bias:()=>({title:"Forecast Bias",value:PCT(KPI.bias),sub:"Σpredicted ÷ Σactual · by category",
+    formula:"<b>Bias</b> = Σ predicted ÷ Σ actual. >100% = over-forecasting, <100% = under.",
+    body:()=>{const bc={};RAW.fc.forEach(x=>{(bc[x.cat]=bc[x.cat]||{p:0,a:0});bc[x.cat].p+=x.pred;bc[x.cat].a+=x.act;});
+      const r=Object.entries(bc).map(([k,v])=>({nm:k,val:v.p/v.a,disp:PCT(v.p/v.a),color:(v.p/v.a>=0.95&&v.p/v.a<=1.05)?C.green:C.amber})).sort((a,b)=>b.val-a.val);return miniBars(r);}}),
+  lead:()=>({title:"Avg Lead Time",value:KPI.avgLead.toFixed(0)+" d",sub:"supplier replenishment · per SKU",
+    formula:"<b>Lead time</b> = days from order to delivery, averaged across SKUs.",
+    body:()=>{const r=RAW.inv.map(x=>({nm:x.name,val:x.lead,disp:x.lead+" d",color:x.lead<=14?C.green:x.lead<=21?C.amber:C.red})).sort((a,b)=>b.val-a.val);return miniBars(r);}}),
+  onorder:()=>({title:"Units On Order",value:KPI.onOrder.toLocaleString(),sub:"inbound pipeline · per SKU",
+    formula:"<b>On order</b> = units currently inbound (POs not yet received).",
+    body:()=>tableHTML([{t:"Product"},{t:"On order",num:1},{t:"Next ETA"}],RAW.inv.filter(x=>x.on_order>0).map(x=>[x.name,{t:x.on_order,num:1},x.eta||"—"]))}),
+  burn:()=>({title:"Demand Coverage",value:KPI.burn.toFixed(1)+" u/d",sub:"daily burn rate · per SKU",
+    formula:"<b>Burn rate</b> = units consumed per day. Drives days-of-supply.",
+    body:()=>{const r=RAW.inv.map(x=>({nm:x.name,val:x.burn,disp:x.burn.toFixed(2)+" u/d"})).sort((a,b)=>b.val-a.val);return miniBars(r);}}),
+  spend:()=>({title:"Total Spend",value:EUR(KPI.totalSpend),sub:"by category",
+    formula:"<b>Total spend</b> = Σ all supplier spend.",
+    body:()=>{const r=RAW.cats.slice().sort((a,b)=>b.spend-a.spend).map(x=>({nm:x.k,val:x.spend,disp:EUR(x.spend)}));return miniBars(r);}}),
+  suppliers:()=>({title:"Active Suppliers",value:KPI.supplierCount,sub:"spend by supplier",
+    formula:"Distinct suppliers with spend in scope.",
+    body:()=>{const r=RAW.sups.slice().sort((a,b)=>b.spend-a.spend).map((x,i)=>({nm:x.k,val:x.spend,disp:EUR(x.spend),color:i===0?C.red:C.blue}));return miniBars(r);}}),
+  hhi:()=>({title:"Supplier HHI",value:KPI.hhi.toFixed(3),sub:"Herfindahl concentration index",
+    formula:"<b>HHI</b> = Σ (supplier share)². 0 = perfectly fragmented, 1 = monopoly. >0.25 = concentrated.",
+    body:()=>{const tot=RAW.sups.reduce((s,x)=>s+x.spend,0);const r=RAW.sups.slice().sort((a,b)=>b.spend-a.spend).map((x,i)=>({nm:x.k+" ("+PCT(x.spend/tot)+")",val:Math.pow(x.spend/tot,2),disp:Math.pow(x.spend/tot,2).toFixed(3),color:i===0?C.red:C.blue}));return "<p style='font-size:12.5px;color:#475569'>Each supplier's squared share. They sum to the HHI.</p>"+miniBars(r);}}),
+  top1:()=>({title:"Top-Supplier Share",value:PCT(KPI.top1),sub:"single-vendor dependency",
+    formula:"<b>Top-1 share</b> = largest supplier ÷ total spend.",
+    body:()=>{const tot=RAW.sups.reduce((s,x)=>s+x.spend,0);const r=RAW.sups.slice().sort((a,b)=>b.spend-a.spend).map((x,i)=>({nm:x.k,val:x.spend/tot,disp:PCT(x.spend/tot),color:i===0?C.red:C.blue}));return miniBars(r);}}),
+  top2:()=>({title:"Top-2 Share",value:PCT(KPI.top2),sub:"concentration in two vendors",
+    formula:"<b>Top-2 share</b> = two largest suppliers ÷ total spend.",
+    body:()=>{const tot=RAW.sups.reduce((s,x)=>s+x.spend,0);const r=RAW.sups.slice().sort((a,b)=>b.spend-a.spend).map((x,i)=>({nm:x.k,val:x.spend/tot,disp:PCT(x.spend/tot),color:i<2?C.red:C.slate}));return miniBars(r);}}),
+  avgunit:()=>({title:"Avg Spend / Unit",value:EUR(KPI.totalSpend/KPI.totalUnits),sub:"blended unit cost · by product",
+    formula:"<b>Blended cost</b> = total spend ÷ total units.",
+    body:()=>{const r=RAW.prods.slice().map(x=>({nm:x.k,val:x.spend/x.units,disp:EUR(x.spend/x.units)})).sort((a,b)=>b.val-a.val);return miniBars(r);}}),
+};
+function openDrill(key){
+  const def=DRILL[key]; if(!def) return;
+  const d=def();
+  document.getElementById("dwTitle").textContent=d.title;
+  document.getElementById("dwValue").textContent=d.value;
+  document.getElementById("dwSub").textContent=d.sub;
+  document.getElementById("dwBody").innerHTML=(d.formula?`<div class="formula">${d.formula}</div>`:"")+d.body();
+  document.getElementById("drawer").classList.add("open");
+  document.getElementById("drawerBg").classList.add("open");
+}
+function closeDrill(){document.getElementById("drawer").classList.remove("open");document.getElementById("drawerBg").classList.remove("open");}
+document.getElementById("dwClose").onclick=closeDrill;
+document.getElementById("drawerBg").onclick=closeDrill;
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeDrill();});
 
 let CURRENT="overview";
 function renderAll(){
@@ -478,8 +677,7 @@ document.querySelectorAll("nav.tabs button").forEach(b=>{
   };
 });
 
-renderFilterBar();
-renderAll();
+buildModel(window.SCM_DATA); renderFilterBar(); renderAll();
 </script>
 </body>
 </html>

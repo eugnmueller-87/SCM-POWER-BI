@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SCM Master — Executive Cockpit</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#f1f5f9; --card:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0;
+    --blue:#2563eb; --green:#10b981; --amber:#f59e0b; --red:#ef4444; --violet:#8b5cf6; --cyan:#06b6d4;
+    --shadow:0 1px 3px rgba(15,23,42,.06),0 8px 24px rgba(15,23,42,.05);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI",system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink)}
+  .wrap{max-width:1400px;margin:0 auto;padding:0 24px 48px}
+  header.bar{
+    background:linear-gradient(120deg,#0e2a47 0%,#1e3a8a 60%,#2563eb 100%);
+    color:#fff;border-radius:0 0 18px 18px;padding:22px 28px;margin-bottom:22px;
+    display:flex;align-items:center;justify-content:space-between;box-shadow:var(--shadow);
+  }
+  header.bar h1{margin:0;font-size:24px;font-weight:700;letter-spacing:.2px}
+  header.bar .sub{font-size:12px;opacity:.8;margin-top:3px}
+  .live{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;background:rgba(255,255,255,.12);padding:8px 14px;border-radius:999px}
+  .dot{width:9px;height:9px;border-radius:50%;background:#34d399;box-shadow:0 0 0 0 rgba(52,211,153,.7);animation:pulse 2s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(52,211,153,.6)}70%{box-shadow:0 0 0 10px rgba(52,211,153,0)}100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}
+  .grid{display:grid;gap:18px}
+  .kpis{grid-template-columns:repeat(4,1fr)}
+  .main{grid-template-columns:2fr 1fr;margin-top:18px}
+  .row3{grid-template-columns:1fr 1fr;margin-top:18px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow)}
+  .card h3{margin:0 0 14px;font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+  .kpi .label{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+  .kpi .value{font-size:34px;font-weight:700;margin:6px 0 2px;line-height:1}
+  .kpi .delta{font-size:12px;font-weight:600}
+  .pill{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700}
+  .good{background:#dcfce7;color:#15803d}.warn{background:#fef3c7;color:#b45309}.bad{background:#fee2e2;color:#b91c1c}
+  .chart-box{position:relative;height:300px}
+  .chart-box.tall{height:340px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  tr:last-child td{border-bottom:none}
+  .insights li{margin:0 0 12px;padding-left:14px;position:relative;font-size:13px;line-height:1.45;color:#334155}
+  .insights li::before{content:"";position:absolute;left:0;top:7px;width:6px;height:6px;border-radius:50%;background:var(--red)}
+  .insights li.warn::before{background:var(--amber)}
+  .insights ul{list-style:none;margin:0;padding:0}
+  footer{margin-top:26px;text-align:center;color:var(--muted);font-size:12px}
+  a{color:var(--blue)}
+</style>
+</head>
+<body>
+<header class="bar">
+  <div>
+    <h1>SCM Master — Executive Cockpit</h1>
+    <div class="sub">Procurement &amp; supply-chain analytics · live API</div>
+  </div>
+  <div class="live"><span class="dot"></span> Live data · <span id="genDate"></span></div>
+</header>
+
+<div class="wrap">
+  <!-- KPI ROW -->
+  <div class="grid kpis">
+    <div class="card kpi"><div class="label">Forecast Accuracy</div><div class="value" id="kAcc">–</div><div class="delta"><span class="pill good" id="kAccP">backtested 12 mo</span></div></div>
+    <div class="card kpi"><div class="label">Total Spend</div><div class="value" id="kSpend">–</div><div class="delta"><span class="pill" id="kSpendP">across <span id="kSup">–</span> suppliers</span></div></div>
+    <div class="card kpi"><div class="label">Top Supplier Share</div><div class="value" id="kShare">–</div><div class="delta"><span class="pill bad" id="kShareP">concentration risk</span></div></div>
+    <div class="card kpi"><div class="label">Stockout Risk</div><div class="value" id="kStock">–</div><div class="delta"><span class="pill bad" id="kStockP">SKUs below cover</span></div></div>
+  </div>
+
+  <!-- MAIN: combo (left) + donut (right) -->
+  <div class="grid main">
+    <div class="card">
+      <h3>Predicted vs Actual demand — 12-month backtest</h3>
+      <div class="chart-box tall"><canvas id="lineChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>Supplier concentration</h3>
+      <div class="chart-box tall"><canvas id="donut"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ROW3: category bar + product table -->
+  <div class="grid row3">
+    <div class="card">
+      <h3>Spend by category</h3>
+      <div class="chart-box"><canvas id="catBar"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>Top products by spend</h3>
+      <table id="prodTable"><thead><tr><th>Product</th><th>Category</th><th class="num">Units</th><th class="num">Spend</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <!-- INSIGHTS + ACCURACY BY CATEGORY -->
+  <div class="grid row3">
+    <div class="card">
+      <h3>🤖 AI-generated insights</h3>
+      <div class="insights"><ul id="insightList"></ul></div>
+    </div>
+    <div class="card">
+      <h3>Forecast accuracy by category</h3>
+      <div class="chart-box"><canvas id="mapeBar"></canvas></div>
+    </div>
+  </div>
+
+  <footer>
+    Data: live SCM Master API · snapshot <span id="genDate2"></span> · Demo / illustrative.
+  </footer>
+</div>
+
+<script>
+const EUR = n => "€" + Number(n).toLocaleString("en-US",{maximumFractionDigits:0});
+const PCT = n => (n*100).toFixed(1) + "%";
+// PowerShell may wrap arrays as {value:[...]}, normalize:
+const arr = x => Array.isArray(x) ? x : (x && Array.isArray(x.value) ? x.value : []);
+const num = s => Number(String(s).replace(/[^0-9.\-]/g,""));
+
+fetch("data.json").then(r=>r.json()).then(d=>{
+  document.getElementById("genDate").textContent  = d.generated_at;
+  document.getElementById("genDate2").textContent = d.generated_at;
+
+  const cats = arr(d.spend_by_category).map(x=>({k:x.category, units:+x.units, spend:num(x.spend)}));
+  const sups = arr(d.spend_by_supplier).map(x=>({k:x.supplier_name, units:+x.units, spend:num(x.spend)}));
+  const prods= arr(d.spend_by_product).map(x=>({k:x.product_name, cat:x.category, units:+x.units, spend:num(x.spend)}));
+  const inv  = arr(d.inventory).map(x=>({...x, on_hand:+x.on_hand, daily_burn:num(x.daily_burn), lead:+x.lead_time_days, unit_price:num(x.unit_price), safety:+x.safety_stock}));
+  const fc   = arr(d.forecast).map(x=>({date:x.as_of_date, pred:num(x.predicted_demand), act:num(x.actual_demand), ape:num(x.ape), cat:x.category, err:num(x.abs_error)}));
+  const ins  = arr(d.insights);
+
+  // ---- KPIs ----
+  const totalSpend = sups.reduce((s,x)=>s+x.spend,0);
+  const topSup = sups.slice().sort((a,b)=>b.spend-a.spend)[0];
+  const sumErr = fc.reduce((s,x)=>s+x.err,0), sumAct = fc.reduce((s,x)=>s+x.act,0);
+  const wmape = sumErr/sumAct, acc = 1-wmape;
+  const stockRisk = inv.filter(x=>x.daily_burn>0 && (x.on_hand/x.daily_burn) < x.lead).length;
+
+  document.getElementById("kAcc").textContent   = PCT(acc);
+  document.getElementById("kSpend").textContent = EUR(totalSpend);
+  document.getElementById("kSup").textContent   = sups.length;
+  document.getElementById("kShare").textContent = PCT(topSup.spend/totalSpend);
+  document.getElementById("kShareP").textContent= topSup.k + " — concentration risk";
+  document.getElementById("kStock").textContent = stockRisk;
+
+  // ---- color palette ----
+  const C = {blue:"#2563eb",green:"#10b981",amber:"#f59e0b",red:"#ef4444",violet:"#8b5cf6",cyan:"#06b6d4",slate:"#94a3b8"};
+  const pie = ["#2563eb","#06b6d4","#f59e0b","#94a3b8","#8b5cf6","#10b981"];
+  Chart.defaults.font.family = "Segoe UI, system-ui, sans-serif";
+  Chart.defaults.color = "#64748b";
+
+  // ---- line: predicted vs actual ----
+  new Chart(document.getElementById("lineChart"),{
+    type:"line",
+    data:{labels:fc.map(x=>x.date),datasets:[
+      {label:"Predicted",data:fc.map(x=>x.pred),borderColor:C.blue,backgroundColor:"transparent",borderWidth:2.5,tension:.35,pointRadius:0},
+      {label:"Actual",data:fc.map(x=>x.act),borderColor:C.green,backgroundColor:"transparent",borderWidth:2.5,tension:.35,pointRadius:0}
+    ]},
+    options:{maintainAspectRatio:false,plugins:{legend:{position:"top",labels:{usePointStyle:true,boxWidth:8}}},
+      scales:{x:{grid:{display:false},ticks:{maxTicksLimit:8}},y:{grid:{color:"#f1f5f9"},beginAtZero:true}}}
+  });
+
+  // ---- donut: supplier concentration ----
+  const supSorted = sups.slice().sort((a,b)=>b.spend-a.spend);
+  new Chart(document.getElementById("donut"),{
+    type:"doughnut",
+    data:{labels:supSorted.map(x=>x.k),datasets:[{data:supSorted.map(x=>x.spend),
+      backgroundColor:supSorted.map((x,i)=>x.k===topSup.k?C.red:pie[(i+1)%pie.length]),borderWidth:2,borderColor:"#fff"}]},
+    options:{maintainAspectRatio:false,cutout:"62%",plugins:{legend:{position:"bottom",labels:{usePointStyle:true,boxWidth:8,padding:14}},
+      tooltip:{callbacks:{label:c=>c.label+": "+EUR(c.raw)+" ("+PCT(c.raw/totalSpend)+")"}}}}
+  });
+
+  // ---- category bar ----
+  const catSorted = cats.slice().sort((a,b)=>b.spend-a.spend);
+  new Chart(document.getElementById("catBar"),{
+    type:"bar",
+    data:{labels:catSorted.map(x=>x.k),datasets:[{data:catSorted.map(x=>x.spend),
+      backgroundColor:catSorted.map((x,i)=>i===0?C.blue:"#93c5fd"),borderRadius:6}]},
+    options:{indexAxis:"y",maintainAspectRatio:false,plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:c=>EUR(c.raw)}}},
+      scales:{x:{grid:{color:"#f1f5f9"},ticks:{callback:v=>"€"+(v/1000)+"k"}},y:{grid:{display:false}}}}
+  });
+
+  // ---- product table ----
+  const tb = document.querySelector("#prodTable tbody");
+  prods.slice().sort((a,b)=>b.spend-a.spend).forEach(p=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${p.k}</td><td>${p.cat}</td><td class="num">${p.units}</td><td class="num">${EUR(p.spend)}</td>`;
+    tb.appendChild(tr);
+  });
+
+  // ---- MAPE by category ----
+  const byCat={}; fc.forEach(x=>{(byCat[x.cat]=byCat[x.cat]||[]).push(x.ape)});
+  const mape = Object.entries(byCat).map(([k,v])=>({k,m:v.reduce((s,a)=>s+a,0)/v.length})).sort((a,b)=>a.m-b.m);
+  new Chart(document.getElementById("mapeBar"),{
+    type:"bar",
+    data:{labels:mape.map(x=>x.k),datasets:[{data:mape.map(x=>x.m*100),
+      backgroundColor:mape.map(x=>x.m<=0.13?C.green:x.m<=0.18?C.amber:C.red),borderRadius:6}]},
+    options:{maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toFixed(1)+"% error"}}},
+      scales:{x:{grid:{display:false}},y:{grid:{color:"#f1f5f9"},ticks:{callback:v=>v+"%"}}}}
+  });
+
+  // ---- insights ----
+  const ul=document.getElementById("insightList");
+  ins.slice(0,5).forEach((it,i)=>{
+    const li=document.createElement("li");
+    if(i>=3) li.className="warn";
+    li.innerHTML=`<strong>${it.title||""}</strong>`;
+    ul.appendChild(li);
+  });
+});
+</script>
+</body>
+</html>

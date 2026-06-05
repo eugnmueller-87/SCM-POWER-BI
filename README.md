@@ -10,7 +10,11 @@ indirect + IT/cloud-heavy spend). Audience: a non-technical CEO ("Cleo") decidin
 The dashboard wired to a **live, authenticated API** — Power BI logs in on each refresh and
 pulls fresh forecast-accuracy data from the deployed backend.
 
-[![demo](/eugnmueller-87/SCM-POWER-BI/raw/main/clip/demo.gif)](/eugnmueller-87/SCM-POWER-BI/blob/main/docs/demo.mp4)
+<p align="center">
+  <a href="https://github.com/eugnmueller-87/SCM-POWER-BI/blob/main/docs/demo.mp4">
+    <img src="https://raw.githubusercontent.com/eugnmueller-87/SCM-POWER-BI/main/clip/demo.gif" alt="SCM Master Tool live dashboard demo" width="100%">
+  </a>
+</p>
 
 > The animated preview above plays inline. For the full-quality clip with audio,
 > [**watch `docs/demo.mp4`**](docs/demo.mp4).

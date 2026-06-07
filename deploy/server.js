@@ -67,6 +67,11 @@ async function refresh() {
       getJSON(token, "/api/v1/analytics/should-cost/savings"), null);
     const shouldCostBySupplier = await safe("should-cost/by-supplier",
       getJSON(token, "/api/v1/analytics/should-cost/by-supplier"), []);
+    // TCO is new — tolerate a backend that lacks the endpoints (renders empty).
+    const tcoByClass = await safe("tco/by-class",
+      getJSON(token, "/api/v1/tco/by-class"), []);
+    const tcoPortfolio = await safe("tco/portfolio",
+      getJSON(token, "/api/v1/tco/portfolio?baseline=50000000"), null);
     cache = {
       generated_at: new Date().toISOString().replace("T", " ").slice(0, 16) + " UTC",
       error: null,
@@ -75,10 +80,11 @@ async function refresh() {
         spend_by_category: byCat, spend_by_supplier: bySup, spend_by_product: byProd,
         spend_total: spendTotal, inventory, insights, forecast,
         should_cost_savings: shouldCostSavings, should_cost_by_supplier: shouldCostBySupplier,
+        tco_by_class: tcoByClass, tco_portfolio: tcoPortfolio,
       }
     };
     console.log(`[refresh] ok @ ${cache.generated_at} (${forecast.length} forecast rows, `
-      + `${shouldCostBySupplier.length} should-cost rows)`);
+      + `${shouldCostBySupplier.length} should-cost rows, ${tcoByClass.length} tco classes)`);
   } catch (e) {
     cache.error = String(e.message || e);
     console.error("[refresh] FAILED:", cache.error);

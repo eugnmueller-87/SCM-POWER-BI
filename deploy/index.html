@@ -109,6 +109,7 @@
     <button data-tab="inventory">Inventory</button>
     <button data-tab="forecast">Forecast</button>
     <button data-tab="shouldcost">Should-Cost</button>
+    <button data-tab="tco">TCO</button>
   </nav>
 </header>
 
@@ -227,6 +228,36 @@
       <table id="scTable"><thead><tr><th>Product</th><th class="num">Floor</th><th class="num">Target</th><th class="num">Quote</th><th class="num">Gap→target</th><th class="num">Gap %</th></tr></thead><tbody></tbody></table></div></div>
   </section>
 
+  <section class="page" id="page-tco">
+    <div class="scsec">🧾 Total Cost of Ownership — beyond the sticker price</div>
+    <div class="grid kpis">
+      <div class="card kpi"><div class="label">Portfolio TCO</div><div class="value" id="tcoTotal">–</div><span class="pill neut" id="tcoN">over – assets</span></div>
+      <div class="card kpi"><div class="label">Total Cost %</div><div class="value" id="tcoTotalPct">–</div><span class="pill neut">ΣTCO ÷ baseline</span></div>
+      <div class="card kpi"><div class="label">TSCMC %</div><div class="value" id="tcoTscmc">–</div><span class="pill good">excl. acquisition (SCOR)</span></div>
+      <div class="card kpi"><div class="label">OpEx Share</div><div class="value" id="tcoOpexShare">–</div><span class="pill warn">run-cost vs TCO</span></div>
+    </div>
+    <div class="grid main">
+      <div class="card"><h3>TCO by layer, per asset class <span style="font-weight:400;text-transform:none;font-size:11px">(stacked €)</span></h3><div class="chart-box tall"><canvas id="tcoStack"></canvas></div></div>
+      <div class="card">
+        <h3>What this is</h3>
+        <p style="font-size:13px;color:#475569;line-height:1.6">
+          <strong>TCO = acquisition + landed + deployment + lifetime OpEx + end-of-life
+          − recovery.</strong> Acquisition is what we actually paid; the rest is the cost
+          of <em>owning and running</em> the box over a 5-year life.
+        </p>
+        <p style="font-size:13px;color:#475569;line-height:1.6">
+          <strong>TSCMC %</strong> (Total Supply-Chain Management Cost) deliberately
+          <em>excludes</em> acquisition — by the SCOR/APQC definition it measures the cost
+          of operating the chain, not the hardware itself. On power-hungry GPU nodes,
+          lifetime OpEx can rival or exceed the purchase price — which is exactly the
+          number a sticker-price comparison misses.
+        </p>
+      </div>
+    </div>
+    <div class="grid"><div class="card"><h3>Per-class detail <span style="font-weight:400;text-transform:none;font-size:11px">(avg per asset)</span></h3>
+      <table id="tcoTable"><thead><tr><th>Class</th><th class="num">Assets</th><th class="num">Acquisition</th><th class="num">OpEx</th><th class="num">Landed+Deploy</th><th class="num">EOL−Recovery</th><th class="num">Avg TCO</th></tr></thead><tbody></tbody></table></div></div>
+  </section>
+
   <footer>Data: live SCM Master API · snapshot <span id="genDate2"></span> · Demo / illustrative.</footer>
 </div>
 
@@ -269,7 +300,13 @@ function buildModel(src){
       pid:x.product_id, floor:num(x.should_cost_floor), target:num(x.target_price),
       quote:num(x.quoted_price), gapT:num(x.gap_to_target_abs), gapTp:num(x.gap_to_target_pct),
     })),
-    scSave: D.should_cost_savings || null
+    scSave: D.should_cost_savings || null,
+    tcoClasses: arr(D.tco_by_class).map(x=>({
+      cls:x.category, assets:+x.assets, acq:num(x.acquisition), landed:num(x.landed),
+      deploy:num(x.deployment), opex:num(x.opex), eol:num(x.eol), rec:num(x.recovery),
+      total:num(x.tco_total), avg:num(x.avg_tco),
+    })),
+    tcoPortfolio: D.tco_portfolio || null
   };
   document.getElementById("genDate").textContent = D.generated_at;
   document.getElementById("genDate2").textContent = D.generated_at;
@@ -701,6 +738,7 @@ function renderAll(){
   else if(CURRENT==="inventory")renderInventory();
   else if(CURRENT==="forecast")renderForecast();
   else if(CURRENT==="shouldcost")renderShouldCost();
+  else if(CURRENT==="tco")renderTCO();
 }
 
 function renderShouldCost(){
@@ -737,6 +775,42 @@ function renderShouldCost(){
     +`<td class="num">${EUR(r.quote)}</td><td class="num">${EUR(r.gapT)}</td>`
     +`<td class="num">${PCT(r.gapTp||0)}</td></tr>`).join("");
   document.querySelector("#scTable tbody").innerHTML = body;
+}
+
+function renderTCO(){
+  const rows = RAW.tcoClasses||[], pf = RAW.tcoPortfolio;
+  // KPI cards from the portfolio rollup
+  document.getElementById("tcoTotal").textContent = pf ? EUR(pf.tco_total) : "–";
+  document.getElementById("tcoN").textContent = "over "+(pf? pf.assets : "–")+" assets";
+  document.getElementById("tcoTotalPct").textContent = pf ? PCT(pf.total_cost_pct) : "–";
+  document.getElementById("tcoTscmc").textContent = pf ? PCT(pf.tscmc_pct) : "–";
+  const opexShare = pf && pf.tco_total ? pf.subtotals.opex/pf.tco_total : 0;
+  document.getElementById("tcoOpexShare").textContent = pf ? PCT(opexShare) : "–";
+  if(!rows.length){
+    if(charts.tcoStack){charts.tcoStack.destroy();charts.tcoStack=null;}
+    document.querySelector("#tcoTable tbody").innerHTML="<tr><td colspan='7' style='color:#94a3b8'>No TCO data — run the TCO generator in SCM Master.</td></tr>";
+    return;
+  }
+  // Stacked bar: TCO layers per class
+  const labels = rows.map(r=>r.cls);
+  if(charts.tcoStack)charts.tcoStack.destroy();
+  charts.tcoStack=new Chart(document.getElementById("tcoStack"),{type:"bar",
+    data:{labels,datasets:[
+      {label:"Acquisition",data:rows.map(r=>r.acq),backgroundColor:"#2563eb"},
+      {label:"Landed",data:rows.map(r=>r.landed),backgroundColor:"#06b6d4"},
+      {label:"Deployment",data:rows.map(r=>r.deploy),backgroundColor:"#8b5cf6"},
+      {label:"OpEx (5y)",data:rows.map(r=>r.opex),backgroundColor:"#f59e0b"},
+      {label:"EOL",data:rows.map(r=>r.eol),backgroundColor:"#ef4444"},
+      {label:"Recovery",data:rows.map(r=>r.rec),backgroundColor:"#10b981"},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:v=>"€"+(v/1000)+"k"}}}}});
+  // Per-class table
+  const body = rows.map(r=>
+    `<tr><td>${r.cls}</td><td class="num">${r.assets}</td><td class="num">${EUR(r.acq)}</td>`
+    +`<td class="num">${EUR(r.opex)}</td><td class="num">${EUR(r.landed+r.deploy)}</td>`
+    +`<td class="num">${EUR(r.eol+r.rec)}</td><td class="num">${EUR(r.avg)}</td></tr>`).join("");
+  document.querySelector("#tcoTable tbody").innerHTML = body;
 }
 
 // tabs

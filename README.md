@@ -31,9 +31,11 @@ backend so the numbers always agree.
 
 ### ▶︎ **[scm-power-bi-production.up.railway.app](https://scm-power-bi-production.up.railway.app)**
 
-A fully interactive cockpit — cross-filtering, click-to-drill KPIs, reorder alerts, and a
-forecast "why was it wrong / how to predict better" diagnostic. It logs into the SCM Master
-API server-side and **auto-refreshes**, so the board is always current.
+A fully interactive **7-tab cockpit** — Overview · SC Scorecard · Spend · Inventory · Forecast ·
+**Should-Cost** · **TCO** — with cross-filtering, click-to-drill KPIs, reorder alerts, a forecast
+"why was it wrong / how to predict better" diagnostic, a clean-sheet **should-cost margin lever**,
+and a **total-cost-of-ownership** view. It logs into the SCM Master API server-side and
+**auto-refreshes**, so the board is always current.
 
 ## 🎥 Walkthrough
 
@@ -113,6 +115,15 @@ The full stack:
      *why* the forecast missed (bias direction, demand volatility / coefficient of variation,
      over- vs under-shoot counts) **and** *how to predict better* (bias-correction factor,
      aggregation, safety-stock sizing, a seasonal model), plus the biggest individual misses.
+   - **Should-Cost / margin lever** — a clean-sheet teardown rebuilds each box from components
+     and compares **quote vs target vs cost floor**; surfaces **addressable negotiation savings**,
+     **avg cost gap %**, and where margin leaks by supplier/component class.
+   - **Total Cost of Ownership (TCO)** — beyond the sticker price: **portfolio TCO**, **TSCMC %**
+     (SCOR — supply-chain cost excl. acquisition), **OpEx share**, and TCO stacked by layer
+     (acquisition + landed + deployment + lifetime OpEx + end-of-life − recovery) per asset class.
+   - **Environment-aware deployment** — the same cockpit deploys to a **demo** stack and an
+     isolated **production** stack (own Railway project), each wired to its environment's API via
+     `API_BASE` with a read-only viewer account.
 
 4. **The Power BI report** ([`Order_Accuracy_Forecast_2026.pbix`](Order_Accuracy_Forecast_2026.pbix))
    — the lab-mandated deliverable, wired to the **same live API** via paste-ready Power Query
@@ -206,7 +217,7 @@ whether to invest in AI for procurement & supply-chain.
 | **6c. Public evidence data** | [`data/processed/ai_adoption_evidence.csv`](data/processed/ai_adoption_evidence.csv) | Cited public AI-adoption / chip-risk figures powering the market-evidence layer. |
 | **7. Live API connection** | [`dashboard/live_api_connection.md`](dashboard/live_api_connection.md) | Paste-ready Power Query (M) to connect Power BI to the deployed backend — auto-login on every refresh (OAuth2 → Bearer). |
 | **8. Built dashboard** | [`Order_Accuracy_Forecast_2026.pbix`](Order_Accuracy_Forecast_2026.pbix) | The Power BI report itself, wired to the live API. *(Git LFS)* |
-| **9. Live web cockpit** | [`deploy/`](deploy/) → [**hosted**](https://scm-power-bi-production.up.railway.app) | Node server + Chart.js. Server-side API login, in-memory cache, auto-refresh. Cross-filtering, click-to-drill KPIs, reorder alerts, forecast diagnostics. Deployed on Railway. |
+| **9. Live web cockpit** | [`deploy/`](deploy/) → [**hosted**](https://scm-power-bi-production.up.railway.app) | Node server + Chart.js. Server-side API login, in-memory cache, auto-refresh. **7 tabs** (Overview, SC Scorecard, Spend, Inventory, Forecast, Should-Cost, TCO). Cross-filtering, click-to-drill KPIs, reorder alerts, forecast diagnostics, should-cost margin lever, TCO. Environment-aware (demo + isolated prod). Deployed on Railway. |
 
 ## Frameworks anchored (no ad-hoc KPIs)
 - **SCOR DS** Level-1 metrics: Perfect Order Fulfillment %, Order Fulfillment Cycle Time,
@@ -290,4 +301,7 @@ SCM-POWER-BI/
 - [x] Live API connection guide (`dashboard/live_api_connection.md`) — verified against the deployed backend
 - [x] **`.pbix` built in Power BI Desktop** — wired to the live API, forecast-accuracy measures + visuals live
 - [x] **Live web cockpit deployed** — [hosted on Railway](https://scm-power-bi-production.up.railway.app), auto-refreshing, with drill-downs + reorder alerts + forecast diagnostics
+- [x] **Should-Cost / margin-lever tab** — clean-sheet teardown (quote vs target vs floor), addressable savings, wired to the live API
+- [x] **TCO tab** — total cost of ownership by layer + TSCMC % (SCOR), wired to the live API
 - [x] **Per-environment deployment** — same cockpit deploys to a **demo** stack and an isolated **production** stack (own Railway project), each wired to its environment's SCM Master API via `API_BASE` with a read-only viewer account
+- [x] **Ruff lint clean** + status/tech badges

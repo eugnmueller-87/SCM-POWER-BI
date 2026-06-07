@@ -26,6 +26,8 @@ wait / pilot decision rests on data, not vendor claims.
 | 6 | **Top Supplier Share / HHI** | concentration of spend | Single-source risk — ties to chip geopolitics `[E1]` |
 | 7 | **Stockout Risk** | SKUs with cover < lead time | The cost of a wrong forecast, in plain terms |
 | 8 | **Reorder Point & Days-to-reorder** | `burn×lead+safety`; days until hit | Converts the forecast into *when to act* |
+| 9 | **Addressable Savings / Cost Gap %** | Σ(quote − target) from a clean-sheet teardown | The margin lever — how much negotiation headroom exists vs a fair price |
+| 10 | **Portfolio TCO / TSCMC %** | acquisition + landed + OpEx + EOL − recovery; SCOR cost excl. acquisition | True lifetime cost beyond the sticker price → smarter buy decisions |
 
 > 5–8 of these are surfaced as the headline cards; the rest live one click deeper. This keeps the
 > top level to the **communication layer** (decision metrics) and pushes detail to the analysis layer.
@@ -39,6 +41,8 @@ wait / pilot decision rests on data, not vendor claims.
 | **Spend** | Spend by category/supplier/product; cross-filters the board |
 | **Inventory** | On-hand vs safety, days-of-cover, and the **reorder pipeline** with ORDER NOW actions |
 | **Forecast** | MAPE/WMAPE, accuracy by category, error trend, and the **why-it-missed / how-to-fix** drill-down |
+| **Should-Cost** | Clean-sheet teardown — quote vs target vs cost floor; addressable negotiation savings, avg cost gap %, margin leak by supplier/component |
+| **TCO** | Total Cost of Ownership — portfolio TCO, TSCMC % (SCOR), OpEx share, TCO stacked by layer per asset class |
 
 ## 4. Design rationale (communication-layer principles)
 

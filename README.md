@@ -64,6 +64,8 @@ and a **total-cost-of-ownership** view. It logs into the SCM Master API server-s
 | **Spend** | Spend **by category / supplier / product**, **maverick & tail-spend %**, **top-supplier concentration** | Where the money goes and the concrete savings levers. Cross-filters the whole board on click. |
 | **Inventory** | On-hand, daily burn, **Reorder Point** (`burn × lead + safety`), **Days-to-reorder**, **Action** column (🔴 ORDER NOW / 🟡 order in N d / ✅ on order / 🟢 ok) | Tells planners *when* to reorder each SKU, not just what the stock is. |
 | **Forecast** | **MAPE / WMAPE**, accuracy by category, worst-category flag, **error trend by month**, click-to-drill **why-it-missed / how-to-fix** diagnostic | Why the forecast was wrong (bias direction, demand volatility) and how to predict better (bias correction, aggregation, safety stock, seasonal model). |
+| **Should-Cost** | **Addressable Savings**, **Avg Cost Gap %**, **Products Modelled**, **Total Margin Stacked**; *Quote vs Target vs Floor* bars + gap by supplier/component | The margin lever — a clean-sheet teardown shows how much negotiation headroom exists vs a fair price, and where margin leaks. |
+| **TCO** | **Portfolio TCO**, **Total Cost %**, **TSCMC %** (SCOR), **OpEx Share**; TCO stacked by layer per asset class | True lifetime cost beyond the sticker price (acquisition + landed + deployment + OpEx + EOL − recovery) → smarter buy decisions. |
 
 ### Headline result (from the live data)
 > **AI demand forecast accuracy ≈ 85%** — backtested across **78 forecasts over 12 months**.

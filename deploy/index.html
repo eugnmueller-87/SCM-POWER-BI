@@ -108,6 +108,7 @@
     <button data-tab="spend">Spend</button>
     <button data-tab="inventory">Inventory</button>
     <button data-tab="forecast">Forecast</button>
+    <button data-tab="shouldcost">Should-Cost</button>
   </nav>
 </header>
 
@@ -196,6 +197,36 @@
     <div class="grid"><div class="card"><h3>Error trend over forecast months</h3><div class="chart-box"><canvas id="fTrend"></canvas></div></div></div>
   </section>
 
+  <section class="page" id="page-shouldcost">
+    <div class="scsec">🧮 Clean-sheet should-cost — the margin lever</div>
+    <div class="grid kpis">
+      <div class="card kpi"><div class="label">Addressable Savings</div><div class="value" id="scSave">–</div><span class="pill good">vs fair target price</span></div>
+      <div class="card kpi"><div class="label">Avg Cost Gap</div><div class="value" id="scGap">–</div><span class="pill warn" id="scGapP">quote vs target</span></div>
+      <div class="card kpi"><div class="label">Products Modelled</div><div class="value" id="scN">–</div><span class="pill neut" id="scNP">with a BOM</span></div>
+      <div class="card kpi"><div class="label">Total Margin Stacked</div><div class="value" id="scFloorGap" style="font-size:22px">–</div><span class="pill neut">quote vs cost floor</span></div>
+    </div>
+    <div class="grid main">
+      <div class="card"><h3>Quote vs Target vs Floor <span style="font-weight:400;text-transform:none;font-size:11px">(per product)</span></h3><div class="chart-box tall"><canvas id="scBar"></canvas></div></div>
+      <div class="card">
+        <h3>What this is</h3>
+        <p style="font-size:13px;color:#475569;line-height:1.6">
+          A <strong>clean-sheet teardown</strong> rebuilds each box from components — memory &amp;
+          flash indexed to commodity markets (DRAM/NAND), metal &amp; PCB to their indices, and
+          CPU/GPU as a list-price benchmark band. That yields a <strong>defensible cost floor</strong>.
+        </p>
+        <p style="font-size:13px;color:#475569;line-height:1.6">
+          <strong>Headline gap = quote vs <em>target</em></strong> (floor + a fair margin the
+          supplier would accept) — no one sells at cost, so this is the credible ask. The
+          <strong>floor</strong> is the backstop: total margin stacked in the quote, a ranking
+          signal for where to push. The floor moves with the memory market, so the number stays
+          current as DRAM swings.
+        </p>
+      </div>
+    </div>
+    <div class="grid"><div class="card"><h3>Gap by supplier <span style="font-weight:400;text-transform:none;font-size:11px">(who's furthest above floor)</span></h3>
+      <table id="scTable"><thead><tr><th>Product</th><th class="num">Floor</th><th class="num">Target</th><th class="num">Quote</th><th class="num">Gap→target</th><th class="num">Gap %</th></tr></thead><tbody></tbody></table></div></div>
+  </section>
+
   <footer>Data: live SCM Master API · snapshot <span id="genDate2"></span> · Demo / illustrative.</footer>
 </div>
 
@@ -233,7 +264,12 @@ function buildModel(src){
     prods: arr(D.spend_by_product).map(x=>({k:fixTxt(x.product_name), cat:x.category, units:+x.units, spend:num(x.spend)})),
     inv: arr(D.inventory).map(x=>({name:fixTxt(x.name), cat:x.category, on_hand:+x.on_hand, safety:+x.safety_stock, burn:num(x.daily_burn), lead:+x.lead_time_days, on_order:+x.on_order, eta:x.next_eta, price:num(x.unit_price)})),
     fc: arr(D.forecast).map(x=>({date:x.as_of_date, pred:num(x.predicted_demand), act:num(x.actual_demand), ape:num(x.ape), cat:x.category, prod:fixTxt(x.name), err:num(x.abs_error)})),
-    ins: arr(D.insights)
+    ins: arr(D.insights),
+    scRows: arr(D.should_cost_by_supplier).map(x=>({
+      pid:x.product_id, floor:num(x.should_cost_floor), target:num(x.target_price),
+      quote:num(x.quoted_price), gapT:num(x.gap_to_target_abs), gapTp:num(x.gap_to_target_pct),
+    })),
+    scSave: D.should_cost_savings || null
   };
   document.getElementById("genDate").textContent = D.generated_at;
   document.getElementById("genDate2").textContent = D.generated_at;
@@ -664,6 +700,43 @@ function renderAll(){
   else if(CURRENT==="spend")renderSpend();
   else if(CURRENT==="inventory")renderInventory();
   else if(CURRENT==="forecast")renderForecast();
+  else if(CURRENT==="shouldcost")renderShouldCost();
+}
+
+function renderShouldCost(){
+  const rows = RAW.scRows||[], sv = RAW.scSave;
+  // KPI cards
+  document.getElementById("scSave").textContent = sv ? EUR(sv.total_gap_to_target) : "–";
+  document.getElementById("scN").textContent = sv ? sv.products_with_bom : rows.length;
+  // weighted avg gap %, and total margin stacked (quote − floor) across rows
+  const totQuote = rows.reduce((s,r)=>s+(r.quote||0),0);
+  const totGapT  = rows.reduce((s,r)=>s+(r.gapT||0),0);
+  const totFloorGap = rows.reduce((s,r)=>s+((r.quote||0)-(r.floor||0)),0);
+  document.getElementById("scGap").textContent = totQuote ? PCT(totGapT/totQuote) : "–";
+  document.getElementById("scFloorGap").textContent = EUR(totFloorGap);
+  if(!rows.length){
+    document.getElementById("scGapP").textContent="no BOM-modelled products yet";
+    if(charts.scBar){charts.scBar.destroy();charts.scBar=null;}
+    document.querySelector("#scTable tbody").innerHTML="<tr><td colspan='6' style='color:#94a3b8'>No should-cost data — seed a BOM in SCM Master.</td></tr>";
+    return;
+  }
+  // Quote vs Target vs Floor bars (per product, by product id label)
+  const labels = rows.map((r,i)=>"P"+(i+1));
+  if(charts.scBar)charts.scBar.destroy();
+  charts.scBar=new Chart(document.getElementById("scBar"),{type:"bar",
+    data:{labels,datasets:[
+      {label:"Cost floor",data:rows.map(r=>r.floor),backgroundColor:"#94a3b8"},
+      {label:"Target price",data:rows.map(r=>r.target),backgroundColor:"#10b981"},
+      {label:"Quote",data:rows.map(r=>r.quote),backgroundColor:"#2563eb"},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{y:{ticks:{callback:v=>"€"+(v/1000)+"k"}}}}});
+  // Gap-by-supplier table
+  const body = rows.slice().sort((a,b)=>(b.gapT||0)-(a.gapT||0)).map((r,i)=>
+    `<tr><td>P${i+1}</td><td class="num">${EUR(r.floor)}</td><td class="num">${EUR(r.target)}</td>`
+    +`<td class="num">${EUR(r.quote)}</td><td class="num">${EUR(r.gapT)}</td>`
+    +`<td class="num">${PCT(r.gapTp||0)}</td></tr>`).join("");
+  document.querySelector("#scTable tbody").innerHTML = body;
 }
 
 // tabs

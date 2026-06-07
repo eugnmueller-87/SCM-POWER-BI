@@ -9,7 +9,10 @@
 [![Deployed on Railway](https://img.shields.io/badge/Deployed-Railway-0B0D0E?style=flat&logo=railway&logoColor=white)](https://scm-power-bi-production.up.railway.app)
 [![Data](https://img.shields.io/badge/data-synthetic_%2B_public-8b5cf6?style=flat)](sources.md)
 [![Recommendation](https://img.shields.io/badge/recommendation-pilot-eab308?style=flat)](implementation/solution_proposal.md)
-[![License](https://img.shields.io/badge/license-educational-lightgrey?style=flat)](#)
+[![License](https://img.shields.io/badge/license-educational-lightgrey?style=flat)](research/01_data_assumptions.md)
+[![Last commit](https://img.shields.io/github/last-commit/eugnmueller-87/SCM-POWER-BI?style=flat&logo=github)](https://github.com/eugnmueller-87/SCM-POWER-BI/commits/main)
+[![Commit activity](https://img.shields.io/github/commit-activity/m/eugnmueller-87/SCM-POWER-BI?style=flat&logo=github)](https://github.com/eugnmueller-87/SCM-POWER-BI/commits/main)
+[![Repo size](https://img.shields.io/github/repo-size/eugnmueller-87/SCM-POWER-BI?style=flat)](https://github.com/eugnmueller-87/SCM-POWER-BI)
 
 An executive-facing cockpit for **procurement & supply-chain analytics**, built for a
 mid-to-large cloud/hosting company (profile: DACH, Microsoft-365 ecosystem,
@@ -19,6 +22,8 @@ indirect + IT/cloud-heavy spend). Audience: a non-technical CEO ("Cleo") decidin
 It ships in two forms: a **live, interactive web cockpit** (hosted, auto-refreshing, wired
 to a deployed API) and the **Power BI report** the lab requires — both reading the same
 backend so the numbers always agree.
+
+**Contents:** [Live dashboard](#-live-dashboard) · [Walkthrough](#-walkthrough) · [What this project is](#what-this-project-is) · [Consulting case (Project 5)](#-the-consulting-case-project-5-deliverable) · [What's inside](#whats-inside) · [Quick start](#quick-start) · [Project structure](#project-structure) · [Status](#status)
 
 > **Environment-aware.** The cockpit is a thin server-side proxy: it logs into **one**
 > [SCM Master](https://github.com/eugnmueller-87/SCM-Master) instance (set via `API_BASE`)

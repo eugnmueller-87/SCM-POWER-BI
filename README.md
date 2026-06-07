@@ -20,6 +20,13 @@ It ships in two forms: a **live, interactive web cockpit** (hosted, auto-refresh
 to a deployed API) and the **Power BI report** the lab requires — both reading the same
 backend so the numbers always agree.
 
+> **Environment-aware.** The cockpit is a thin server-side proxy: it logs into **one**
+> [SCM Master](https://github.com/eugnmueller-87/SCM-Master) instance (set via `API_BASE`)
+> and serves its analytics. The same code deploys per environment — a **demo** cockpit wired
+> to the demo API, and a **production** cockpit (own Railway project) wired to the forge-locked
+> prod API — so each board reflects only its own environment's data. Uses a read-only viewer
+> account; it never writes.
+
 ## 🚀 Live dashboard
 
 ### ▶︎ **[scm-power-bi-production.up.railway.app](https://scm-power-bi-production.up.railway.app)**
@@ -283,3 +290,4 @@ SCM-POWER-BI/
 - [x] Live API connection guide (`dashboard/live_api_connection.md`) — verified against the deployed backend
 - [x] **`.pbix` built in Power BI Desktop** — wired to the live API, forecast-accuracy measures + visuals live
 - [x] **Live web cockpit deployed** — [hosted on Railway](https://scm-power-bi-production.up.railway.app), auto-refreshing, with drill-downs + reorder alerts + forecast diagnostics
+- [x] **Per-environment deployment** — same cockpit deploys to a **demo** stack and an isolated **production** stack (own Railway project), each wired to its environment's SCM Master API via `API_BASE` with a read-only viewer account

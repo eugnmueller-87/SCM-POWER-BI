@@ -13,7 +13,8 @@
 Frameworks anchored: **SCOR DS** (Reliability, Responsiveness, Agility, Cost, Asset Mgmt,
 Environmental), **Forecast accuracy** (WMAPE / Bias / RMSE / Adherence), **Resilience**
 (TTA / TTAct / TTR / TTS), **Spend & Savings** (spend cube, tail, maverick, coverage,
-savings waterfall). No ad-hoc KPIs.
+savings waterfall), **Clean-Sheet / Should-Cost** (cost floor, target price, cost gap,
+addressable negotiation savings, commodity-adjusted floor). No ad-hoc KPIs.
 
 ---
 
@@ -432,6 +433,61 @@ SWITCH (
 
 ---
 
+## 4b. Clean-Sheet / Should-Cost — the margin lever
+
+Backed by the SCM-Master `costing` domain (a 5-element clean-sheet teardown indexed to
+commodity markets — see `docs/should_cost_model.md` in that repo). These read two new API
+tables loaded via Power Query (same OAuth2 → Bearer auto-login pattern as the rest):
+
+- `should_cost_by_supplier` ← `GET /api/v1/analytics/should-cost/by-supplier`
+  (per-product: `should_cost_floor`, `target_price`, `quoted_price`, `gap_to_target_abs`,
+  `gap_to_target_pct`)
+- `should_cost_savings` ← `GET /api/v1/analytics/should-cost/savings`
+  (`total_gap_to_target`, `products_with_bom`, `products_above_target`)
+
+> **Headline = vs target, backstop = vs floor.** The negotiation ask is measured against
+> `target_price` (floor + a fair margin a supplier would accept), never the bare floor — no
+> supplier sells at cost. The floor is kept as a secondary ranking signal (total margin
+> stacked in the quote). See the model spec §5.
+
+```dax
+-- The defensible cost floor (supplier cost at zero margin), summed across BOM'd products
+Should-Cost Floor = SUM ( should_cost_by_supplier[should_cost_floor] )
+```
+
+```dax
+-- The fair price we should pay: floor + a conceded target margin
+Target Price = SUM ( should_cost_by_supplier[target_price] )
+```
+
+```dax
+-- Headline negotiation gap: how far the quote sits above a fair target price
+Cost Gap % =
+DIVIDE (
+    SUM ( should_cost_by_supplier[gap_to_target_abs] ),
+    SUM ( should_cost_by_supplier[quoted_price] )
+)
+```
+
+```dax
+-- The € that goes on the slide: realistic addressable negotiation savings (vs target)
+Addressable Negotiation Savings = SUM ( should_cost_savings[total_gap_to_target] )
+```
+
+```dax
+-- Commodity-Adjusted Floor: the floor recomputed at the current index (already index-aware
+-- in the engine; this names the as-of-driven value for a "floor moves with the market" card)
+Commodity-Adjusted Floor = [Should-Cost Floor]
+```
+
+**New page — "Should-Cost / Margin Lever":** KPI cards (Addressable Savings, Avg Cost Gap %),
+*Quote vs Target vs Floor* bars per product, *Gap by Component Class* (where margin leaks),
+*Commodity Sensitivity* tornado (floor vs DRAM/NAND ±X% — from `/products/{id}/sensitivity`),
+and *Gap by Supplier* (the negotiation target list). On the existing Spend page, overlay a
+should-cost-floor reference line behind actual spend — one glance shows paid-vs-floor.
+
+---
+
 ## 5. KPI ↔ framework cross-reference
 
 | # | KPI | Framework | Measure |
@@ -457,3 +513,8 @@ SWITCH (
 | 19 | Tail Spend % | Spend | `Tail Spend %`, `Tail Supplier Count` |
 | 20 | Contract Coverage % | Spend | `Contract Coverage %` |
 | 21 | Savings waterfall | Spend / Savings | `Negotiated/Realized/Cost Avoidance/Net Savings` |
+| 22 | Should-Cost Floor | Clean-Sheet / Should-Cost | `Should-Cost Floor` |
+| 23 | Target Price | Clean-Sheet / Should-Cost | `Target Price` |
+| 24 | Cost Gap % | Clean-Sheet / Should-Cost | `Cost Gap %` |
+| 25 | Addressable Negotiation Savings | Clean-Sheet / Should-Cost | `Addressable Negotiation Savings` |
+| 26 | Commodity-Adjusted Floor | Clean-Sheet / Should-Cost | `Commodity-Adjusted Floor` |

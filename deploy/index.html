@@ -128,9 +128,9 @@
   <!-- ===================== OVERVIEW ===================== -->
   <section class="page active" id="page-overview">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-      <span style="font-size:12px;color:#64748b;font-weight:600">Spend period:</span>
+      <span style="font-size:12px;color:#64748b;font-weight:600">Period:</span>
       <span id="ovYearSel" class="yearsel"></span>
-      <span style="font-size:11px;color:#94a3b8">drives spend &amp; supplier share · forecast/capacity unaffected</span>
+      <span style="font-size:11px;color:#94a3b8">scopes spend, supplier share &amp; the demand chart · the capacity tile is live "now"</span>
     </div>
     <div class="grid kpis">
       <div class="card kpi"><div class="label">Forecast Accuracy</div><div class="value" id="kAcc">–</div><span class="pill good">backtested · all years</span></div>
@@ -502,14 +502,15 @@ function renderOverview(){
   document.getElementById("kStock").textContent=stockRisk;
 
   // line — all-time backtest overview; the product/category cross-filter (FILTER,
-  // applied above into `fc`) flows through so you can drill to one product. Year
-  // slicing lives on the FORECAST tab (where year-over-year accuracy is the point),
-  // not here — a year control on Overview would only move this one chart.
-  const lineFc = fc;
+  // applied above into `fc`) flows through so you can drill to one product. The
+  // period selector (SPEND_YEAR) also slices this chart by as-of year, so the
+  // whole Overview reslices together when a year is picked.
+  const lineFc = SPEND_YEAR ? fc.filter(x => (x.date || "").startsWith(SPEND_YEAR)) : fc;
   const span = document.getElementById("lineSpan");
   if(span){
+    const period = SPEND_YEAR || "all-time";
     const scope = FILTER ? FILTER.value : "all products — click a product/category below to drill in";
-    span.textContent = `all-time · ${scope} · (year view on the Forecast tab)`;
+    span.textContent = `${period} · ${scope}`;
   }
   destroy("lineChart");
   charts.lineChart=new Chart(document.getElementById("lineChart"),{type:"line",

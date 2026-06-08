@@ -6,6 +6,9 @@
 [![Ruff](https://img.shields.io/badge/lint-ruff-D7FF64?style=flat&logo=ruff&logoColor=black)](ruff.toml)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?style=flat&logo=nodedotjs&logoColor=white)](deploy/)
 [![Chart.js](https://img.shields.io/badge/Chart.js-4.4-FF6384?style=flat&logo=chartdotjs&logoColor=white)](deploy/)
+[![Babylon.js](https://img.shields.io/badge/Babylon.js-6.49-BB464B?style=flat&logo=babylondotjs&logoColor=white)](deploy/tower.js)
+[![WebGL](https://img.shields.io/badge/WebGL-PBR_%2B_SSAO-990000?style=flat&logo=webgl&logoColor=white)](deploy/tower.js)
+[![3D Control Tower](https://img.shields.io/badge/3D-Control_Tower-2dd4bf?style=flat)](deploy/tower.js)
 [![Deployed on Railway](https://img.shields.io/badge/Deployed-Railway-0B0D0E?style=flat&logo=railway&logoColor=white)](https://scm-power-bi-production.up.railway.app)
 [![Data](https://img.shields.io/badge/data-synthetic_%2B_public-8b5cf6?style=flat)](sources.md)
 [![Recommendation](https://img.shields.io/badge/recommendation-pilot-eab308?style=flat)](implementation/solution_proposal.md)
@@ -23,7 +26,7 @@ It ships in two forms: a **live, interactive web cockpit** (hosted, auto-refresh
 to a deployed API) and the **Power BI report** the lab requires — both reading the same
 backend so the numbers always agree.
 
-**Contents:** [Live dashboard](#-live-dashboard) · [Walkthrough](#-walkthrough) · [What this project is](#what-this-project-is) · [Consulting case (Project 5)](#-the-consulting-case-project-5-deliverable) · [What's inside](#whats-inside) · [Quick start](#quick-start) · [Project structure](#project-structure) · [Status](#status)
+**Contents:** [Live dashboard](#-live-dashboard) · [3D Control Tower](#-3d-control-tower-home-screen) · [Walkthrough](#-walkthrough) · [What this project is](#what-this-project-is) · [Consulting case (Project 5)](#-the-consulting-case-project-5-deliverable) · [What's inside](#whats-inside) · [Quick start](#quick-start) · [Project structure](#project-structure) · [Status](#status)
 
 > **Environment-aware.** The cockpit is a thin server-side proxy: it logs into **one**
 > [SCM Master](https://github.com/eugnmueller-87/SCM-Master) instance (set via `API_BASE`)
@@ -36,11 +39,42 @@ backend so the numbers always agree.
 
 ### ▶︎ **[scm-power-bi-production.up.railway.app](https://scm-power-bi-production.up.railway.app)**
 
-A fully interactive **7-tab cockpit** — Overview · SC Scorecard · Spend · Inventory · Forecast ·
-**Should-Cost** · **TCO** — with cross-filtering, click-to-drill KPIs, reorder alerts, a forecast
-"why was it wrong / how to predict better" diagnostic, a clean-sheet **should-cost margin lever**,
-and a **total-cost-of-ownership** view. It logs into the SCM Master API server-side and
-**auto-refreshes**, so the board is always current.
+A fully interactive cockpit that opens on a **3D Control Tower** home screen (a real-time
+logistics view of the live supply chain) and drills into **7 analytics tabs** — Overview ·
+SC Scorecard · Spend · Inventory · Forecast · **Should-Cost** · **TCO** — with cross-filtering,
+click-to-drill KPIs, reorder alerts, a forecast "why was it wrong / how to predict better"
+diagnostic, a clean-sheet **should-cost margin lever**, and a **total-cost-of-ownership** view.
+It logs into the SCM Master API server-side and **auto-refreshes**, so the board is always current.
+
+## 🛰 3D Control Tower (home screen)
+
+The cockpit **opens** on a real-time-strategy-style **3D logistics control tower** — a Babylon.js
+WebGL scene that renders the supply chain as a living warehouse floor: inbound trucks at receiving,
+forklift agents ferrying crates, a stacked warehouse, datacenter racks lighting up as assets deploy,
+and an end-of-life lane to disposal.
+
+> **It is state-accurate, not a toy animation.** Every count, capacity %, crate stack, lit rack and
+> event-log line is read from the **same live `/api/v1` model** the rest of the cockpit uses, and
+> re-syncs on each refresh. Only the forklift/truck *motion between those states* is illustrative —
+> timed off the real `daily_in` / `daily_out` flow rates. **No number is fabricated.**
+
+| In the scene | Driven by (live data) |
+|---|---|
+| Warehouse fill + **number of crates** | `committed / capacity` — the box count is **in proportion to the warehouse's max capacity** |
+| Inbound trucks (arriving POs) | `inventory[].on_order` + `next_eta` — real open purchase orders, by SKU |
+| Datacenter racks lit | `Σ tco_by_class[].assets` — the deployed fleet |
+| **Over-order guard** refusing an inbound | the real fail-closed guard (`committed ≥ capacity` → refuse), the same HTTP-422 invariant the API enforces |
+| In/out flow, weeks of cover, depletion | `capacity_flow.daily_in` / `daily_out` / `days_to_depletion` |
+| AI requisition gate (auto-PO vs escalate) | the same **0.85 confidence floor** the SCM Master agent enforces — *LLM advises, code decides* |
+| Event stream (right panel) | the live deterministic **rule-insights** findings (concentration/HHI, low-cover SKUs, should-cost gap, TCO inversion…) |
+
+**Render (Tier-2):** Babylon.js 6.49 with physically-based materials, image-based lighting, soft
+PCF shadows, ACES tone-mapping, a glow layer, restrained bloom and SSAO — with an in-scene **FX**
+toggle and speed/pause/orbit controls. The heavy WebGL only mounts while the Control Tower tab is
+active, so the data tabs are never taxed. Source: [`deploy/tower.js`](deploy/tower.js).
+
+<!-- Drop a screenshot at clip/control-tower.png and it renders here:
+![SCM Master 3D Control Tower](https://raw.githubusercontent.com/eugnmueller-87/SCM-POWER-BI/main/clip/control-tower.png) -->
 
 ## 🎥 Walkthrough
 
@@ -235,7 +269,7 @@ whether to invest in AI for procurement & supply-chain.
 | **6c. Public evidence data** | [`data/processed/ai_adoption_evidence.csv`](data/processed/ai_adoption_evidence.csv) | Cited public AI-adoption / chip-risk figures powering the market-evidence layer. |
 | **7. Live API connection** | [`dashboard/live_api_connection.md`](dashboard/live_api_connection.md) | Paste-ready Power Query (M) to connect Power BI to the deployed backend — auto-login on every refresh (OAuth2 → Bearer). |
 | **8. Built dashboard** | [`Order_Accuracy_Forecast_2026.pbix`](Order_Accuracy_Forecast_2026.pbix) | The Power BI report itself, wired to the live API. *(Git LFS)* |
-| **9. Live web cockpit** | [`deploy/`](deploy/) → [**hosted**](https://scm-power-bi-production.up.railway.app) | Node server + Chart.js. Server-side API login, in-memory cache, auto-refresh. **7 tabs** (Overview, SC Scorecard, Spend, Inventory, Forecast, Should-Cost, TCO). Cross-filtering, click-to-drill KPIs, reorder alerts, forecast diagnostics, should-cost margin lever, TCO. Environment-aware (demo + isolated prod). Deployed on Railway. |
+| **9. Live web cockpit** | [`deploy/`](deploy/) → [**hosted**](https://scm-power-bi-production.up.railway.app) | Node server + Chart.js + **Babylon.js**. Server-side API login, in-memory cache, auto-refresh. A **3D Control Tower** home screen ([`deploy/tower.js`](deploy/tower.js)) + **7 tabs** (Overview, SC Scorecard, Spend, Inventory, Forecast, Should-Cost, TCO). Cross-filtering, click-to-drill KPIs, reorder alerts, forecast diagnostics, should-cost margin lever, TCO. Environment-aware (demo + isolated prod). Deployed on Railway. |
 
 ## Architecture: the LLM advises, deterministic code decides
 
@@ -330,6 +364,7 @@ SCM-POWER-BI/
 - [x] Live API connection guide (`dashboard/live_api_connection.md`) — verified against the deployed backend
 - [x] **`.pbix` built in Power BI Desktop** — wired to the live API, forecast-accuracy measures + visuals live
 - [x] **Live web cockpit deployed** — [hosted on Railway](https://scm-power-bi-production.up.railway.app), auto-refreshing, with drill-downs + reorder alerts + forecast diagnostics
+- [x] **3D Control Tower home screen** — Babylon.js WebGL (PBR · IBL · SSAO · bloom), wired live to `/api/v1` (state-accurate; crates ∝ warehouse capacity, racks = deployed fleet, real POs + over-order guard); engine only mounts on its tab
 - [x] **Should-Cost / margin-lever tab** — clean-sheet teardown (quote vs target vs floor), addressable savings, wired to the live API
 - [x] **TCO tab** — total cost of ownership by layer + TSCMC % (SCOR), wired to the live API
 - [x] **Per-environment deployment** — same cockpit deploys to a **demo** stack and an isolated **production** stack (own Railway project), each wired to its environment's SCM Master API via `API_BASE` with a read-only viewer account

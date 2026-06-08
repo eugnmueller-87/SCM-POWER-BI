@@ -127,8 +127,13 @@
 
   <!-- ===================== OVERVIEW ===================== -->
   <section class="page active" id="page-overview">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+      <span style="font-size:12px;color:#64748b;font-weight:600">Spend period:</span>
+      <span id="ovYearSel" class="yearsel"></span>
+      <span style="font-size:11px;color:#94a3b8">drives spend &amp; supplier share · forecast/capacity unaffected</span>
+    </div>
     <div class="grid kpis">
-      <div class="card kpi"><div class="label">Forecast Accuracy</div><div class="value" id="kAcc">–</div><span class="pill good">backtested 12 mo</span></div>
+      <div class="card kpi"><div class="label">Forecast Accuracy</div><div class="value" id="kAcc">–</div><span class="pill good">backtested · all years</span></div>
       <div class="card kpi"><div class="label">Total Spend</div><div class="value" id="kSpend">–</div><span class="pill neut" id="kSpendP">across – suppliers</span></div>
       <div class="card kpi"><div class="label">Top Supplier Share</div><div class="value" id="kShare">–</div><span class="pill bad" id="kShareP">concentration risk</span></div>
       <div class="card kpi"><div class="label">Stockout Risk</div><div class="value" id="kStock">–</div><span class="pill bad">SKUs below cover</span></div>
@@ -469,19 +474,30 @@ function renderCapFlow(){
     </div>`;
 }
 
+function ovYearSelRender(){
+  const el=document.getElementById("ovYearSel"); if(!el) return;
+  const years=(RAW.spendYears||[]).slice().sort();
+  const btn=(l,v)=>`<button class="${(SPEND_YEAR===v||(v===null&&!SPEND_YEAR))?'on':''}" data-yr="${v===null?'':v}">${l}</button>`;
+  el.innerHTML=btn("All-time",null)+years.map(y=>btn(y,String(y))).join("");
+  el.querySelectorAll("button").forEach(b=>b.onclick=()=>{SPEND_YEAR=(SPEND_YEAR===(b.dataset.yr||null)?null:(b.dataset.yr||null));renderOverview();});
+}
+
 function renderOverview(){
+  ovYearSelRender();
   renderCapFlow();
-  const {prods,fc,cats,sups}=applyFilter();
+  const {prods,fc}=applyFilter();
+  const sd=spendData();                                  // year-aware spend dataset
+  const sups=sd.sups;
   const totalSpend = prods.reduce((s,x)=>s+x.spend,0);
-  const allSpend = RAW.sups.reduce((s,x)=>s+x.spend,0);
-  const topSup = RAW.sups.slice().sort((a,b)=>b.spend-a.spend)[0];
+  const allSpend = sups.reduce((s,x)=>s+x.spend,0);
+  const topSup = sups.slice().sort((a,b)=>b.spend-a.spend)[0] || {k:"—",spend:0};
   const sumErr=fc.reduce((s,x)=>s+x.err,0), sumAct=fc.reduce((s,x)=>s+x.act,0);
   const acc = sumAct? 1-(sumErr/sumAct):0;
   const stockRisk = RAW.inv.filter(x=>x.burn>0 && (x.on_hand/x.burn)<x.lead).length;
   document.getElementById("kAcc").textContent=PCT(acc);
   document.getElementById("kSpend").textContent=EUR(totalSpend);
-  document.getElementById("kSpendP").textContent="across "+RAW.sups.length+" suppliers";
-  document.getElementById("kShare").textContent=PCT(topSup.spend/allSpend);
+  document.getElementById("kSpendP").textContent=`${sd.label} · ${sups.length} suppliers`;
+  document.getElementById("kShare").textContent=allSpend?PCT(topSup.spend/allSpend):"–";
   document.getElementById("kShareP").textContent=topSup.k+" — concentration risk";
   document.getElementById("kStock").textContent=stockRisk;
 
@@ -503,9 +519,9 @@ function renderOverview(){
     options:{maintainAspectRatio:false,plugins:{legend:{position:"top",labels:{usePointStyle:true,boxWidth:8}}},
       scales:{x:{grid:{display:false},ticks:{maxTicksLimit:8}},y:{grid:{color:"#f1f5f9"},beginAtZero:true}}}});
 
-  // donut (always all suppliers; clickable)
+  // supplier-concentration donut — year-aware (same spend dataset as the KPIs).
   destroy("donut");
-  const ss=RAW.sups.slice().sort((a,b)=>b.spend-a.spend);
+  const ss=sups.slice().sort((a,b)=>b.spend-a.spend);
   charts.donut=new Chart(document.getElementById("donut"),{type:"doughnut",
     data:{labels:ss.map(x=>x.k),datasets:[{data:ss.map(x=>x.spend),
       backgroundColor:ss.map((x,i)=>x.k===topSup.k?C.red:pie[(i+1)%pie.length]),borderWidth:2,borderColor:"#fff"}]},

@@ -10,8 +10,16 @@ const USER  = process.env.API_USER || "admin@example.com";
 const PASS  = process.env.API_PASS || "admin";
 const PORT  = process.env.PORT || 8080;
 const REFRESH_MS = (process.env.REFRESH_SECONDS ? +process.env.REFRESH_SECONDS : 300) * 1000;
+// AI insights call the LLM, so they're the only refresh step that costs tokens.
+// They reason over slowly-changing analytics, so re-running them every data
+// refresh (every 5 min = 288 calls/day) burns tokens for no new information.
+// Refresh them on their OWN, much slower clock and reuse the last good set in
+// between — cutting agent calls ~97% (288/day -> ~8/day at the 3h default).
+const INSIGHTS_TTL_MS = (process.env.INSIGHTS_TTL_SECONDS ? +process.env.INSIGHTS_TTL_SECONDS : 10800) * 1000;
 
 let cache = { generated_at: null, data: null, error: null };
+// Last successfully-fetched insights + when, so we only re-call the LLM when stale.
+let insightsCache = { at: 0, value: [] };
 
 async function login() {
   const body = new URLSearchParams({ grant_type: "password", username: USER, password: PASS });
@@ -60,8 +68,20 @@ async function refresh() {
       getJSON(token, "/api/v1/planning/inventory"),
       getCSV(token, "/api/v1/analytics/exports/forecast-accuracy.csv"),
     ]);
-    // AI insights are nice-to-have — never let a 502 here take down the board.
-    const insights = await safe("agent/insights", getJSON(token, "/api/v1/agent/insights"), []);
+    // AI insights are nice-to-have AND token-costed, so fetch them only when the
+    // cache is stale (every INSIGHTS_TTL_MS, not every data refresh). Between
+    // refreshes we reuse the last good set. A 502 (e.g. no API credit) just keeps
+    // whatever we last had — never takes down the board.
+    let insights = insightsCache.value;
+    if (Date.now() - insightsCache.at >= INSIGHTS_TTL_MS) {
+      const fresh = await safe("agent/insights", getJSON(token, "/api/v1/agent/insights"), null);
+      if (fresh && fresh.length) {            // only advance the cache on a real result
+        insights = fresh;
+        insightsCache = { at: Date.now(), value: fresh };
+      } else {
+        insightsCache.at = Date.now();        // back off a full TTL before retrying a failing call
+      }
+    }
     // Should-cost is new — tolerate an older backend that lacks the endpoints.
     const shouldCostSavings = await safe("should-cost/savings",
       getJSON(token, "/api/v1/analytics/should-cost/savings"), null);
@@ -83,8 +103,10 @@ async function refresh() {
         tco_by_class: tcoByClass, tco_portfolio: tcoPortfolio,
       }
     };
+    const insightsAgeMin = Math.round((Date.now() - insightsCache.at) / 60000);
     console.log(`[refresh] ok @ ${cache.generated_at} (${forecast.length} forecast rows, `
-      + `${shouldCostBySupplier.length} should-cost rows, ${tcoByClass.length} tco classes)`);
+      + `${shouldCostBySupplier.length} should-cost rows, ${tcoByClass.length} tco classes, `
+      + `${insights.length} insights age ${insightsAgeMin}m)`);
   } catch (e) {
     cache.error = String(e.message || e);
     console.error("[refresh] FAILED:", cache.error);

@@ -4,6 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>SCM Master — Executive Cockpit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="chart.umd.min.js"></script>
 <style>
   :root{
@@ -97,6 +100,81 @@
   .yearsel button.on{background:#1f3a8a;border-color:#1f3a8a;color:#fff}
   .formula b{color:#0f172a}
   .barlabel{font-size:12px}
+
+  /* ===================== CONTROL TOWER (3D RTS) ===================== */
+  /* Full-bleed dark stage that breaks out of the light .wrap container. */
+  body.tower-active{background:#0a0e16}
+  body.tower-active .filterbar{display:none}
+  body.tower-active .wrap{max-width:none;padding:0}
+  .tower-stage{position:relative;width:100%;height:calc(100vh - 150px);min-height:540px;
+    border-radius:14px;overflow:hidden;background:#0a0e16;box-shadow:0 18px 60px rgba(0,0,0,.45)}
+  #towerMount{position:absolute;inset:0}
+  #towerMount canvas{display:block;width:100%;height:100%}
+  .tower-hint{position:absolute;bottom:64px;left:50%;transform:translateX(-50%);z-index:6;
+    font:10px/1 'JetBrains Mono',monospace;color:#7c8aa0;text-align:center;pointer-events:none;
+    animation:twHintFade 1s ease-in 7s forwards}
+  @keyframes twHintFade{to{opacity:0}}
+
+  /* HUD panels (scoped under .tower-hud so they never leak into the data tabs) */
+  .tower-hud{position:absolute;inset:0;z-index:5;pointer-events:none;
+    font-family:'JetBrains Mono',monospace;color:#dfe7f2}
+  .tower-hud .tw-panel{position:absolute;background:rgba(14,19,28,.82);border:1px solid #223043;
+    border-radius:10px;backdrop-filter:blur(8px);box-shadow:0 8px 40px rgba(0,0,0,.5)}
+  .tower-hud .tw-glow{box-shadow:0 0 0 1px rgba(45,212,191,.15),0 8px 40px rgba(0,0,0,.5)}
+  .tower-hud code{font-family:'JetBrains Mono',monospace;color:#7c8aa0;background:none;padding:0}
+
+  #tw-title{top:16px;left:16px;padding:14px 18px;max-width:340px}
+  #tw-title .tw-kicker{font-family:'Chakra Petch',sans-serif;letter-spacing:.22em;font-size:10px;color:#2dd4bf;font-weight:700}
+  #tw-title h1{font-family:'Chakra Petch',sans-serif;font-size:19px;font-weight:700;line-height:1.1;margin:3px 0 0;color:#fff}
+  #tw-title .tw-sub{font-size:10.5px;color:#7c8aa0;margin-top:6px;line-height:1.45}
+  #tw-title .tw-clock{margin-top:9px;display:flex;align-items:center;gap:8px;font-size:11px;color:#7c8aa0}
+  #tw-title .tw-clock b{color:#dfe7f2;font-weight:700;letter-spacing:.04em}
+  .tw-pulse{width:7px;height:7px;border-radius:50%;background:#2dd4bf;box-shadow:0 0 8px #2dd4bf;animation:twBeat 1.6s infinite}
+  @keyframes twBeat{0%,100%{opacity:.35}50%{opacity:1}}
+
+  #tw-stats{top:16px;right:16px;padding:12px;display:grid;grid-template-columns:repeat(2,1fr);gap:8px;width:264px}
+  .tw-stat{padding:8px 10px;border-radius:7px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.05)}
+  .tw-stat .tw-lab{font-size:8.5px;letter-spacing:.14em;color:#7c8aa0;text-transform:uppercase}
+  .tw-stat .tw-val{font-size:22px;font-weight:700;line-height:1.05;margin-top:2px;font-variant-numeric:tabular-nums}
+  .tw-cap{grid-column:1 / -1;padding:9px 10px}
+  .tw-cap .tw-row{display:flex;justify-content:space-between;align-items:baseline}
+  .tw-bartrack{height:8px;border-radius:5px;background:rgba(255,255,255,.07);margin-top:7px;overflow:hidden}
+  .tw-barfill{height:100%;width:0%;border-radius:5px;background:linear-gradient(90deg,#3ddc84,#f5a524);transition:width .4s,background .4s}
+  .tw-cap.full .tw-barfill{background:linear-gradient(90deg,#f5a524,#ff5d5d)}
+  .tw-guard{font-size:8.5px;color:#7c8aa0;margin-top:5px}
+  .tw-cap.full .tw-guard{color:#ff5d5d}
+
+  #tw-legend{bottom:16px;right:16px;padding:11px 13px;width:200px}
+  #tw-legend .tw-h{font-size:8.5px;letter-spacing:.16em;color:#7c8aa0;text-transform:uppercase;margin-bottom:8px}
+  #tw-legend .tw-item{display:flex;align-items:center;gap:8px;font-size:10.5px;margin:5px 0;color:#c3cdda}
+  #tw-legend .tw-dot{width:10px;height:10px;border-radius:3px;flex:none}
+
+  #tw-log{bottom:16px;left:16px;padding:10px 12px;width:380px;max-height:172px;overflow:hidden}
+  #tw-log .tw-h{font-size:8.5px;letter-spacing:.16em;color:#7c8aa0;text-transform:uppercase;margin-bottom:7px;display:flex;justify-content:space-between}
+  #tw-logfeed{display:flex;flex-direction:column-reverse;gap:3px;font-size:10.5px;line-height:1.35}
+  .tw-lg{display:flex;gap:7px;opacity:0;animation:twSlide .35s forwards}
+  .tw-lg .tw-t{color:#586478;flex:none}
+  .tw-lg .tw-m{color:#aab6c6}
+  .tw-lg.ok .tw-m{color:#3ddc84}.tw-lg.dc .tw-m{color:#2dd4bf}.tw-lg.warn .tw-m{color:#f5a524}.tw-lg.bad .tw-m{color:#ff5d5d}.tw-lg.ai .tw-m{color:#4aa3ff}
+  @keyframes twSlide{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
+
+  #tw-controls{bottom:16px;left:50%;transform:translateX(-50%);padding:8px;display:flex;gap:6px;align-items:center;pointer-events:auto}
+  .tw-btn{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;color:#c3cdda;background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.08);border-radius:7px;padding:7px 11px;cursor:pointer;transition:.15s;letter-spacing:.02em}
+  .tw-btn:hover{background:rgba(45,212,191,.12);border-color:rgba(45,212,191,.4);color:#fff}
+  .tw-btn.on{background:rgba(45,212,191,.18);border-color:#2dd4bf;color:#fff}
+  .tw-sepv{width:1px;height:20px;background:rgba(255,255,255,.1);margin:0 2px}
+
+  #tw-tags{position:absolute;inset:0;z-index:4;pointer-events:none;overflow:hidden}
+  .tw-tag{position:absolute;transform:translate(-50%,-100%);font-size:10.5px;font-weight:600;font-family:'JetBrains Mono',monospace;
+    padding:4px 9px;border-radius:7px;white-space:nowrap;border:1px solid;backdrop-filter:blur(3px);
+    animation:twTagPop .4s ease-out, twTagFade .5s ease-in 2.5s forwards}
+  .tw-tag::after{content:'';position:absolute;left:50%;bottom:-5px;transform:translateX(-50%);border:5px solid transparent;border-top-color:inherit}
+  .tw-tag.ai{color:#cfe2ff;background:rgba(35,60,110,.7);border-color:#4aa3ff}
+  .tw-tag.refuse{color:#ffd6d6;background:rgba(90,30,30,.7);border-color:#ff5d5d}
+  .tw-tag.deploy{color:#c9fff5;background:rgba(20,70,64,.7);border-color:#2dd4bf}
+  @keyframes twTagPop{from{opacity:0;transform:translate(-50%,-70%) scale(.8)}to{opacity:1}}
+  @keyframes twTagFade{to{opacity:0;transform:translate(-50%,-130%)}}
 </style>
 </head>
 <body>
@@ -109,7 +187,8 @@
     <div class="live"><span class="dot"></span> Live data · <span id="genDate"></span></div>
   </div>
   <nav class="tabs">
-    <button data-tab="overview" class="active">Overview</button>
+    <button data-tab="tower" class="active">🛰 Control Tower</button>
+    <button data-tab="overview">Overview</button>
     <button data-tab="scorecard">SC Scorecard</button>
     <button data-tab="spend">Spend</button>
     <button data-tab="inventory">Inventory</button>
@@ -125,8 +204,16 @@
     <span class="hint">💡 Click any category, supplier or product to filter the whole board.</span>
   </div>
 
+  <!-- ===================== CONTROL TOWER (3D RTS home) ===================== -->
+  <section class="page active" id="page-tower">
+    <div id="towerStage" class="tower-stage">
+      <div id="towerMount"></div>
+      <div id="towerHint" class="tower-hint">drag to orbit · scroll to zoom · right-drag to pan</div>
+    </div>
+  </section>
+
   <!-- ===================== OVERVIEW ===================== -->
-  <section class="page active" id="page-overview">
+  <section class="page" id="page-overview">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
       <span style="font-size:12px;color:#64748b;font-weight:600">Period:</span>
       <span id="ovYearSel" class="yearsel"></span>
@@ -317,6 +404,11 @@
   </div>
   <div class="drawer-body" id="dwBody"></div>
 </aside>
+
+<!-- 3D Control Tower (RTS home screen). THREE is vendored locally so the cockpit
+     stays CDN-independent like Chart.js. tower.js exposes window.SCMTower. -->
+<script src="three.min.js"></script>
+<script src="tower.js"></script>
 
 <script>
 const EUR = n => "€" + Number(n).toLocaleString("en-US",{maximumFractionDigits:0});
@@ -932,9 +1024,18 @@ document.getElementById("dwClose").onclick=closeDrill;
 document.getElementById("drawerBg").onclick=closeDrill;
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeDrill();});
 
-let CURRENT="overview";
+let CURRENT="tower";
+// The 3D Control Tower mounts its own WebGL canvas + HUD; "rendering" it just
+// means ensuring it's mounted and synced to the live model. The heavy GL is only
+// alive while this tab is active (mount on enter, unmount on leave) so it never
+// taxes the data tabs.
+function renderTower(){
+  if(!window.SCMTower) return;
+  if(!SCMTower.isMounted()) SCMTower.mount(document.getElementById("towerMount"));
+  if(RAW) SCMTower.sync(RAW);
+}
 function renderAll(){
-  const fn={overview:renderOverview,scorecard:renderScorecard,spend:renderSpend,
+  const fn={tower:renderTower,overview:renderOverview,scorecard:renderScorecard,spend:renderSpend,
             inventory:renderInventory,forecast:renderForecast,shouldcost:renderShouldCost,tco:renderTCO}[CURRENT];
   if(!fn) return;
   const note=document.getElementById("renderErr"); if(note) note.style.display="none";
@@ -1021,11 +1122,16 @@ function renderTCO(){
 // tabs
 document.querySelectorAll("nav.tabs button").forEach(b=>{
   b.onclick=()=>{
+    const prev=CURRENT, next=b.dataset.tab;
     document.querySelectorAll("nav.tabs button").forEach(x=>x.classList.remove("active"));
     b.classList.add("active");
     document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
-    document.getElementById("page-"+b.dataset.tab).classList.add("active");
-    CURRENT=b.dataset.tab; renderAll();
+    document.getElementById("page-"+next).classList.add("active");
+    CURRENT=next;
+    // Free the WebGL context when leaving the tower; flip the full-bleed dark theme.
+    document.body.classList.toggle("tower-active", next==="tower");
+    if(prev==="tower" && next!=="tower" && window.SCMTower) SCMTower.unmount();
+    renderAll();
   };
 });
 
@@ -1050,6 +1156,9 @@ async function loadData(){
   if(!src || src.error){ showError("API returned: "+(src&&src.error||"empty")); return; }
   try{
     buildModel(src); renderFilterBar(); renderAll();
+    // Re-sync the Control Tower to the fresh model even if it isn't the active tab,
+    // so it's already current the moment the user lands on it (state stays real).
+    if(window.SCMTower) SCMTower.sync(RAW);
     var eb=document.getElementById("errbanner"); if(eb) eb.remove();
   }catch(e){
     console.error("render failed", e);
@@ -1078,6 +1187,8 @@ document.addEventListener("click", async (e)=>{
   }
 });
 
+// Control Tower is the landing tab — apply its full-bleed dark theme on load.
+document.body.classList.add("tower-active");
 loadData();
 setInterval(loadData, 60000); // auto-refresh every 60s — the board updates itself
 </script>

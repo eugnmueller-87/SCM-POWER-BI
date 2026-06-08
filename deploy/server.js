@@ -106,6 +106,10 @@ async function refresh() {
       getJSON(token, "/api/v1/tco/by-class"), []);
     const tcoPortfolio = await safe("tco/portfolio",
       getJSON(token, "/api/v1/tco/portfolio?baseline=50000000"), null);
+    // Forward warehouse capacity: free space net of inbound already on the way, so
+    // the cockpit can show committed vs free as a % of max and block over-ordering.
+    const storageHeadroom = await safe("storage-headroom",
+      getJSON(token, "/api/v1/planning/storage-headroom"), null);
 
     // Forecast accuracy = 1 − WMAPE over the backtest rows (deterministic, no LLM).
     const forecastAccuracy = wmapeAccuracy(forecast);
@@ -128,6 +132,7 @@ async function refresh() {
         rule_insights: ruleInsights, forecast_accuracy: forecastAccuracy,
         should_cost_savings: shouldCostSavings, should_cost_by_supplier: shouldCostBySupplier,
         tco_by_class: tcoByClass, tco_portfolio: tcoPortfolio,
+        storage_headroom: storageHeadroom,
       }
     };
     const insightsAgeMin = Math.round((Date.now() - insightsCache.at) / 60000);

@@ -195,6 +195,10 @@
       <div class="card kpi"><div class="label">Stockout Risk</div><div class="value" id="iRisk">–</div><span class="pill bad">cover &lt; lead time</span></div>
       <div class="card kpi"><div class="label">Inventory Value</div><div class="value" id="iValue">–</div><span class="pill neut">on-hand × price</span></div>
     </div>
+    <div class="card" id="capCard" style="display:none">
+      <h3>Warehouse capacity — committed vs free <span style="font-weight:400;text-transform:none;font-size:11px">(inbound is reserved so you don't over-order)</span></h3>
+      <div id="capBars"></div>
+    </div>
     <div class="grid main">
       <div class="card"><h3>On-hand vs safety stock</h3><div class="chart-box tall"><canvas id="invStock"></canvas></div></div>
       <div class="card"><h3>Days of cover <span style="font-weight:400;text-transform:none;font-size:11px">(red = below lead time)</span></h3><div class="chart-box tall"><canvas id="invCover"></canvas></div></div>
@@ -313,6 +317,7 @@ function buildModel(src){
     sups: arr(D.spend_by_supplier).map(x=>({k:x.supplier_name, units:+x.units, spend:num(x.spend)})),
     prods: arr(D.spend_by_product).map(x=>({k:fixTxt(x.product_name), cat:x.category, units:+x.units, spend:num(x.spend)})),
     inv: arr(D.inventory).map(x=>({name:fixTxt(x.name), cat:x.category, on_hand:+x.on_hand, safety:+x.safety_stock, burn:num(x.daily_burn), lead:+x.lead_time_days, on_order:+x.on_order, eta:x.next_eta, price:num(x.unit_price)})),
+    headroom: D.storage_headroom || null,
     fc: arr(D.forecast).map(x=>({date:x.as_of_date, pred:num(x.predicted_demand), act:num(x.actual_demand), ape:num(x.ape), cat:x.category, prod:fixTxt(x.name), err:num(x.abs_error)})),
     ins: arr(D.insights),
     ruleIns: arr(D.rule_insights),
@@ -517,6 +522,42 @@ function renderSpend(){
   });
 }
 
+function renderCapacity(){
+  const h=RAW.headroom, card=document.getElementById("capCard");
+  if(!h || !h.zones || !h.zones.length){ if(card) card.style.display="none"; return; }
+  card.style.display="";
+  const pct=(n,d)=>d>0?Math.round(100*n/d):0;
+  // Portfolio headline: used now / committed-by-inbound / free-to-order, % of total max.
+  const totCap=h.zones.reduce((s,z)=>s+(z.capacity||0),0);
+  const totUsed=h.zones.reduce((s,z)=>s+(z.used||0),0);
+  const totInb=h.zones.reduce((s,z)=>s+(z.inbound||0),0);
+  const totFree=Math.max(0, totCap-totUsed-totInb);
+  const bar=(z)=>{
+    const cap=z.capacity||0, used=z.used||0, inb=z.inbound||0, free=Math.max(0,cap-used-inb);
+    const committed=used+inb;
+    return `<div style="margin:10px 0 14px">
+      <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px">
+        <b>${esc(z.code)}</b>
+        <span style="color:#64748b"><b style="color:${committed>=cap?'#dc2626':'#0f172a'}">${pct(committed,cap)}% committed</b> · ${pct(free,cap)}% free to order · cap ${cap}</span>
+      </div>
+      <div style="display:flex;height:18px;border-radius:5px;overflow:hidden;border:1px solid #e2e8f0">
+        <div title="On hand: ${used}" style="width:${pct(used,cap)}%;background:#1f3a8a"></div>
+        <div title="Inbound (reserved): ${inb}" style="width:${pct(inb,cap)}%;background:#f59e0b"></div>
+        <div title="Free to order: ${free}" style="width:${pct(free,cap)}%;background:#e2e8f0"></div>
+      </div></div>`;
+  };
+  document.getElementById("capBars").innerHTML =
+    `<div style="font-size:13px;margin:4px 0 12px;color:#334155">
+       <b style="color:${(totUsed+totInb)>=totCap?'#dc2626':'#0f172a'}">${pct(totUsed+totInb,totCap)}% committed</b> of ${totCap} max
+       · ${pct(totFree,totCap)}% (${totFree} units) free to order before inbound fills it.
+     </div>
+     <div style="display:flex;gap:14px;font-size:11px;color:#64748b;margin-bottom:8px">
+       <span><span style="display:inline-block;width:10px;height:10px;background:#1f3a8a;border-radius:2px"></span> on hand</span>
+       <span><span style="display:inline-block;width:10px;height:10px;background:#f59e0b;border-radius:2px"></span> inbound (reserved)</span>
+       <span><span style="display:inline-block;width:10px;height:10px;background:#e2e8f0;border-radius:2px"></span> free to order</span>
+     </div>` + h.zones.map(bar).join("");
+}
+
 function renderInventory(){
   const inv=RAW.inv;
   const belowSafety=inv.filter(x=>x.on_hand<x.safety).length;
@@ -526,6 +567,8 @@ function renderInventory(){
   document.getElementById("iSafety").textContent=belowSafety;
   document.getElementById("iRisk").textContent=risk;
   document.getElementById("iValue").textContent=EUR(value);
+
+  renderCapacity();
 
   destroy("invStock");
   charts.invStock=new Chart(document.getElementById("invStock"),{type:"bar",

@@ -133,6 +133,12 @@
       <div class="card kpi"><div class="label">Top Supplier Share</div><div class="value" id="kShare">–</div><span class="pill bad" id="kShareP">concentration risk</span></div>
       <div class="card kpi"><div class="label">Stockout Risk</div><div class="value" id="kStock">–</div><span class="pill bad">SKUs below cover</span></div>
     </div>
+    <div class="card" id="capFlowCard" style="display:none;margin-bottom:18px">
+      <h3 style="display:flex;align-items:center;gap:8px">🏭 Warehouse capacity &amp; flow
+        <span style="font-weight:400;text-transform:none;font-size:11px;color:#94a3b8">committed vs free · in/out · coverage</span>
+      </h3>
+      <div id="capFlow"></div>
+    </div>
     <div class="grid main">
       <div class="card">
         <h3 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -328,6 +334,7 @@ function buildModel(src){
     prods: arr(D.spend_by_product).map(x=>({k:fixTxt(x.product_name), cat:x.category, units:+x.units, spend:num(x.spend)})),
     inv: arr(D.inventory).map(x=>({name:fixTxt(x.name), cat:x.category, on_hand:+x.on_hand, safety:+x.safety_stock, burn:num(x.daily_burn), lead:+x.lead_time_days, on_order:+x.on_order, eta:x.next_eta, price:num(x.unit_price)})),
     headroom: D.storage_headroom || null,
+    capFlow: D.capacity_flow || null,
     fc: arr(D.forecast).map(x=>({date:x.as_of_date, pred:num(x.predicted_demand), act:num(x.actual_demand), ape:num(x.ape), cat:x.category, prod:fixTxt(x.name), err:num(x.abs_error)})),
     ins: arr(D.insights),
     ruleIns: arr(D.rule_insights),
@@ -411,7 +418,38 @@ function renderFilterBar(){
 }
 
 // ---------- renderers ----------
+function renderCapFlow(){
+  const cf=RAW.capFlow, card=document.getElementById("capFlowCard");
+  if(!card) return;
+  if(!cf || cf.capacity<=0){ card.style.display="none"; return; }
+  card.style.display="";
+  const cap=cf.capacity, used=cf.on_hand, inb=cf.inbound, free=Math.max(0,(cf.free_to_order??0));
+  const pct=(n)=>cap>0?Math.round(100*n/cap):0;
+  const committedPct=cf.committed_pct!=null?Math.round(cf.committed_pct*100):pct(used+inb);
+  const net=cf.net_flow_per_day;
+  const cover=cf.weeks_of_cover!=null?`${cf.weeks_of_cover} weeks`:"—";
+  const deplete=cf.days_to_depletion!=null?`${cf.days_to_depletion} days`:"—";
+  document.getElementById("capFlow").innerHTML=`
+    <div style="font-size:13px;color:#334155;margin:2px 0 12px">
+      <b style="color:${committedPct>=90?'#dc2626':'#0f172a'}">${committedPct}% committed</b> of ${cap} max
+      · <b>${free}</b> units free to order before inbound fills it.
+    </div>
+    <div style="display:flex;height:20px;border-radius:6px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:8px">
+      <div title="On hand ${used}" style="width:${pct(used)}%;background:#1f3a8a"></div>
+      <div title="Inbound (reserved) ${inb}" style="width:${pct(inb)}%;background:#f59e0b"></div>
+      <div title="Free to order ${free}" style="width:${pct(free)}%;background:#e2e8f0"></div>
+    </div>
+    <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:#475569;margin-top:10px">
+      <span><span style="color:#16a34a">▲ in</span> ${cf.daily_in}/day</span>
+      <span><span style="color:#dc2626">▼ out</span> ${cf.daily_out}/day</span>
+      <span>net <b style="color:${net>=0?'#16a34a':'#dc2626'}">${net>=0?'+':''}${net}/day</b> ${net>=0?'(filling)':'(draining)'}</span>
+      <span>coverage <b>${cover}</b></span>
+      <span>depletion in <b>${deplete}</b></span>
+    </div>`;
+}
+
 function renderOverview(){
+  renderCapFlow();
   const {prods,fc,cats,sups}=applyFilter();
   const totalSpend = prods.reduce((s,x)=>s+x.spend,0);
   const allSpend = RAW.sups.reduce((s,x)=>s+x.spend,0);

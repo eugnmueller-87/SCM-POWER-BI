@@ -11,7 +11,13 @@ const PASS  = process.env.API_PASS || "admin";
 const PORT  = process.env.PORT || 8080;
 const REFRESH_MS = (process.env.REFRESH_SECONDS ? +process.env.REFRESH_SECONDS : 300) * 1000;
 
-let cache = { generated_at: null, data: null, error: null };
+// Cache keyed by year ("all" for the unfiltered total). Each entry is the full
+// dashboard payload scoped to that year, so the sticky year selector just swaps
+// which cached payload the board reads — no per-click backend round-trip.
+let cacheByYear = {};            // { all: {...}, 2026: {...}, 2025: {...} }
+let yearsList = [];              // [2026, 2025] — drives the selector
+let lastError = null;
+let lastGeneratedAt = null;
 
 async function login() {
   const body = new URLSearchParams({ grant_type: "password", username: USER, password: PASS });
@@ -49,17 +55,32 @@ async function safe(label, p, fallback) {
   catch (e) { console.warn(`[refresh] non-critical '${label}' failed: ${e.message || e} — using fallback`); return fallback; }
 }
 
+// Spend is the only year-scoped dimension (it's an over-time flow). Inventory,
+// forecast, should-cost and TCO are current-state snapshots — they're the same
+// regardless of the selected year, so we fetch them once and share them.
+async function fetchSpend(token, year) {
+  const q = year == null ? "" : `?year=${year}`;
+  const [byCat, bySup, byProd, spendTotal] = await Promise.all([
+    getJSON(token, `/api/v1/analytics/spend/by-category${q}`),
+    getJSON(token, `/api/v1/analytics/spend/by-supplier${q}`),
+    getJSON(token, `/api/v1/analytics/spend/by-product${q}`),
+    getJSON(token, `/api/v1/analytics/spend${q}`),
+  ]);
+  return { byCat, bySup, byProd, spendTotal };
+}
+
 async function refresh() {
   try {
     const token = await login();
-    const [byCat, bySup, byProd, spendTotal, inventory, forecast] = await Promise.all([
-      getJSON(token, "/api/v1/analytics/spend/by-category"),
-      getJSON(token, "/api/v1/analytics/spend/by-supplier"),
-      getJSON(token, "/api/v1/analytics/spend/by-product"),
-      getJSON(token, "/api/v1/analytics/spend"),
-      getJSON(token, "/api/v1/planning/inventory"),
-      getCSV(token, "/api/v1/analytics/exports/forecast-accuracy.csv"),
-    ]);
+    const stamp = new Date().toISOString().replace("T", " ").slice(0, 16) + " UTC";
+
+    // Which years have data? Tolerate an older backend (no /years route) by
+    // falling back to all-time only.
+    const years = await safe("spend/years", getJSON(token, "/api/v1/analytics/spend/years"), []);
+
+    // Shared, non-year-scoped snapshots.
+    const inventory = await getJSON(token, "/api/v1/planning/inventory");
+    const forecast = await getCSV(token, "/api/v1/analytics/exports/forecast-accuracy.csv");
     // AI insights are nice-to-have — never let a 502 here take down the board.
     const insights = await safe("agent/insights", getJSON(token, "/api/v1/agent/insights"), []);
     // Should-cost is new — tolerate an older backend that lacks the endpoints.
@@ -72,34 +93,52 @@ async function refresh() {
       getJSON(token, "/api/v1/tco/by-class"), []);
     const tcoPortfolio = await safe("tco/portfolio",
       getJSON(token, "/api/v1/tco/portfolio?baseline=50000000"), null);
-    cache = {
-      generated_at: new Date().toISOString().replace("T", " ").slice(0, 16) + " UTC",
-      error: null,
-      data: {
-        generated_at: new Date().toISOString().replace("T", " ").slice(0, 16) + " UTC",
-        spend_by_category: byCat, spend_by_supplier: bySup, spend_by_product: byProd,
-        spend_total: spendTotal, inventory, insights, forecast,
+
+    // Build one full payload per scope: "all" + each year that has data.
+    const scopes = [null, ...years];
+    const spendByScope = await Promise.all(scopes.map(y => fetchSpend(token, y)));
+
+    const next = {};
+    scopes.forEach((y, i) => {
+      const sp = spendByScope[i];
+      next[y == null ? "all" : String(y)] = {
+        generated_at: stamp,
+        year: y,                 // null = all-time
+        years,                   // full list, so the client can build the selector
+        spend_by_category: sp.byCat, spend_by_supplier: sp.bySup,
+        spend_by_product: sp.byProd, spend_total: sp.spendTotal,
+        inventory, insights, forecast,
         should_cost_savings: shouldCostSavings, should_cost_by_supplier: shouldCostBySupplier,
         tco_by_class: tcoByClass, tco_portfolio: tcoPortfolio,
-      }
-    };
-    console.log(`[refresh] ok @ ${cache.generated_at} (${forecast.length} forecast rows, `
-      + `${shouldCostBySupplier.length} should-cost rows, ${tcoByClass.length} tco classes)`);
+      };
+    });
+
+    cacheByYear = next;
+    yearsList = years;
+    lastGeneratedAt = stamp;
+    lastError = null;
+    console.log(`[refresh] ok @ ${stamp} (years: ${years.join(", ") || "none"}; `
+      + `${forecast.length} forecast rows, ${shouldCostBySupplier.length} should-cost rows, `
+      + `${tcoByClass.length} tco classes)`);
   } catch (e) {
-    cache.error = String(e.message || e);
-    console.error("[refresh] FAILED:", cache.error);
+    lastError = String(e.message || e);
+    console.error("[refresh] FAILED:", lastError);
   }
 }
 
 const TYPES = { ".html": "text/html", ".js": "application/javascript", ".css": "text/css", ".json": "application/json" };
 
 const server = http.createServer(async (req, res) => {
-  const url = req.url.split("?")[0];
+  const [url, query] = req.url.split("?");
 
   if (url === "/api/data") {
-    if (!cache.data) await refresh();
+    if (!Object.keys(cacheByYear).length) await refresh();
+    // ?year=YYYY selects a scope; anything else (incl. "all" / missing) = all-time.
+    const yr = new URLSearchParams(query || "").get("year");
+    const key = yr && cacheByYear[yr] ? yr : "all";
+    const payload = cacheByYear[key];
     res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
-    res.end(JSON.stringify(cache.data || { error: cache.error }));
+    res.end(JSON.stringify(payload || { error: lastError, years: yearsList }));
     return;
   }
   if (url === "/healthz") { res.writeHead(200); res.end("ok"); return; }

@@ -21,7 +21,16 @@
   .bar-top{display:flex;align-items:center;justify-content:space-between}
   header.bar h1{margin:0;font-size:23px;font-weight:700;letter-spacing:.2px}
   header.bar .sub{font-size:12px;opacity:.82;margin-top:3px}
+  .bar-right{display:flex;align-items:center;gap:12px}
   .live{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;background:rgba(255,255,255,.12);padding:8px 14px;border-radius:999px}
+  .yearpick{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;background:rgba(255,255,255,.12);padding:6px 8px 6px 14px;border-radius:999px}
+  .yearpick label{opacity:.82}
+  .yearpick select{
+    appearance:none;-webkit-appearance:none;background:#fff;color:#0f172a;border:none;border-radius:999px;
+    font:inherit;font-size:13px;font-weight:700;padding:5px 30px 5px 13px;cursor:pointer;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%230f172a' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 11px center;
+  }
   .dot{width:9px;height:9px;border-radius:50%;background:#34d399;animation:pulse 2s infinite}
   @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(52,211,153,.6)}70%{box-shadow:0 0 0 10px rgba(52,211,153,0)}100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}
   nav.tabs{display:flex;gap:4px;margin-top:16px}
@@ -100,7 +109,13 @@
       <h1>SCM Master — Executive Cockpit</h1>
       <div class="sub">Procurement &amp; supply-chain analytics · live API</div>
     </div>
-    <div class="live"><span class="dot"></span> Live data · <span id="genDate"></span></div>
+    <div class="bar-right">
+      <div class="yearpick">
+        <label for="yearSelect">Year</label>
+        <select id="yearSelect"><option value="all">All years</option></select>
+      </div>
+      <div class="live"><span class="dot"></span> Live data · <span id="genDate"></span></div>
+    </div>
   </div>
   <nav class="tabs">
     <button data-tab="overview" class="active">Overview</button>
@@ -156,7 +171,7 @@
   <!-- ===================== SPEND ===================== -->
   <section class="page" id="page-spend">
     <div class="grid kpis">
-      <div class="card kpi"><div class="label">Total Spend</div><div class="value" id="sTotal">–</div><span class="pill neut">selected scope</span></div>
+      <div class="card kpi"><div class="label">Total Spend</div><div class="value" id="sTotal">–</div><span class="pill neut" id="sScope">selected scope</span></div>
       <div class="card kpi"><div class="label">Units</div><div class="value" id="sUnits">–</div><span class="pill neut">items procured</span></div>
       <div class="card kpi"><div class="label">Avg Spend / Unit</div><div class="value" id="sAvg">–</div><span class="pill neut">blended</span></div>
       <div class="card kpi"><div class="label">Categories</div><div class="value" id="sCats">–</div><span class="pill neut">in scope</span></div>
@@ -433,6 +448,8 @@ function renderSpend(){
   const units=prods.reduce((s,x)=>s+x.units,0);
   const allTotal=RAW.prods.reduce((s,x)=>s+x.spend,0);
   document.getElementById("sTotal").textContent=EUR(total);
+  const scope=document.getElementById("sScope");
+  if(scope) scope.textContent=(D&&D.year?D.year:"all-time")+" · selected scope";
   document.getElementById("sUnits").textContent=units.toLocaleString();
   document.getElementById("sAvg").textContent=units?EUR(total/units):"–";
   document.getElementById("sCats").textContent=new Set(prods.map(p=>p.cat)).size;
@@ -835,22 +852,50 @@ function showError(msg){
   }
   b.textContent="⚠ Dashboard render error — "+msg;
 }
+// Sticky year scope. "all" = every year combined (the all-time total); a year
+// string scopes the whole board to assets received in that year. The selection
+// survives the 60s auto-refresh and is forwarded to the proxy as ?year=.
+let YEAR = "all";
+
+// (Re)build the year selector from the years the data actually has, keeping the
+// current pick if it's still valid (otherwise fall back to All years).
+function populateYearSelect(years){
+  const sel = document.getElementById("yearSelect");
+  if(!sel) return;
+  const want = sel.value || YEAR;
+  const opts = ['<option value="all">All years</option>']
+    .concat((years||[]).map(y=>`<option value="${y}">${y}</option>`));
+  sel.innerHTML = opts.join("");
+  sel.value = (years||[]).map(String).includes(String(want)) ? String(want) : "all";
+  YEAR = sel.value;
+}
+
 async function loadData(){
   let src;
+  const q = YEAR && YEAR!=="all" ? `?year=${encodeURIComponent(YEAR)}` : "";
   try{
-    const r = await fetch("/api/data", {cache:"no-store"});
+    const r = await fetch("/api/data"+q, {cache:"no-store"});
     if(!r.ok){ showError("API HTTP "+r.status); return; }
     src = await r.json();
   }catch(e){ showError("fetch failed: "+(e&&e.message||e)); return; }
   if(!src || src.error){ showError("API returned: "+(src&&src.error||"empty")); return; }
   try{
-    buildModel(src); renderFilterBar(); renderAll();
+    buildModel(src);
+    populateYearSelect(src.years);
+    renderFilterBar(); renderAll();
     var eb=document.getElementById("errbanner"); if(eb) eb.remove();
   }catch(e){
     console.error("render failed", e);
     showError((e&&e.message||e)+"  @  "+((e&&e.stack||"").split("\n")[1]||"").trim());
   }
 }
+
+// Changing the year re-fetches the scoped payload and re-renders the whole board.
+document.getElementById("yearSelect").addEventListener("change", e=>{
+  YEAR = e.target.value;
+  loadData();
+});
+
 loadData();
 setInterval(loadData, 60000); // auto-refresh every 60s — the board updates itself
 </script>

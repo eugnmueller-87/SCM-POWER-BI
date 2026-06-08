@@ -163,11 +163,11 @@
 
   <!-- ===================== SC SCORECARD ===================== -->
   <section class="page" id="page-scorecard">
-    <div class="scsec">📦 Inventory &amp; warehouse cycle</div>
+    <div class="scsec">📦 Inventory &amp; warehouse cycle <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#94a3b8">· live snapshot (now)</span></div>
     <div class="grid sc6" id="scInv"></div>
-    <div class="scsec" style="margin-top:22px">🎯 Demand planning &amp; forecast</div>
+    <div class="scsec" style="margin-top:22px">🎯 Demand planning &amp; forecast <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#94a3b8">· full backtest (all years)</span></div>
     <div class="grid sc6" id="scPlan"></div>
-    <div class="scsec" style="margin-top:22px">🏭 Sourcing &amp; supplier risk</div>
+    <div class="scsec" style="margin-top:22px">🏭 Sourcing &amp; supplier risk <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#94a3b8">· all-time spend (year view on the Spend tab)</span></div>
     <div class="grid sc6" id="scSrc"></div>
     <div class="grid" style="margin-top:18px"><div class="card"><h3>How to read this scorecard</h3>
       <div style="font-size:13px;color:#475569;line-height:1.6">
@@ -180,8 +180,12 @@
 
   <!-- ===================== SPEND ===================== -->
   <section class="page" id="page-spend">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+      <span style="font-size:12px;color:#64748b;font-weight:600">Period:</span>
+      <span id="spendYearSel" class="yearsel"></span>
+    </div>
     <div class="grid kpis">
-      <div class="card kpi"><div class="label">Total Spend</div><div class="value" id="sTotal">–</div><span class="pill neut">all-time · selected scope</span></div>
+      <div class="card kpi"><div class="label">Total Spend</div><div class="value" id="sTotal">–</div><span class="pill neut" id="sScope">all-time · selected scope</span></div>
       <div class="card kpi"><div class="label">Units</div><div class="value" id="sUnits">–</div><span class="pill neut">items procured</span></div>
       <div class="card kpi"><div class="label">Avg Spend / Unit</div><div class="value" id="sAvg">–</div><span class="pill neut">blended</span></div>
       <div class="card kpi"><div class="label">Categories</div><div class="value" id="sCats">–</div><span class="pill neut">in scope</span></div>
@@ -326,12 +330,28 @@ Chart.defaults.color = "#64748b";
 Chart.defaults.font.size = 12;
 
 let D = null, RAW = null, KPI = null;
+let SPEND_YEAR = null;   // selected spend year, or null = all-time
+const mapCats = (a)=>arr(a).map(x=>({k:x.category, units:+x.units, spend:num(x.spend)}));
+const mapSups = (a)=>arr(a).map(x=>({k:x.supplier_name, units:+x.units, spend:num(x.spend)}));
+const mapProds = (a)=>arr(a).map(x=>({k:fixTxt(x.product_name), cat:x.category, units:+x.units, spend:num(x.spend)}));
+
+// The active spend dataset: a chosen year (from cached spend_by_year) or all-time.
+function spendData(){
+  if(SPEND_YEAR && RAW.spendByYear[SPEND_YEAR]){
+    const y = RAW.spendByYear[SPEND_YEAR];
+    return { cats: mapCats(y.by_category), sups: mapSups(y.by_supplier), prods: mapProds(y.by_product), label: String(SPEND_YEAR) };
+  }
+  return { cats: RAW.cats, sups: RAW.sups, prods: RAW.prods, label: "all-time" };
+}
+
 function buildModel(src){
   D = src;
   RAW = {
-    cats: arr(D.spend_by_category).map(x=>({k:x.category, units:+x.units, spend:num(x.spend)})),
-    sups: arr(D.spend_by_supplier).map(x=>({k:x.supplier_name, units:+x.units, spend:num(x.spend)})),
-    prods: arr(D.spend_by_product).map(x=>({k:fixTxt(x.product_name), cat:x.category, units:+x.units, spend:num(x.spend)})),
+    cats: mapCats(D.spend_by_category),
+    sups: mapSups(D.spend_by_supplier),
+    prods: mapProds(D.spend_by_product),
+    spendYears: arr(D.spend_years),
+    spendByYear: D.spend_by_year || {},   // {year: {by_category, by_supplier, by_product, total}}
     inv: arr(D.inventory).map(x=>({name:fixTxt(x.name), cat:x.category, on_hand:+x.on_hand, safety:+x.safety_stock, burn:num(x.daily_burn), lead:+x.lead_time_days, on_order:+x.on_order, eta:x.next_eta, price:num(x.unit_price)})),
     headroom: D.storage_headroom || null,
     capFlow: D.capacity_flow || null,
@@ -391,7 +411,8 @@ const charts = {};
 function destroy(id){ if(charts[id]){charts[id].destroy(); delete charts[id];} }
 
 function applyFilter(){
-  let prods = RAW.prods, fc = RAW.fc, cats = RAW.cats, sups = RAW.sups;
+  const sd = spendData();   // all-time, or the selected spend year
+  let prods = sd.prods, fc = RAW.fc, cats = sd.cats, sups = sd.sups;
   if(FILTER){
     if(FILTER.type==="category"){
       prods = prods.filter(p=>p.cat===FILTER.value);
@@ -522,11 +543,23 @@ function renderOverview(){
   }
 }
 
+function renderSpendYearSel(){
+  const el=document.getElementById("spendYearSel"); if(!el) return;
+  const years=(RAW.spendYears||[]).slice().sort();
+  const btn=(l,v)=>`<button class="${(SPEND_YEAR===v||(v===null&&!SPEND_YEAR))?'on':''}" data-yr="${v===null?'':v}">${l}</button>`;
+  el.innerHTML=btn("All-time",null)+years.map(y=>btn(y,String(y))).join("");
+  el.querySelectorAll("button").forEach(b=>b.onclick=()=>{SPEND_YEAR=(SPEND_YEAR===(b.dataset.yr||null)?null:(b.dataset.yr||null));renderSpend();});
+}
+
 function renderSpend(){
+  renderSpendYearSel();
   const {prods,cats}=applyFilter();
+  const sd=spendData();
   const total=prods.reduce((s,x)=>s+x.spend,0);
   const units=prods.reduce((s,x)=>s+x.units,0);
-  const allTotal=RAW.prods.reduce((s,x)=>s+x.spend,0);
+  const allTotal=sd.prods.reduce((s,x)=>s+x.spend,0);   // total within the active period
+  const scope=document.getElementById("sScope");
+  if(scope) scope.textContent=`${sd.label} · selected scope`;
   document.getElementById("sTotal").textContent=EUR(total);
   document.getElementById("sUnits").textContent=NUM(units);
   document.getElementById("sAvg").textContent=units?EUR(total/units):"–";

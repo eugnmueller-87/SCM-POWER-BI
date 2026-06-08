@@ -114,6 +114,22 @@ async function refresh() {
     const capacityFlow = await safe("capacity-flow",
       getJSON(token, "/api/v1/planning/capacity-flow"), null);
 
+    // Per-year spend, so the Spend/Sourcing scorecards can slice by year (backend
+    // supports ?year=). Fetched upfront per available year and cached, so a year
+    // click reslices client-side with no per-click server round-trip. Small data.
+    const spendYears = await safe("spend/years",
+      getJSON(token, "/api/v1/analytics/spend/years"), []);
+    const spendByYear = {};
+    for (const y of (spendYears || [])) {
+      const [c, s, p, t] = await Promise.all([
+        safe(`spend/by-category/${y}`, getJSON(token, `/api/v1/analytics/spend/by-category?year=${y}`), []),
+        safe(`spend/by-supplier/${y}`, getJSON(token, `/api/v1/analytics/spend/by-supplier?year=${y}`), []),
+        safe(`spend/by-product/${y}`, getJSON(token, `/api/v1/analytics/spend/by-product?year=${y}`), []),
+        safe(`spend/${y}`, getJSON(token, `/api/v1/analytics/spend?year=${y}`), null),
+      ]);
+      spendByYear[y] = { by_category: c, by_supplier: s, by_product: p, total: t };
+    }
+
     // Forecast accuracy = 1 − WMAPE over the backtest rows (deterministic, no LLM).
     const forecastAccuracy = wmapeAccuracy(forecast);
 
@@ -136,6 +152,7 @@ async function refresh() {
         should_cost_savings: shouldCostSavings, should_cost_by_supplier: shouldCostBySupplier,
         tco_by_class: tcoByClass, tco_portfolio: tcoPortfolio,
         storage_headroom: storageHeadroom, capacity_flow: capacityFlow,
+        spend_years: spendYears, spend_by_year: spendByYear,
       }
     };
     const insightsAgeMin = Math.round((Date.now() - insightsCache.at) / 60000);

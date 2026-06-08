@@ -133,7 +133,7 @@
       <span style="font-size:11px;color:#94a3b8">scopes spend, supplier share &amp; the demand chart · the capacity tile is live "now"</span>
     </div>
     <div class="grid kpis">
-      <div class="card kpi"><div class="label">Forecast Accuracy</div><div class="value" id="kAcc">–</div><span class="pill good">backtested · all years</span></div>
+      <div class="card kpi"><div class="label">Forecast Accuracy</div><div class="value" id="kAcc">–</div><span class="pill good" id="kAccP">backtested · all years</span></div>
       <div class="card kpi"><div class="label">Total Spend</div><div class="value" id="kSpend">–</div><span class="pill neut" id="kSpendP">across – suppliers</span></div>
       <div class="card kpi"><div class="label">Top Supplier Share</div><div class="value" id="kShare">–</div><span class="pill bad" id="kShareP">concentration risk</span></div>
       <div class="card kpi"><div class="label">Stockout Risk</div><div class="value" id="kStock">–</div><span class="pill bad">SKUs below cover</span></div>
@@ -488,24 +488,24 @@ function renderOverview(){
   const {prods,fc}=applyFilter();
   const sd=spendData();                                  // year-aware spend dataset
   const sups=sd.sups;
+  // The period selector (SPEND_YEAR) slices the forecast rows by as-of year, so
+  // BOTH the accuracy KPI and the demand chart reflect the chosen period.
+  const lineFc = SPEND_YEAR ? fc.filter(x => (x.date || "").startsWith(SPEND_YEAR)) : fc;
   const totalSpend = prods.reduce((s,x)=>s+x.spend,0);
   const allSpend = sups.reduce((s,x)=>s+x.spend,0);
   const topSup = sups.slice().sort((a,b)=>b.spend-a.spend)[0] || {k:"—",spend:0};
-  const sumErr=fc.reduce((s,x)=>s+x.err,0), sumAct=fc.reduce((s,x)=>s+x.act,0);
+  const sumErr=lineFc.reduce((s,x)=>s+x.err,0), sumAct=lineFc.reduce((s,x)=>s+x.act,0);
   const acc = sumAct? 1-(sumErr/sumAct):0;
   const stockRisk = RAW.inv.filter(x=>x.burn>0 && (x.on_hand/x.burn)<x.lead).length;
-  document.getElementById("kAcc").textContent=PCT(acc);
+  document.getElementById("kAcc").textContent = sumAct ? PCT(acc) : "—";
+  document.getElementById("kAccP") && (document.getElementById("kAccP").textContent = `backtested · ${SPEND_YEAR || "all years"}`);
   document.getElementById("kSpend").textContent=EUR(totalSpend);
   document.getElementById("kSpendP").textContent=`${sd.label} · ${sups.length} suppliers`;
   document.getElementById("kShare").textContent=allSpend?PCT(topSup.spend/allSpend):"–";
   document.getElementById("kShareP").textContent=topSup.k+" — concentration risk";
   document.getElementById("kStock").textContent=stockRisk;
 
-  // line — all-time backtest overview; the product/category cross-filter (FILTER,
-  // applied above into `fc`) flows through so you can drill to one product. The
-  // period selector (SPEND_YEAR) also slices this chart by as-of year, so the
-  // whole Overview reslices together when a year is picked.
-  const lineFc = SPEND_YEAR ? fc.filter(x => (x.date || "").startsWith(SPEND_YEAR)) : fc;
+  // line — same year-sliced fc, so the chart matches the accuracy KPI.
   const span = document.getElementById("lineSpan");
   if(span){
     const period = SPEND_YEAR || "all-time";

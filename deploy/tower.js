@@ -1,8 +1,9 @@
 /* =====================================================================
    SCM-Master · Logistics Control Tower (3D RTS home screen) — TIER 2
    ---------------------------------------------------------------------
-   Babylon.js PBR render: image-based lighting, glow, soft (blur-ESM)
-   shadows, ACES tone-map, bloom, SSAO, grain + vignette.
+   Babylon.js PBR render: image-based lighting, glow, PCF soft shadows,
+   ACES tone-map, restrained bloom, SSAO, vignette. Tuned for a crisp,
+   premium look (no grain / chromatic-aberration smear).
 
    STATE-ACCURATE, motion illustrative. Every count, capacity %, crate
    stack, datacenter rack and event-log line is read from the live
@@ -104,7 +105,7 @@ function build() {
   scene.clearColor = new B.Color4(0.027, 0.039, 0.066, 1);
   scene.imageProcessingConfiguration.toneMappingEnabled = true;
   scene.imageProcessingConfiguration.toneMappingType = B.ImageProcessingConfiguration.TONEMAPPING_ACES;
-  scene.imageProcessingConfiguration.exposure = 1.1;
+  scene.imageProcessingConfiguration.exposure = 1.0;
   scene.fogMode = B.Scene.FOGMODE_LINEAR;
   scene.fogColor = new B.Color3(0.027, 0.039, 0.066);
   scene.fogStart = 48; scene.fogEnd = 110;
@@ -113,7 +114,7 @@ function build() {
   var sky = gradFace('#243149', '#0b1018'), bot = gradFace('#080b11', '#080b11');
   try {
     var env = B.CubeTexture.CreateFromImages([sky, sky, sky, sky, bot, sky], scene);
-    scene.environmentTexture = env; scene.environmentIntensity = 0.55;
+    scene.environmentTexture = env; scene.environmentIntensity = 0.32;
   } catch (e) { /* IBL optional */ }
 
   // camera — ArcRotate (built-in orbit)
@@ -129,19 +130,23 @@ function build() {
   camera.autoRotationBehavior.idleRotationSpinupTime = 1200;
   R.camera = camera;
 
-  // lights + shadows
+  // lights + shadows — toned down: the sun at 2.4 + IBL was blowing the platforms
+  // to pure white. Calmer key light, lower hemi, so PBR surfaces read as surfaces.
   var hemi = new B.HemisphericLight('hemi', new B.Vector3(0, 1, 0), scene);
-  hemi.intensity = 0.65; hemi.diffuse = new B.Color3(0.62, 0.71, 0.86); hemi.groundColor = new B.Color3(0.05, 0.07, 0.1);
+  hemi.intensity = 0.5; hemi.diffuse = new B.Color3(0.58, 0.67, 0.82); hemi.groundColor = new B.Color3(0.05, 0.07, 0.1);
   var dir = new B.DirectionalLight('sun', new B.Vector3(0.55, -1, 0.35), scene);
-  dir.position = new B.Vector3(-34, 52, -22); dir.intensity = 2.4; dir.diffuse = new B.Color3(1, 0.95, 0.86);
+  dir.position = new B.Vector3(-34, 52, -22); dir.intensity = 1.35; dir.diffuse = new B.Color3(1, 0.96, 0.9);
   var rim = new B.DirectionalLight('rim', new B.Vector3(-0.5, -0.3, 0.6), scene);
-  rim.intensity = 0.5; rim.diffuse = new B.Color3(0.18, 0.83, 0.75);
+  rim.intensity = 0.35; rim.diffuse = new B.Color3(0.18, 0.83, 0.75);
 
+  // Crisp PCF shadows instead of blur-ESM — the exponential map was part of the
+  // soft/washed look.
   var shadow = new B.ShadowGenerator(2048, dir);
-  shadow.useBlurExponentialShadowMap = true; shadow.blurKernel = 32; shadow.darkness = 0.42; shadow.bias = 0.0015;
+  shadow.usePercentageCloserFiltering = true; shadow.filteringQuality = B.ShadowGenerator.QUALITY_HIGH;
+  shadow.darkness = 0.5; shadow.bias = 0.0009; shadow.normalBias = 0.012;
   R.shadow = shadow;
 
-  R.glow = new B.GlowLayer('glow', scene); R.glow.intensity = 0.85;
+  R.glow = new B.GlowLayer('glow', scene); R.glow.intensity = 0.5;
 
   buildGround();
   Object.keys(Z).forEach(function (k) {
@@ -189,11 +194,13 @@ function zoneLabel(text, hex) {
 
 function platform(z, w, d) {
   var scene = R.scene;
+  // Matte, non-metallic platform so it reads as a floor, not a mirror/lamp.
   var base = B.MeshBuilder.CreateBox('p' + z.name, { width: w, height: 0.4, depth: d }, scene);
-  base.position.set(z.x, 0.2, 0); base.material = pbr('#141b26', 0.25, 0.6);
+  base.position.set(z.x, 0.2, 0); base.material = pbr('#1b2433', 0.0, 0.92);
   base.receiveShadows = true; cast(base);
-  var edge = B.MeshBuilder.CreateBox('e' + z.name, { width: w + 0.3, height: 0.07, depth: d + 0.3 }, scene);
-  edge.position.set(z.x, 0.43, 0); edge.material = emiss(z.hex, 0.9);
+  // Thin emissive rim — keep it a defined edge line, not a glowing slab.
+  var edge = B.MeshBuilder.CreateBox('e' + z.name, { width: w + 0.25, height: 0.05, depth: d + 0.25 }, scene);
+  edge.position.set(z.x, 0.42, 0); edge.material = emiss(z.hex, 0.5);
   var lab = zoneLabel(z.name, z.hex); lab.position.set(z.x, 4.5, -d / 2 - 0.6);
 }
 
@@ -298,15 +305,20 @@ function buildPipeline() {
   var scene = R.scene, camera = R.camera;
   var pipe = new B.DefaultRenderingPipeline('dp', true, scene, [camera]);
   pipe.fxaaEnabled = true;
-  pipe.bloomEnabled = true; pipe.bloomThreshold = 0.62; pipe.bloomWeight = 0.6; pipe.bloomKernel = 64; pipe.bloomScale = 0.55;
+  // Bloom dialled WAY back: high threshold so only true emissives (LEDs, edges)
+  // glow — the lit platforms must read as surfaces, not lamps. Tight kernel keeps
+  // the bloom from softening the whole frame.
+  pipe.bloomEnabled = true; pipe.bloomThreshold = 0.92; pipe.bloomWeight = 0.22; pipe.bloomKernel = 32; pipe.bloomScale = 0.4;
   pipe.imageProcessingEnabled = true;
   pipe.imageProcessing.toneMappingEnabled = true;
   pipe.imageProcessing.toneMappingType = B.ImageProcessingConfiguration.TONEMAPPING_ACES;
-  pipe.imageProcessing.exposure = 1.15; pipe.imageProcessing.contrast = 1.28;
-  pipe.imageProcessing.vignetteEnabled = true; pipe.imageProcessing.vignetteWeight = 2.6;
-  pipe.grainEnabled = true; pipe.grain.intensity = 6; pipe.grain.animated = true;
-  pipe.sharpenEnabled = true; pipe.sharpen.edgeAmount = 0.22; pipe.sharpen.colorAmount = 1.0;
-  pipe.chromaticAberrationEnabled = true; pipe.chromaticAberration.aberrationAmount = 10;
+  pipe.imageProcessing.exposure = 1.0; pipe.imageProcessing.contrast = 1.12;
+  pipe.imageProcessing.vignetteEnabled = true; pipe.imageProcessing.vignetteWeight = 1.6;
+  // No grain/chromatic-aberration — those were the source of the "blurry/smeared"
+  // look. A touch of sharpen instead, for crisp edges.
+  pipe.grainEnabled = false;
+  pipe.sharpenEnabled = true; pipe.sharpen.edgeAmount = 0.3; pipe.sharpen.colorAmount = 1.0;
+  pipe.chromaticAberrationEnabled = false;
   R.pipe = pipe;
   try {
     var ssao = new B.SSAO2RenderingPipeline('ssao', scene, { ssaoRatio: 0.75, blurRatio: 1 }, [camera]);
@@ -317,13 +329,12 @@ function buildPipeline() {
 function toggleFX() {
   SIM.fxOn = !SIM.fxOn;
   var p = R.pipe;
-  p.bloomEnabled = SIM.fxOn; p.grainEnabled = SIM.fxOn; p.chromaticAberrationEnabled = SIM.fxOn;
-  p.imageProcessing.vignetteEnabled = SIM.fxOn; p.sharpenEnabled = SIM.fxOn;
+  p.bloomEnabled = SIM.fxOn; p.imageProcessing.vignetteEnabled = SIM.fxOn; p.sharpenEnabled = SIM.fxOn;
   if (R.ssao) {
     R.scene.postProcessRenderPipelineManager[SIM.fxOn ? 'attachCamerasToRenderPipeline' : 'detachCamerasFromRenderPipeline']('ssao', R.camera);
   }
   byid('tw-fx').classList.toggle('on', SIM.fxOn);
-  R.glow.intensity = SIM.fxOn ? 0.85 : 0.4;
+  R.glow.intensity = SIM.fxOn ? 0.5 : 0.25;
 }
 
 // =====================================================================

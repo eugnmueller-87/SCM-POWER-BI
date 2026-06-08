@@ -1,275 +1,329 @@
 /* =====================================================================
-   SCM-Master · Logistics Control Tower (3D RTS home screen)
+   SCM-Master · Logistics Control Tower (3D RTS home screen) — TIER 2
    ---------------------------------------------------------------------
-   STATE-ACCURATE, motion illustrative. Every count, capacity %, crate
-   stack, rack count, flow rate and event-log line is read from the live
-   /api/data model (RAW). The forklift/truck MOTION between those states
-   is animated for life, timed off the REAL daily_in / daily_out rates —
-   it is not a fabricated event stream, and no number is invented.
+   Babylon.js PBR render: image-based lighting, glow, soft (blur-ESM)
+   shadows, ACES tone-map, bloom, SSAO, grain + vignette.
 
-   The warehouse renders `committed` crates out of `capacity` slots, so
-   the box count is in proportion to the warehouse's maximum capacity.
+   STATE-ACCURATE, motion illustrative. Every count, capacity %, crate
+   stack, datacenter rack and event-log line is read from the live
+   /api/data model (RAW) and re-syncs on each 60s refresh. The forklift/
+   truck MOTION between those states is animated for life, timed off the
+   REAL daily_in / daily_out rates — not a fabricated event stream, and
+   no number is invented. The warehouse renders `committed` crates out of
+   `capacity` slots, so the box count is in proportion to the warehouse's
+   maximum capacity.
 
    Public API (window.SCMTower):
-     mount(container)   – build renderer/scene into a DOM node, start loop
-     sync(RAW)          – (re)bind to the live data model; called on load
-                          and on every 60s refresh, so the scene re-syncs
-     unmount()          – stop loop, free GL context (on tab switch away)
-   Depends on THREE (r128) being on the page already.
+     mount(container)  – build engine/scene into a DOM node, start loop
+     sync(RAW)         – (re)bind to the live model; called on load + every
+                         60s refresh, so the scene re-syncs
+     unmount()         – stop loop, dispose GL (on tab switch away)
+     isMounted()       – bool
+   Depends on BABYLON (6.x) being on the page already.
    ===================================================================== */
 (function () {
 'use strict';
 
-var THREE = window.THREE;
-if (!THREE) { console.error('[tower] THREE not loaded'); return; }
+var B = window.BABYLON;
+if (!B) { console.error('[tower] BABYLON not loaded'); return; }
 
 // ----- module state (single instance) -----
 var R = {
-  mounted: false, raf: 0, container: null, renderer: null, scene: null,
-  camera: null, clock: null, data: null, hud: null, tagLayer: null,
-  workers: [], trucks: [], cratePool: [], rackSlots: [],
-  wareStack: [], jobs: [],
+  mounted: false, container: null, canvas: null, engine: null, scene: null,
+  camera: null, glow: null, shadow: null, pipe: null, ssao: null,
+  data: null, hud: null, tagLayer: null,
+  workers: [], trucks: [], cratePool: [], rackSlots: [], wareStack: [], jobs: [],
+  _onResize: null,
 };
 
-// ----- colour palette (matches the cockpit dark theme) -----
-var COL = {
-  bg: 0x0a0e16,
-  recv: 0x3ddc84, store: 0xf5a524, pack: 0x4aa3ff, dc: 0x2dd4bf, dead: 0xff5d5d,
-  cyan: 0x2dd4bf, pack_c: 0x4aa3ff,
-};
-var CRATE_COL = { recv: COL.recv, store: COL.store, pack: COL.pack, dc: COL.dc, dead: COL.dead };
-
-// ----- zones along the pipeline (x positions) -----
+var CRATE_HEX = { recv: '#3ddc84', store: '#f5a524', pack: '#4aa3ff', dc: '#2dd4bf', dead: '#ff5d5d' };
 var Z = {
-  RECEIVE:   { x: -17, color: COL.recv, name: 'RECEIVING' },
-  WAREHOUSE: { x: -2,  color: COL.store, name: 'WAREHOUSE' },
-  PACKING:   { x: 11,  color: COL.pack, name: 'PACKING' },
-  DATACTR:   { x: 24,  color: COL.dc,   name: 'DATACENTER' },
-  DISPOSAL:  { x: 33,  color: COL.dead, name: 'DISPOSAL' },
+  RECEIVE:   { x: -17, hex: '#3ddc84', name: 'RECEIVING' },
+  WAREHOUSE: { x: -2,  hex: '#f5a524', name: 'WAREHOUSE' },
+  PACKING:   { x: 11,  hex: '#4aa3ff', name: 'PACKING' },
+  DATACTR:   { x: 24,  hex: '#2dd4bf', name: 'DATACENTER' },
+  DISPOSAL:  { x: 33,  hex: '#ff5d5d', name: 'DISPOSAL' },
 };
+var NDC = 14;
 
-// ----- live SIM mirror of the real model -----
+// live SIM mirror of the real model
 var SIM = {
   tick: 0, playing: true, speed: 1, t: 0, tickAcc: 0,
-  // real, from capacity_flow:
   capacity: 0, committed: 0, onHand: 0, inbound: 0, freeToOrder: 0,
   committedPct: 0, dailyIn: 0, dailyOut: 0, daysToDepletion: 0,
-  // real, derived:
-  deployed: 0, decommReady: 0,
-  // animated counters (start at the real state, motion is illustrative):
-  recvShown: 0, depShown: 0, transit: 0, decommShown: 0,
-  // queues of real POs / requisitions to animate through:
-  inboundQueue: [], reqQueue: [], decomQueue: [],
+  deployed: 0,
+  inboundQueue: [],
   truckTimer: 2.5, reqTimer: 3, decomTimer: 9,
+  fxOn: true,
 };
 
-var TMP = new THREE.Vector3();
 function W() { return R.container ? R.container.clientWidth : window.innerWidth; }
 function H() { return R.container ? R.container.clientHeight : window.innerHeight; }
-function reqId() { return 1000 + Math.floor(SIM.t * 137 % 8999); } // deterministic-ish, no Math.random in id
+function reqId() { return 1000 + Math.floor((SIM.t * 137) % 8999); }
+
+// =====================================================================
+// MATERIAL HELPERS
+// =====================================================================
+var matN = 0;
+function pbr(hex, metallic, rough) {
+  var m = new B.PBRMaterial('p' + (matN++), R.scene);
+  m.albedoColor = B.Color3.FromHexString(hex);
+  m.metallic = metallic; m.roughness = rough;
+  return m;
+}
+function emiss(hex, intensity) {
+  var m = new B.PBRMaterial('e' + (matN++), R.scene);
+  var c = B.Color3.FromHexString(hex);
+  m.albedoColor = c.scale(0.2); m.metallic = 0; m.roughness = 0.5;
+  m.emissiveColor = c; m.emissiveIntensity = intensity || 1;
+  return m;
+}
+function cast(m) { if (R.shadow) R.shadow.addShadowCaster(m); return m; }
+function gradFace(c1, c2) {
+  var cv = document.createElement('canvas'); cv.width = cv.height = 128;
+  var x = cv.getContext('2d'); var g = x.createLinearGradient(0, 0, 0, 128);
+  g.addColorStop(0, c1); g.addColorStop(1, c2); x.fillStyle = g; x.fillRect(0, 0, 128, 128);
+  return cv.toDataURL();
+}
 
 // =====================================================================
 // BUILD (once per mount)
 // =====================================================================
 function build() {
-  var scene = new THREE.Scene();
-  scene.background = new THREE.Color(COL.bg);
-  scene.fog = new THREE.Fog(COL.bg, 46, 100);
+  var canvas = document.createElement('canvas');
+  canvas.id = 'tw-canvas';
+  canvas.style.cssText = 'width:100%;height:100%;display:block;outline:none;touch-action:none';
+  R.container.appendChild(canvas);
+  R.canvas = canvas;
+
+  var engine = new B.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true, antialias: true, adaptToDeviceRatio: true });
+  R.engine = engine;
+
+  var scene = new B.Scene(engine);
   R.scene = scene;
+  scene.clearColor = new B.Color4(0.027, 0.039, 0.066, 1);
+  scene.imageProcessingConfiguration.toneMappingEnabled = true;
+  scene.imageProcessingConfiguration.toneMappingType = B.ImageProcessingConfiguration.TONEMAPPING_ACES;
+  scene.imageProcessingConfiguration.exposure = 1.1;
+  scene.fogMode = B.Scene.FOGMODE_LINEAR;
+  scene.fogColor = new B.Color3(0.027, 0.039, 0.066);
+  scene.fogStart = 48; scene.fogEnd = 110;
 
-  var renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(W(), H());
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.outputEncoding = THREE.sRGBEncoding;
-  R.container.appendChild(renderer.domElement);
-  R.renderer = renderer;
+  // procedural IBL for PBR
+  var sky = gradFace('#243149', '#0b1018'), bot = gradFace('#080b11', '#080b11');
+  try {
+    var env = B.CubeTexture.CreateFromImages([sky, sky, sky, sky, bot, sky], scene);
+    scene.environmentTexture = env; scene.environmentIntensity = 0.55;
+  } catch (e) { /* IBL optional */ }
 
-  var camera = new THREE.PerspectiveCamera(46, W() / H(), 0.1, 300);
+  // camera — ArcRotate (built-in orbit)
+  var camera = new B.ArcRotateCamera('cam', Math.PI * 1.15, 1.02, 52, new B.Vector3(2, 1.5, 1), scene);
+  camera.attachControl(canvas, true);
+  camera.lowerRadiusLimit = 18; camera.upperRadiusLimit = 98;
+  camera.lowerBetaLimit = 0.18; camera.upperBetaLimit = 1.46;
+  camera.wheelDeltaPercentage = 0.015; camera.panningSensibility = 24; camera.panningInertia = 0.6;
+  camera.inertia = 0.78; camera.minZ = 0.1; camera.maxZ = 320;
+  camera.useAutoRotationBehavior = true;
+  camera.autoRotationBehavior.idleRotationSpeed = 0.16;
+  camera.autoRotationBehavior.idleRotationWaitTime = 1400;
+  camera.autoRotationBehavior.idleRotationSpinupTime = 1200;
   R.camera = camera;
 
-  // lights
-  scene.add(new THREE.HemisphereLight(0x9fb4d6, COL.bg, 0.55));
-  scene.add(new THREE.AmbientLight(0x404a5e, 0.5));
-  var sun = new THREE.DirectionalLight(0xfff2dd, 1.15);
-  sun.position.set(-22, 34, 18); sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.camera.near = 1; sun.shadow.camera.far = 120;
-  sun.shadow.camera.left = -50; sun.shadow.camera.right = 50;
-  sun.shadow.camera.top = 50; sun.shadow.camera.bottom = -50;
-  sun.shadow.bias = -0.0004;
-  scene.add(sun);
-  var rim = new THREE.DirectionalLight(COL.cyan, 0.35); rim.position.set(20, 12, -22); scene.add(rim);
+  // lights + shadows
+  var hemi = new B.HemisphericLight('hemi', new B.Vector3(0, 1, 0), scene);
+  hemi.intensity = 0.65; hemi.diffuse = new B.Color3(0.62, 0.71, 0.86); hemi.groundColor = new B.Color3(0.05, 0.07, 0.1);
+  var dir = new B.DirectionalLight('sun', new B.Vector3(0.55, -1, 0.35), scene);
+  dir.position = new B.Vector3(-34, 52, -22); dir.intensity = 2.4; dir.diffuse = new B.Color3(1, 0.95, 0.86);
+  var rim = new B.DirectionalLight('rim', new B.Vector3(-0.5, -0.3, 0.6), scene);
+  rim.intensity = 0.5; rim.diffuse = new B.Color3(0.18, 0.83, 0.75);
 
-  // ground + grid
-  var ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(160, 120),
-    new THREE.MeshStandardMaterial({ color: 0x11151e, roughness: 1, metalness: 0 })
-  );
-  ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
-  var grid = new THREE.GridHelper(160, 80, 0x1d2735, 0x161d28);
-  grid.position.y = 0.02; grid.material.opacity = 0.5; grid.material.transparent = true; scene.add(grid);
+  var shadow = new B.ShadowGenerator(2048, dir);
+  shadow.useBlurExponentialShadowMap = true; shadow.blurKernel = 32; shadow.darkness = 0.42; shadow.bias = 0.0015;
+  R.shadow = shadow;
 
-  // platforms
-  platform(Z.RECEIVE, 9, 12);
-  platform(Z.WAREHOUSE, 11, 14);
-  platform(Z.PACKING, 9, 12);
-  platform(Z.DATACTR, 10, 16);
-  platform(Z.DISPOSAL, 6, 9);
+  R.glow = new B.GlowLayer('glow', scene); R.glow.intensity = 0.85;
 
+  buildGround();
+  Object.keys(Z).forEach(function (k) {
+    var dims = { RECEIVE: [9, 12], WAREHOUSE: [11, 14], PACKING: [9, 12], DATACTR: [10, 16], DISPOSAL: [6, 9] }[k];
+    platform(Z[k], dims[0], dims[1]);
+  });
   // supplier road
-  var road = new THREE.Mesh(new THREE.BoxGeometry(20, 0.05, 3.2),
-    new THREE.MeshStandardMaterial({ color: 0x1a2230, roughness: 1 }));
-  road.position.set(-24, 0.05, 6); scene.add(road);
+  var road = B.MeshBuilder.CreateBox('road', { width: 22, height: 0.06, depth: 3.2 }, scene);
+  road.position.set(-25, 0.05, 6); road.material = pbr('#10151e', 0.2, 0.8); road.receiveShadows = true;
 
   buildRacks();
   buildWorkers();
   buildTrucks();
   buildCratePool();
-
-  setupCamera();
-  setupInput();
-  R.clock = new THREE.Clock();
+  buildPipeline();
 }
 
-var MAT = null;
-function mats() {
-  if (MAT) return MAT;
-  MAT = {
-    metal: new THREE.MeshStandardMaterial({ color: 0xc8d2e0, roughness: .45, metalness: .6 }),
-    dark: new THREE.MeshStandardMaterial({ color: 0x2a3340, roughness: .6, metalness: .3 }),
-    tyre: new THREE.MeshStandardMaterial({ color: 0x12161d, roughness: .9 }),
-  };
-  return MAT;
+function buildGround() {
+  var scene = R.scene;
+  var cv = document.createElement('canvas'); cv.width = cv.height = 128;
+  var x = cv.getContext('2d'); x.fillStyle = '#0e131c'; x.fillRect(0, 0, 128, 128);
+  x.strokeStyle = '#1f2a3a'; x.lineWidth = 2; x.strokeRect(0, 0, 128, 128);
+  var grid = new B.DynamicTexture('grid', { width: 128, height: 128 }, scene, true);
+  grid.getContext().drawImage(cv, 0, 0); grid.update();
+  grid.uScale = 40; grid.vScale = 40; grid.wrapU = grid.wrapV = B.Texture.WRAP_ADDRESSMODE;
+  var gm = new B.PBRMaterial('gm', scene);
+  gm.albedoTexture = grid; gm.albedoColor = new B.Color3(1, 1, 1);
+  gm.metallic = 0.15; gm.roughness = 0.7; gm.environmentIntensity = 0.4;
+  var g = B.MeshBuilder.CreateGround('ground', { width: 170, height: 130 }, scene);
+  g.material = gm; g.receiveShadows = true; R.glow.addExcludedMesh(g);
 }
 
-function makeLabel(text, color) {
-  var c = document.createElement('canvas'); c.width = 512; c.height = 128;
-  var x = c.getContext('2d');
-  x.font = '700 60px "Chakra Petch", sans-serif';
-  x.fillStyle = '#' + color.toString(16).padStart(6, '0');
-  x.textAlign = 'center'; x.textBaseline = 'middle';
-  x.shadowColor = 'rgba(0,0,0,.6)'; x.shadowBlur = 8;
-  x.fillText(text, 256, 68);
-  var tex = new THREE.CanvasTexture(c); tex.anisotropy = 4;
-  var spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
-  spr.scale.set(9, 2.25, 1);
-  return spr;
+function zoneLabel(text, hex) {
+  var scene = R.scene;
+  var dt = new B.DynamicTexture('dt' + text, { width: 512, height: 128 }, scene, true);
+  dt.hasAlpha = true; dt.drawText(text, null, 92, 'bold 66px "Chakra Petch", sans-serif', hex, 'transparent', true);
+  var mat = new B.StandardMaterial('lm' + text, scene);
+  mat.diffuseTexture = dt; mat.diffuseTexture.hasAlpha = true; mat.useAlphaFromDiffuseTexture = true;
+  mat.emissiveColor = B.Color3.FromHexString(hex); mat.emissiveTexture = dt;
+  mat.disableLighting = true; mat.backFaceCulling = false;
+  var pl = B.MeshBuilder.CreatePlane('lbl' + text, { width: 8.6, height: 2.15 }, scene);
+  pl.material = mat; pl.billboardMode = B.Mesh.BILLBOARDMODE_ALL;
+  R.glow.addExcludedMesh(pl); return pl;
 }
 
 function platform(z, w, d) {
-  var g = new THREE.Group();
-  var base = new THREE.Mesh(new THREE.BoxGeometry(w, 0.4, d),
-    new THREE.MeshStandardMaterial({ color: 0x161d28, roughness: .85, metalness: .1 }));
-  base.position.y = 0.2; base.receiveShadow = true; base.castShadow = true; g.add(base);
-  var edge = new THREE.Mesh(new THREE.BoxGeometry(w + 0.3, 0.06, d + 0.3),
-    new THREE.MeshStandardMaterial({ color: z.color, emissive: z.color, emissiveIntensity: .6, roughness: .4 }));
-  edge.position.y = 0.42; g.add(edge);
-  g.position.set(z.x, 0, 0);
-  var lab = makeLabel(z.name, z.color); lab.position.set(0, 4.4, -d / 2 - 0.5); g.add(lab);
-  R.scene.add(g);
-  return g;
+  var scene = R.scene;
+  var base = B.MeshBuilder.CreateBox('p' + z.name, { width: w, height: 0.4, depth: d }, scene);
+  base.position.set(z.x, 0.2, 0); base.material = pbr('#141b26', 0.25, 0.6);
+  base.receiveShadows = true; cast(base);
+  var edge = B.MeshBuilder.CreateBox('e' + z.name, { width: w + 0.3, height: 0.07, depth: d + 0.3 }, scene);
+  edge.position.set(z.x, 0.43, 0); edge.material = emiss(z.hex, 0.9);
+  var lab = zoneLabel(z.name, z.hex); lab.position.set(z.x, 4.5, -d / 2 - 0.6);
 }
 
-// Datacenter racks — the COUNT of lit racks equals real deployed assets (sync()).
-var NDC = 14;
 function buildRacks() {
   R.rackSlots = [];
-  var i = 0;
+  var scene = R.scene;
   for (var row = 0; row < 2; row++) {
     for (var col = 0; col < 7; col++) {
-      var px = Z.DATACTR.x - 3.6 + col * 1.25;
-      var pz = -3.2 + row * 6.4;
-      var rack = new THREE.Mesh(new THREE.BoxGeometry(1, 2.6, 1.5),
-        new THREE.MeshStandardMaterial({ color: 0x1b2330, roughness: .5, metalness: .5, emissive: 0x000000 }));
-      rack.position.set(px, 1.5, pz); rack.castShadow = true; R.scene.add(rack);
-      var led = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.2, 0.08),
-        new THREE.MeshStandardMaterial({ color: 0x223040, emissive: 0x142028, emissiveIntensity: 1 }));
-      led.position.set(px + 0.45, 1.6, pz + 0.78); R.scene.add(led);
-      R.rackSlots.push({ mesh: rack, led: led, active: false, age: 0, pos: new THREE.Vector3(px, 0, pz) });
-      i++; if (i >= NDC) return;
+      if (R.rackSlots.length >= NDC) break;
+      var px = Z.DATACTR.x - 3.6 + col * 1.25, pz = -3.4 + row * 6.6;
+      var rack = B.MeshBuilder.CreateBox('rack', { width: 1, height: 2.6, depth: 1.5 }, scene);
+      rack.position.set(px, 1.5, pz); rack.material = pbr('#19212e', 0.55, 0.4); rack.receiveShadows = true; cast(rack);
+      var led = B.MeshBuilder.CreateBox('led', { width: 0.12, height: 2.2, depth: 0.08 }, scene);
+      led.position.set(px + 0.45, 1.6, pz + 0.78); led.material = emiss('#22303f', 0.6);
+      R.rackSlots.push({ mesh: rack, led: led, active: false, age: 0, pos: new B.Vector3(px, 0, pz) });
     }
   }
 }
 
 function buildWorkers() {
   R.workers = [];
-  var m = mats();
-  for (var i = 0; i < 7; i++) {
-    var g = new THREE.Group();
-    var body = new THREE.Mesh(new THREE.BoxGeometry(1, 0.7, 1.4), m.metal.clone());
-    body.position.y = 0.6; body.castShadow = true; g.add(body);
-    var cab = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 0.7), m.dark.clone());
-    cab.position.set(0, 1.1, -0.25); cab.castShadow = true; g.add(cab);
-    var fork = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.12, 0.9), m.dark.clone());
-    fork.position.set(0, 0.35, 0.95); g.add(fork);
-    var wh = new THREE.CylinderGeometry(0.26, 0.26, 0.2, 12);
-    [[-.5, .6], [.5, .6], [-.5, -.5], [.5, -.5]].forEach(function (p) {
-      var w = new THREE.Mesh(wh, m.tyre); w.rotation.z = Math.PI / 2;
-      w.position.set(p[0], 0.26, p[1]); g.add(w);
+  var scene = R.scene;
+  for (var idx = 0; idx < 7; idx++) {
+    var root = new B.TransformNode('w' + idx, scene);
+    var body = B.MeshBuilder.CreateBox('wb', { width: 1, height: 0.7, depth: 1.4 }, scene);
+    body.position.y = 0.6; body.material = pbr('#aeb9c9', 0.75, 0.35); body.parent = root; cast(body); body.receiveShadows = true;
+    var cab = B.MeshBuilder.CreateBox('wc', { width: 0.8, height: 0.6, depth: 0.7 }, scene);
+    cab.position.set(0, 1.1, -0.25); cab.material = pbr('#2a3340', 0.4, 0.5); cab.parent = root; cast(cab);
+    var fork = B.MeshBuilder.CreateBox('wf', { width: 0.9, height: 0.12, depth: 0.9 }, scene);
+    fork.position.set(0, 0.35, 0.95); fork.material = pbr('#3a4554', 0.6, 0.45); fork.parent = root;
+    var wmat = pbr('#0e1116', 0.1, 0.85);
+    [[-.5, .6], [.5, .6], [-.5, -.5], [.5, -.5]].forEach(function (p, k) {
+      var w = B.MeshBuilder.CreateCylinder('ww' + k, { diameter: 0.52, height: 0.2, tessellation: 12 }, scene);
+      w.rotation.z = Math.PI / 2; w.position.set(p[0], 0.26, p[1]); w.material = wmat; w.parent = root;
     });
-    var led = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 12),
-      new THREE.MeshStandardMaterial({ color: COL.cyan, emissive: COL.cyan, emissiveIntensity: 1.4 }));
-    led.position.set(0, 1.55, -0.25); g.add(led);
-    g.userData = { led: led, fork: fork, carry: null, state: 'idle', job: null, wob: i * 0.9 };
-    g.position.set(-6 + i * 1.4, 0, 12);
-    R.scene.add(g); R.workers.push(g);
+    var led = B.MeshBuilder.CreateSphere('wl', { diameter: 0.28 }, scene);
+    led.position.set(0, 1.55, -0.25); var lm = emiss('#2dd4bf', 1.4); led.material = lm; led.parent = root;
+    var forkPt = new B.TransformNode('fp' + idx, scene); forkPt.parent = root; forkPt.position.set(0, 1.05, 0.95);
+    root.metadata = { led: lm, forkPt: forkPt, carry: null, state: 'idle', job: null, wob: idx * 0.9 };
+    root.position.set(-6 + idx * 1.4, 0, 12);
+    R.workers.push(root);
   }
 }
 
 function buildTrucks() {
   R.trucks = [];
-  var m = mats();
-  for (var k = 0; k < 2; k++) {
-    var g = new THREE.Group();
-    var trailer = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2, 5),
-      new THREE.MeshStandardMaterial({ color: 0x222b38, roughness: .6, metalness: .3 }));
-    trailer.position.set(0, 1.4, -0.6); trailer.castShadow = true; g.add(trailer);
-    var cab = new THREE.Mesh(new THREE.BoxGeometry(2, 1.6, 1.6), m.metal.clone());
-    cab.position.set(0, 1.2, 2.6); cab.castShadow = true; g.add(cab);
-    var stripe = new THREE.Mesh(new THREE.BoxGeometry(2.24, 0.4, 5.04),
-      new THREE.MeshStandardMaterial({ color: COL.cyan, emissive: COL.cyan, emissiveIntensity: .5 }));
-    stripe.position.set(0, 2.2, -0.6); g.add(stripe);
-    var wh = new THREE.CylinderGeometry(0.5, 0.5, 0.4, 14);
-    [[-1.1, 2.4], [1.1, 2.4], [-1.1, -1.6], [1.1, -1.6], [-1.1, 0.4], [1.1, 0.4]].forEach(function (p) {
-      var w = new THREE.Mesh(wh, m.tyre); w.rotation.z = Math.PI / 2; w.position.set(p[0], 0.5, p[1]); g.add(w);
+  var scene = R.scene;
+  for (var idx = 0; idx < 2; idx++) {
+    var root = new B.TransformNode('t' + idx, scene);
+    var trailer = B.MeshBuilder.CreateBox('tt', { width: 2.2, height: 2, depth: 5 }, scene);
+    trailer.position.set(0, 1.4, -0.6); trailer.material = pbr('#222b38', 0.5, 0.5); trailer.parent = root; cast(trailer); trailer.receiveShadows = true;
+    var cab = B.MeshBuilder.CreateBox('tc', { width: 2, height: 1.6, depth: 1.6 }, scene);
+    cab.position.set(0, 1.2, 2.6); cab.material = pbr('#c2ccda', 0.7, 0.3); cab.parent = root; cast(cab);
+    var stripe = B.MeshBuilder.CreateBox('ts', { width: 2.24, height: 0.42, depth: 5.04 }, scene);
+    stripe.position.set(0, 2.2, -0.6); stripe.material = emiss('#2dd4bf', 0.8); stripe.parent = root;
+    var wmat = pbr('#0e1116', 0.1, 0.85);
+    [[-1.1, 2.4], [1.1, 2.4], [-1.1, -1.6], [1.1, -1.6], [-1.1, 0.4], [1.1, 0.4]].forEach(function (p, k) {
+      var w = B.MeshBuilder.CreateCylinder('tw' + k, { diameter: 1, height: 0.4, tessellation: 14 }, scene);
+      w.rotation.z = Math.PI / 2; w.position.set(p[0], 0.5, p[1]); w.material = wmat; w.parent = root;
     });
-    g.userData = { state: 'idle', t: 0, payload: 0, po: 0, sku: '' };
-    g.visible = false; R.scene.add(g); R.trucks.push(g);
+    root.metadata = { state: 'idle', t: 0, payload: 0, po: 0, sku: '' }; root.setEnabled(false);
+    R.trucks.push(root);
   }
 }
 
-// Crate pool sized to the warehouse CAPACITY so we can show committed-of-capacity.
+// Crate pool sized so we can show committed-of-capacity.
 function buildCratePool() {
   R.cratePool = [];
-  var m = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+  var scene = R.scene;
   for (var i = 0; i < 64; i++) {
-    var mesh = new THREE.Mesh(m, new THREE.MeshStandardMaterial({ color: CRATE_COL.recv, roughness: .7, metalness: .1 }));
-    mesh.castShadow = true; mesh.visible = false; mesh.userData = { alive: false, state: 'recv' };
-    R.scene.add(mesh); R.cratePool.push(mesh);
+    var m = B.MeshBuilder.CreateBox('crate' + i, { size: 0.8 }, scene);
+    m.material = pbr(CRATE_HEX.recv, 0.05, 0.6); cast(m); m.receiveShadows = true;
+    m.setEnabled(false); m.metadata = { alive: false, state: 'recv' };
+    R.cratePool.push(m);
   }
 }
-
+function setCrateColor(c, state) {
+  var col = B.Color3.FromHexString(CRATE_HEX[state]);
+  c.material.albedoColor = col; c.material.emissiveColor = col.scale(0.22);
+}
 function spawnCrate(pos, state) {
   var c = null;
-  for (var i = 0; i < R.cratePool.length; i++) { if (!R.cratePool[i].userData.alive) { c = R.cratePool[i]; break; } }
+  for (var i = 0; i < R.cratePool.length; i++) { if (!R.cratePool[i].metadata.alive) { c = R.cratePool[i]; break; } }
   if (!c) return null;
-  c.userData.alive = true; c.userData.state = state; c.visible = true;
-  c.material.color.setHex(CRATE_COL[state]); c.material.emissive.setHex(CRATE_COL[state]); c.material.emissiveIntensity = .18;
-  if (c.parent !== R.scene) R.scene.add(c);
-  c.position.copy(pos); c.scale.set(1, 1, 1);
+  c.metadata.alive = true; c.metadata.state = state; c.setEnabled(true);
+  c.parent = null; setCrateColor(c, state); c.position.copyFrom(pos);
   return c;
 }
-function killCrate(c) { c.userData.alive = false; c.visible = false; if (c.parent !== R.scene) R.scene.add(c); }
+function killCrate(c) { c.metadata.alive = false; c.parent = null; c.setEnabled(false); }
 
-// warehouse stack position — packs crates into a cube grid scaled to capacity
 function stackPos(zone, n) {
   var perRow = 4, sp = 1.0;
-  var layer = Math.floor(n / (perRow * perRow));
-  var idx = n % (perRow * perRow);
+  var layer = Math.floor(n / (perRow * perRow)), idx = n % (perRow * perRow);
   var r = Math.floor(idx / perRow), c = idx % perRow;
-  return new THREE.Vector3(zone.x - (perRow - 1) * sp / 2 + c * sp, 0.85 + layer * 0.9, -(perRow - 1) * sp / 2 + r * sp);
+  return new B.Vector3(zone.x - (perRow - 1) * sp / 2 + c * sp, 0.85 + layer * 0.9, -(perRow - 1) * sp / 2 + r * sp);
+}
+
+// =====================================================================
+// POST-PROCESSING PIPELINE (Tier-2)
+// =====================================================================
+function buildPipeline() {
+  var scene = R.scene, camera = R.camera;
+  var pipe = new B.DefaultRenderingPipeline('dp', true, scene, [camera]);
+  pipe.fxaaEnabled = true;
+  pipe.bloomEnabled = true; pipe.bloomThreshold = 0.62; pipe.bloomWeight = 0.6; pipe.bloomKernel = 64; pipe.bloomScale = 0.55;
+  pipe.imageProcessingEnabled = true;
+  pipe.imageProcessing.toneMappingEnabled = true;
+  pipe.imageProcessing.toneMappingType = B.ImageProcessingConfiguration.TONEMAPPING_ACES;
+  pipe.imageProcessing.exposure = 1.15; pipe.imageProcessing.contrast = 1.28;
+  pipe.imageProcessing.vignetteEnabled = true; pipe.imageProcessing.vignetteWeight = 2.6;
+  pipe.grainEnabled = true; pipe.grain.intensity = 6; pipe.grain.animated = true;
+  pipe.sharpenEnabled = true; pipe.sharpen.edgeAmount = 0.22; pipe.sharpen.colorAmount = 1.0;
+  pipe.chromaticAberrationEnabled = true; pipe.chromaticAberration.aberrationAmount = 10;
+  R.pipe = pipe;
+  try {
+    var ssao = new B.SSAO2RenderingPipeline('ssao', scene, { ssaoRatio: 0.75, blurRatio: 1 }, [camera]);
+    ssao.radius = 1.7; ssao.totalStrength = 1.05; ssao.expensiveBlur = true; ssao.samples = 16; ssao.maxZ = 130; ssao.minZAspect = 0.25;
+    R.ssao = ssao;
+  } catch (e) { R.ssao = null; }
+}
+function toggleFX() {
+  SIM.fxOn = !SIM.fxOn;
+  var p = R.pipe;
+  p.bloomEnabled = SIM.fxOn; p.grainEnabled = SIM.fxOn; p.chromaticAberrationEnabled = SIM.fxOn;
+  p.imageProcessing.vignetteEnabled = SIM.fxOn; p.sharpenEnabled = SIM.fxOn;
+  if (R.ssao) {
+    R.scene.postProcessRenderPipelineManager[SIM.fxOn ? 'attachCamerasToRenderPipeline' : 'detachCamerasFromRenderPipeline']('ssao', R.camera);
+  }
+  byid('tw-fx').classList.toggle('on', SIM.fxOn);
+  R.glow.intensity = SIM.fxOn ? 0.85 : 0.4;
 }
 
 // =====================================================================
@@ -289,72 +343,54 @@ function sync(RAW) {
   SIM.dailyOut = +cf.daily_out || 0;
   SIM.daysToDepletion = +cf.days_to_depletion || 0;
 
-  // deployed assets = sum of TCO class asset counts (the live fleet)
   var tco = RAW.tcoClasses || [];
   SIM.deployed = tco.reduce(function (s, x) { return s + (+x.assets || 0); }, 0);
 
-  // Real PO arrivals to animate: each inventory SKU with on_order > 0.
   SIM.inboundQueue = (RAW.inv || []).filter(function (x) { return x.on_order > 0; })
-    .map(function (x) { return { sku: x.name, code: x.code || x.name, units: x.on_order, eta: x.eta }; });
+    .map(function (x) { return { sku: x.name, units: x.on_order, eta: x.eta }; });
 
-  // Build the warehouse stack to the REAL committed-of-capacity fill.
   rebuildWarehouseStack();
-
-  // Light the datacenter racks to reflect deployed assets (proportional to NDC slots).
   rebuildRacks();
-
-  // Event log: real rule-insights + low-cover SKUs.
   seedLog(RAW);
-
-  // HUD sync
   updateHUD();
 }
 
-// The number of crates shown is in proportion to the warehouse max capacity:
-// fill = committed / capacity, mapped onto the visible stack slots.
+// crates shown ∝ warehouse max capacity:  fill = committed / capacity
 function rebuildWarehouseStack() {
-  // clear current stack
   R.wareStack.forEach(function (c) { killCrate(c); });
   R.wareStack = [];
-  var slots = R.cratePool.length;                 // visible capacity
+  var slots = R.cratePool.length;
   var fill = SIM.capacity ? SIM.committed / SIM.capacity : 0;
   var show = Math.max(0, Math.min(slots, Math.round(fill * slots)));
   for (var i = 0; i < show; i++) {
     var c = spawnCrate(stackPos(Z.WAREHOUSE, i), 'store');
-    if (c) { c.userData.state = 'store'; R.wareStack.push(c); }
+    if (c) { c.metadata.state = 'store'; R.wareStack.push(c); }
   }
-  SIM.recvShown = SIM.committed;          // real committed units received into the pipeline
-  SIM.transit = 0;
 }
-
 function rebuildRacks() {
-  var lit = Math.max(0, Math.min(R.rackSlots.length, Math.round(SIM.deployed / Math.max(1, ddiv()) )));
-  // Map the real deployed count proportionally onto the NDC rack slots.
+  var div = ddiv();
+  var lit = Math.max(0, Math.min(R.rackSlots.length, Math.round(SIM.deployed / div)));
   for (var i = 0; i < R.rackSlots.length; i++) {
-    var on = i < lit;
-    var r = R.rackSlots[i];
+    var on = i < lit, r = R.rackSlots[i];
     r.active = on; r.age = on ? r.age : 0;
-    r.mesh.material.emissive.setHex(on ? 0x10403a : 0x000000);
-    r.mesh.material.emissiveIntensity = on ? .5 : 0;
-    r.led.material.color.setHex(on ? COL.cyan : 0x223040);
-    r.led.material.emissive.setHex(on ? COL.cyan : 0x142028);
+    r.mesh.material.emissiveColor = on ? B.Color3.FromHexString('#0e3a34') : B.Color3.Black();
+    r.mesh.material.emissiveIntensity = on ? 0.7 : 0;
+    r.led.material.emissiveColor = B.Color3.FromHexString(on ? '#2dd4bf' : '#22303f');
   }
-  SIM.depShown = SIM.deployed;
 }
-// scale factor so a large fleet (120 assets) maps onto 14 visible racks
 function ddiv() { return Math.max(1, Math.ceil(SIM.deployed / R.rackSlots.length)); }
 
 // =====================================================================
-// HUD (DOM overlay built inside the container)
+// HUD (DOM overlay built inside the container, scoped .tw- classes)
 // =====================================================================
 function buildHUD() {
   var h = document.createElement('div');
   h.className = 'tower-hud';
   h.innerHTML =
     '<div class="tw-panel tw-glow" id="tw-title">' +
-      '<div class="tw-kicker">SCM-MASTER · LIVE OPS</div>' +
+      '<div class="tw-kicker">SCM-MASTER · LIVE OPS<span class="tw-badge">BABYLON · PBR</span></div>' +
       '<h1>Logistics Control Tower</h1>' +
-      '<div class="tw-sub">Live datacenter-hardware supply chain. State is real, from <code>/api/v1</code>; forklift motion illustrates the pipeline.</div>' +
+      '<div class="tw-sub">State is real, from <code>/api/v1</code>; forklift motion illustrates the pipeline. PBR · bloom · SSAO.</div>' +
       '<div class="tw-clock"><span class="tw-pulse"></span> AS OF <b id="tw-asof">—</b></div>' +
     '</div>' +
     '<div class="tw-panel" id="tw-stats">' +
@@ -370,11 +406,11 @@ function buildHUD() {
     '</div>' +
     '<div class="tw-panel" id="tw-legend">' +
       '<div class="tw-h">Lifecycle state</div>' +
-      '<div class="tw-item"><span class="tw-dot" style="background:#3ddc84"></span>Received / inbound</div>' +
-      '<div class="tw-item"><span class="tw-dot" style="background:#f5a524"></span>In storage (warehouse)</div>' +
-      '<div class="tw-item"><span class="tw-dot" style="background:#4aa3ff"></span>Packed (rack bundle)</div>' +
-      '<div class="tw-item"><span class="tw-dot" style="background:#2dd4bf"></span>Deployed (datacenter)</div>' +
-      '<div class="tw-item"><span class="tw-dot" style="background:#ff5d5d"></span>Decommissioned</div>' +
+      '<div class="tw-item"><span class="tw-dot" style="background:#3ddc84;color:#3ddc84"></span>Received / inbound</div>' +
+      '<div class="tw-item"><span class="tw-dot" style="background:#f5a524;color:#f5a524"></span>In storage (warehouse)</div>' +
+      '<div class="tw-item"><span class="tw-dot" style="background:#4aa3ff;color:#4aa3ff"></span>Packed (rack bundle)</div>' +
+      '<div class="tw-item"><span class="tw-dot" style="background:#2dd4bf;color:#2dd4bf"></span>Deployed (datacenter)</div>' +
+      '<div class="tw-item"><span class="tw-dot" style="background:#ff5d5d;color:#ff5d5d"></span>Decommissioned</div>' +
     '</div>' +
     '<div class="tw-panel" id="tw-log">' +
       '<div class="tw-h"><span>Event stream</span><span style="color:#586478">live findings</span></div>' +
@@ -388,6 +424,7 @@ function buildHUD() {
       '<button class="tw-btn" id="tw-4">4×</button>' +
       '<div class="tw-sepv"></div>' +
       '<button class="tw-btn on" id="tw-orbit">⟲ Auto-orbit</button>' +
+      '<button class="tw-btn on" id="tw-fx">✦ FX</button>' +
       '<button class="tw-btn" id="tw-camrst">⌖ Reset view</button>' +
     '</div>' +
     '<div id="tw-tags"></div>';
@@ -395,14 +432,21 @@ function buildHUD() {
   R.hud = h;
   R.tagLayer = h.querySelector('#tw-tags');
 
-  // controls
   byid('tw-play').onclick = function () { SIM.playing = !SIM.playing; byid('tw-play').textContent = SIM.playing ? '⏸ Pause' : '▶ Play'; };
   function spd(s, id) { SIM.speed = s; ['tw-1', 'tw-2', 'tw-4'].forEach(function (b) { byid(b).classList.remove('on'); }); byid(id).classList.add('on'); }
   byid('tw-1').onclick = function () { spd(1, 'tw-1'); };
   byid('tw-2').onclick = function () { spd(2, 'tw-2'); };
   byid('tw-4').onclick = function () { spd(4, 'tw-4'); };
-  byid('tw-orbit').onclick = function () { CAM.auto = !CAM.auto; byid('tw-orbit').classList.toggle('on', CAM.auto); };
-  byid('tw-camrst').onclick = function () { CAM.target.set(2, 1, 2); CAM.r = 48; CAM.theta = Math.PI * 0.62; CAM.phi = Math.PI * 0.34; applyCam(); };
+  byid('tw-orbit').onclick = function () {
+    R.camera.useAutoRotationBehavior = !R.camera.useAutoRotationBehavior;
+    if (R.camera.useAutoRotationBehavior) R.camera.autoRotationBehavior.idleRotationSpeed = 0.16;
+    byid('tw-orbit').classList.toggle('on', R.camera.useAutoRotationBehavior);
+  };
+  byid('tw-fx').onclick = toggleFX;
+  byid('tw-camrst').onclick = function () {
+    R.camera.alpha = Math.PI * 1.15; R.camera.beta = 1.02; R.camera.radius = 52;
+    R.camera.setTarget(new B.Vector3(2, 1.5, 1));
+  };
 }
 function byid(id) { return R.hud ? R.hud.querySelector('#' + id) : null; }
 
@@ -422,7 +466,6 @@ function updateHUD() {
   else { box.classList.remove('full'); byid('tw-guard').textContent = 'over-order guard: armed · ' + SIM.freeToOrder + ' free'; }
 }
 
-// Seed the event log from REAL findings (rule_insights) + low-cover SKUs.
 var SEV_CLS = { action: 'bad', watch: 'warn', good: 'ok', info: 'dc' };
 function seedLog(RAW) {
   var feed = byid('tw-logfeed'); if (!feed) return;
@@ -435,143 +478,82 @@ function seedLog(RAW) {
 function logLine(msg, cls) {
   var feed = byid('tw-logfeed'); if (!feed) return;
   var el = document.createElement('div'); el.className = 'tw-lg ' + (cls || '');
-  var tk = String(SIM.tick).padStart(4, '0');
-  el.innerHTML = '<span class="tw-t">' + tk + '</span><span class="tw-m">' + msg + '</span>';
+  el.innerHTML = '<span class="tw-t">' + String(SIM.tick).padStart(4, '0') + '</span><span class="tw-m">' + msg + '</span>';
   feed.appendChild(el);
   while (feed.children.length > 11) feed.removeChild(feed.firstChild);
 }
-// some live strings arrive mojibake-encoded (€/—); best-effort fix for display
 function decode(s) {
   if (!s) return '';
-  return String(s).replace(/â‚¬/g, '€').replace(/â€”/g, '—')
-                  .replace(/Ã—/g, '×').replace(/â‰¥/g, '≥');
-}
-
-// =====================================================================
-// CAMERA (custom orbit, no OrbitControls dependency)
-// =====================================================================
-var CAM = { target: new THREE.Vector3(2, 1, 2), r: 48, theta: Math.PI * 0.62, phi: Math.PI * 0.34, auto: true };
-function applyCam() {
-  var sp = Math.sin(CAM.phi);
-  R.camera.position.set(
-    CAM.target.x + CAM.r * sp * Math.sin(CAM.theta),
-    CAM.target.y + CAM.r * Math.cos(CAM.phi),
-    CAM.target.z + CAM.r * sp * Math.cos(CAM.theta)
-  );
-  R.camera.lookAt(CAM.target);
-}
-function setupCamera() { applyCam(); }
-
-var INPUT = { drag: null, lx: 0, ly: 0, tlx: 0, tly: 0, tdist: 0, handlers: [] };
-function setupInput() {
-  var el = R.renderer.domElement;
-  function on(target, ev, fn, opts) { target.addEventListener(ev, fn, opts); INPUT.handlers.push([target, ev, fn]); }
-  on(el, 'mousedown', function (e) { INPUT.drag = e.button; INPUT.lx = e.clientX; INPUT.ly = e.clientY; CAM.auto = false; byid('tw-orbit').classList.remove('on'); });
-  on(window, 'mouseup', function () { INPUT.drag = null; });
-  on(window, 'mousemove', function (e) {
-    if (INPUT.drag === null) return;
-    var dx = e.clientX - INPUT.lx, dy = e.clientY - INPUT.ly; INPUT.lx = e.clientX; INPUT.ly = e.clientY;
-    if (INPUT.drag === 2 || e.shiftKey) {
-      var panX = -dx * 0.04, panZ = -dy * 0.04, s = Math.sin(CAM.theta), c = Math.cos(CAM.theta);
-      CAM.target.x += panX * c - panZ * s; CAM.target.z += panX * s + panZ * c;
-    } else {
-      CAM.theta -= dx * 0.005; CAM.phi = Math.max(0.12, Math.min(1.42, CAM.phi - dy * 0.005));
-    }
-    applyCam();
-  });
-  on(el, 'contextmenu', function (e) { e.preventDefault(); });
-  on(el, 'wheel', function (e) { e.preventDefault(); CAM.r = Math.max(16, Math.min(90, CAM.r + e.deltaY * 0.035)); applyCam(); }, { passive: false });
-  on(el, 'touchstart', function (e) {
-    CAM.auto = false; byid('tw-orbit').classList.remove('on');
-    if (e.touches.length === 1) { INPUT.tlx = e.touches[0].clientX; INPUT.tly = e.touches[0].clientY; }
-    else if (e.touches.length === 2) { INPUT.tdist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); }
-  }, { passive: true });
-  on(el, 'touchmove', function (e) {
-    e.preventDefault();
-    if (e.touches.length === 1) {
-      var dx = e.touches[0].clientX - INPUT.tlx, dy = e.touches[0].clientY - INPUT.tly;
-      INPUT.tlx = e.touches[0].clientX; INPUT.tly = e.touches[0].clientY;
-      CAM.theta -= dx * 0.006; CAM.phi = Math.max(0.12, Math.min(1.42, CAM.phi - dy * 0.006)); applyCam();
-    } else if (e.touches.length === 2) {
-      var d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-      CAM.r = Math.max(16, Math.min(90, CAM.r + (INPUT.tdist - d) * 0.05)); INPUT.tdist = d; applyCam();
-    }
-  }, { passive: false });
-  R._onResize = function () { if (!R.camera) return; R.camera.aspect = W() / H(); R.camera.updateProjectionMatrix(); R.renderer.setSize(W(), H()); };
-  on(window, 'resize', R._onResize);
+  return String(s).replace(/â‚¬/g, '€').replace(/â€”/g, '—').replace(/Ã—/g, '×').replace(/â‰¥/g, '≥');
 }
 
 // =====================================================================
 // WORLD-PROJECTED TAGS
 // =====================================================================
-function worldTag(v3, text, cls) {
+function worldTag(v, text, cls) {
   if (!R.tagLayer) return;
   var el = document.createElement('div'); el.className = 'tw-tag ' + cls; el.textContent = text;
-  el.dataset.x = v3.x; el.dataset.y = v3.y; el.dataset.z = v3.z;
-  R.tagLayer.appendChild(el);
+  el._v = v.clone(); R.tagLayer.appendChild(el);
   setTimeout(function () { el.remove(); }, 3100);
 }
-var projV = new THREE.Vector3();
 function projectTags() {
   if (!R.tagLayer) return;
+  var w = W(), h = H();
+  var id = B.Matrix.Identity(), tm = R.scene.getTransformMatrix(), vp = R.camera.viewport.toGlobal(w, h);
   for (var i = 0; i < R.tagLayer.children.length; i++) {
     var el = R.tagLayer.children[i];
-    projV.set(+el.dataset.x, +el.dataset.y, +el.dataset.z).project(R.camera);
-    if (projV.z > 1) { el.style.display = 'none'; continue; }
-    el.style.display = 'block';
-    el.style.left = ((projV.x * 0.5 + 0.5) * W()) + 'px';
-    el.style.top = ((-projV.y * 0.5 + 0.5) * H()) + 'px';
+    if (!el._v) continue;
+    var p = B.Vector3.Project(el._v, id, tm, vp);
+    if (p.z < 0 || p.z > 1) { el.style.display = 'none'; continue; }
+    el.style.display = 'block'; el.style.left = p.x + 'px'; el.style.top = p.y + 'px';
   }
 }
 
 // =====================================================================
-// JOB SYSTEM + MOVEMENT (illustrative motion timed off real rates)
+// JOB SYSTEM + MOVEMENT (illustrative motion, timed off real rates)
 // =====================================================================
 function addJob(j) { R.jobs.push(j); }
 function assignJobs() {
   for (var i = 0; i < R.workers.length; i++) {
     var w = R.workers[i];
-    if (w.userData.state !== 'idle') continue;
+    if (w.metadata.state !== 'idle') continue;
     var best = null, bd = 1e9;
     for (var k = 0; k < R.jobs.length; k++) {
       var j = R.jobs[k]; if (j.taken) continue;
-      var d = w.position.distanceTo(j.from); if (d < bd) { bd = d; best = j; }
+      var d = B.Vector3.Distance(w.position, j.from); if (d < bd) { bd = d; best = j; }
     }
-    if (best) { best.taken = true; w.userData.job = best; w.userData.state = 'toPickup'; }
+    if (best) { best.taken = true; w.metadata.job = best; w.metadata.state = 'toPickup'; }
   }
 }
 function moveToward(w, target, dt, speed) {
-  TMP.copy(target); TMP.y = w.position.y;
-  var dir = TMP.clone().sub(w.position), dist = dir.length();
-  if (dist < 0.12) return true;
-  dir.normalize();
-  var desired = Math.atan2(dir.x, dir.z), dy = desired - w.rotation.y;
+  var dx = target.x - w.position.x, dz = target.z - w.position.z;
+  var dist = Math.hypot(dx, dz); if (dist < 0.12) return true;
+  var ix = dx / dist, iz = dz / dist;
+  var desired = Math.atan2(ix, iz), dy = desired - w.rotation.y;
   while (dy > Math.PI) dy -= 2 * Math.PI; while (dy < -Math.PI) dy += 2 * Math.PI;
   w.rotation.y += dy * Math.min(1, dt * 6);
-  var step = Math.min(dist, speed * dt);
-  w.position.x += dir.x * step; w.position.z += dir.z * step;
+  var step = Math.min(dist, speed * dt); w.position.x += ix * step; w.position.z += iz * step;
   return false;
 }
 function workerTick(dt) {
   for (var i = 0; i < R.workers.length; i++) {
-    var w = R.workers[i], u = w.userData;
+    var w = R.workers[i], u = w.metadata;
     u.wob += dt * 4; w.position.y = Math.sin(u.wob) * 0.03;
     if (u.state === 'idle') {
-      u.led.material.color.setHex(COL.cyan); u.led.material.emissive.setHex(COL.cyan);
-      u.led.material.emissiveIntensity = 1.0 + Math.sin(u.wob) * 0.4;
-      moveToward(w, new THREE.Vector3(w.position.x, 0, 11.5), dt, 2.2);
+      u.led.emissiveColor = B.Color3.FromHexString('#2dd4bf'); u.led.emissiveIntensity = 1.0 + Math.sin(u.wob) * 0.4;
+      moveToward(w, new B.Vector3(w.position.x, 0, 11.5), dt, 2.2);
       continue;
     }
-    u.led.material.color.setHex(COL.store); u.led.material.emissive.setHex(COL.store); u.led.material.emissiveIntensity = 1.3;
+    u.led.emissiveColor = B.Color3.FromHexString('#f5a524'); u.led.emissiveIntensity = 1.3;
     var j = u.job; if (!j) { u.state = 'idle'; continue; }
     if (u.state === 'toPickup') {
       if (moveToward(w, j.from, dt, 4.2)) {
-        if (j.crate && j.crate.userData.alive) { u.carry = j.crate; w.add(j.crate); j.crate.position.set(0, 1.05, 0.95); }
+        if (j.crate && j.crate.metadata.alive) { u.carry = j.crate; j.crate.parent = u.forkPt; j.crate.position.set(0, 0, 0); }
         u.state = 'toDrop';
       }
     } else if (u.state === 'toDrop') {
       if (moveToward(w, j.to, dt, 3.6)) {
-        if (u.carry) { R.scene.add(u.carry); u.carry.position.copy(j.to); u.carry = null; }
+        if (u.carry) { u.carry.parent = null; u.carry.position.copyFrom(j.to); u.carry = null; }
         var idx = R.jobs.indexOf(j); if (idx >= 0) R.jobs.splice(idx, 1);
         if (j.onDone) j.onDone();
         u.job = null; u.state = 'idle';
@@ -580,28 +562,22 @@ function workerTick(dt) {
   }
 }
 
-// ---- inbound trucks: animate REAL on-order POs arriving. Over-capacity is REFUSED
-//      (the real over-order guard). Cadence scaled by real daily_in.
+// ---- inbound trucks: animate REAL on-order POs. Over-capacity is REFUSED.
 function truckTick(dt) {
   SIM.truckTimer -= dt;
   if (SIM.truckTimer <= 0) {
-    var free = null; for (var i = 0; i < R.trucks.length; i++) { if (R.trucks[i].userData.state === 'idle') { free = R.trucks[i]; break; } }
+    var free = null; for (var i = 0; i < R.trucks.length; i++) { if (R.trucks[i].metadata.state === 'idle') { free = R.trucks[i]; break; } }
     if (free && SIM.inboundQueue.length) {
-      var po = SIM.inboundQueue.shift();
-      // recycle the queue so motion continues between refreshes (state stays real)
-      SIM.inboundQueue.push(po);
-      // over-order guard mirrors SCM-Master: refuse when at/over capacity
+      var po = SIM.inboundQueue.shift(); SIM.inboundQueue.push(po);
       if (SIM.committed >= SIM.capacity) {
-        worldTag(new THREE.Vector3(Z.RECEIVE.x, 4.5, 4), 'CAP ' + Math.round(SIM.committedPct * 100) + '% · INBOUND REFUSED', 'refuse');
+        worldTag(new B.Vector3(Z.RECEIVE.x, 4.6, 4), 'CAP ' + Math.round(SIM.committedPct * 100) + '% · INBOUND REFUSED', 'refuse');
         logLine('over-order guard: PO refused @ ' + Math.round(SIM.committedPct * 100) + '% capacity', 'bad');
         SIM.truckTimer = 4;
       } else {
-        var u = free.userData;
-        u.state = 'arriving'; u.t = 0; u.po = reqId(); u.sku = po.sku;
+        var u = free.metadata; u.state = 'arriving'; u.t = 0; u.po = reqId(); u.sku = po.sku;
         u.payload = Math.max(1, Math.min(4, po.units));
-        free.visible = true; free.position.set(-44, 0, 6); free.rotation.y = Math.PI / 2;
+        free.setEnabled(true); free.position.set(-46, 0, 6); free.rotation.y = Math.PI / 2;
         logLine('PO inbound · ' + po.units + '× ' + po.sku + (po.eta ? ' (ETA ' + po.eta + ')' : ''), 'ok');
-        // cadence: faster when real daily_in is higher
         SIM.truckTimer = Math.max(3, 9 - SIM.dailyIn * 0.25);
       }
     } else { SIM.truckTimer = 2; }
@@ -609,7 +585,7 @@ function truckTick(dt) {
   for (var k = 0; k < R.trucks.length; k++) updateTruck(R.trucks[k], dt);
 }
 function updateTruck(t, dt) {
-  var u = t.userData; if (u.state === 'idle') return;
+  var u = t.metadata; if (u.state === 'idle') return;
   var dockX = Z.RECEIVE.x - 1;
   if (u.state === 'arriving') {
     t.position.x += dt * 7;
@@ -617,16 +593,12 @@ function updateTruck(t, dt) {
   } else if (u.state === 'unload') {
     u.t += dt;
     if (u.t > 0.9) {
-      var c = spawnCrate(new THREE.Vector3(dockX + 1.5, 1, 3 + (u.payload % 2)), 'recv');
+      var c = spawnCrate(new B.Vector3(dockX + 1.5, 1, 3 + (u.payload % 2)), 'recv');
       if (c) {
-        SIM.transit++;
         var slot = R.wareStack.length;
         addJob({
-          from: c.position.clone(), to: stackPos(Z.WAREHOUSE, slot), crate: c, kind: 'store',
-          onDone: function () {
-            c.userData.state = 'store'; c.material.color.setHex(CRATE_COL.store); c.material.emissive.setHex(CRATE_COL.store);
-            R.wareStack.push(c); SIM.transit--;
-          }
+          from: c.position.clone(), to: stackPos(Z.WAREHOUSE, slot), crate: c,
+          onDone: function () { c.metadata.state = 'store'; setCrateColor(c, 'store'); R.wareStack.push(c); }
         });
       }
       u.payload--; u.t = 0;
@@ -634,12 +606,11 @@ function updateTruck(t, dt) {
     }
   } else if (u.state === 'leaving') {
     t.position.x += dt * 8;
-    if (t.position.x > 40) { u.state = 'idle'; t.visible = false; }
+    if (t.position.x > 42) { u.state = 'idle'; t.setEnabled(false); }
   }
 }
 
-// ---- requisition run: warehouse → packing → datacenter, through the AI gate.
-//      The confidence floor (0.85) is the same gate the agent enforces.
+// ---- requisition run through the AI confidence gate (same 0.85 floor as the agent)
 function requisitionTick(dt) {
   SIM.reqTimer -= dt;
   if (SIM.reqTimer > 0) return;
@@ -647,51 +618,43 @@ function requisitionTick(dt) {
   if (R.wareStack.length < 2) return;
   var freeRack = null; for (var i = 0; i < R.rackSlots.length; i++) { if (!R.rackSlots[i].active) { freeRack = R.rackSlots[i]; break; } }
   if (!freeRack) return;
-
-  // illustrative confidence (the GATE is real; the per-tick value varies visibly)
-  var conf = +(0.62 + ((SIM.t * 53) % 100) / 100 * 0.37).toFixed(2);
-  var floor = 0.85, pr = reqId();
-  if (conf < floor) {
-    worldTag(new THREE.Vector3(Z.PACKING.x, 4.8, 4), 'PR-' + pr + ' conf ' + conf + ' < 0.85 · ESCALATE', 'refuse');
+  var conf = +(0.62 + ((SIM.t * 53) % 100) / 100 * 0.37).toFixed(2), pr = reqId();
+  if (conf < 0.85) {
+    worldTag(new B.Vector3(Z.PACKING.x, 4.9, 4), 'PR-' + pr + ' conf ' + conf + ' < 0.85 · ESCALATE', 'refuse');
     logLine('agent: PR-' + pr + ' conf ' + conf + ' < floor → human approval', 'ai');
     return;
   }
-  worldTag(new THREE.Vector3(Z.PACKING.x, 4.8, 4), 'PR-' + pr + ' conf ' + conf + ' ≥ 0.85 · AUTO-PO', 'ai');
+  worldTag(new B.Vector3(Z.PACKING.x, 4.9, 4), 'PR-' + pr + ' conf ' + conf + ' ≥ 0.85 · AUTO-PO', 'ai');
   logLine('agent: PR-' + pr + ' auto-placed (conf ' + conf + ')', 'ai');
-
-  var c = R.wareStack.shift();
-  freeRack.active = 'pending';
+  var c = R.wareStack.shift(); freeRack.active = 'pending';
   addJob({
-    from: c.position.clone(), to: new THREE.Vector3(Z.PACKING.x, 1, 0), crate: c, kind: 'pack',
+    from: c.position.clone(), to: new B.Vector3(Z.PACKING.x, 1, 0), crate: c,
     onDone: function () {
-      c.userData.state = 'pack'; c.material.color.setHex(CRATE_COL.pack); c.material.emissive.setHex(CRATE_COL.pack);
+      c.metadata.state = 'pack'; setCrateColor(c, 'pack');
       addJob({
-        from: c.position.clone(), to: freeRack.pos.clone().setY(1), crate: c, kind: 'deploy',
+        from: c.position.clone(), to: new B.Vector3(freeRack.pos.x, 1, freeRack.pos.z), crate: c,
         onDone: function () {
           killCrate(c); freeRack.active = true; freeRack.age = 0;
-          freeRack.mesh.material.emissive.setHex(0x10403a); freeRack.mesh.material.emissiveIntensity = .5;
-          freeRack.led.material.color.setHex(COL.cyan); freeRack.led.material.emissive.setHex(COL.cyan);
-          worldTag(freeRack.pos.clone().setY(3.4), 'DEPLOYED', 'deploy');
+          freeRack.mesh.material.emissiveColor = B.Color3.FromHexString('#0e3a34'); freeRack.mesh.material.emissiveIntensity = 0.7;
+          freeRack.led.material.emissiveColor = B.Color3.FromHexString('#2dd4bf');
+          worldTag(new B.Vector3(freeRack.pos.x, 3.4, freeRack.pos.z), 'DEPLOYED', 'deploy');
           logLine('asset deployed → rack online', 'dc');
-          // pull a fresh crate from committed stock to keep the stack at real fill
           refillStack();
         }
       });
     }
   });
 }
-
-// keep the warehouse stack visually at the real committed-of-capacity fill
 function refillStack() {
   var slots = R.cratePool.length;
   var target = Math.round((SIM.capacity ? SIM.committed / SIM.capacity : 0) * slots);
   if (R.wareStack.length < target) {
     var c = spawnCrate(stackPos(Z.WAREHOUSE, R.wareStack.length), 'store');
-    if (c) { c.userData.state = 'store'; R.wareStack.push(c); }
+    if (c) { c.metadata.state = 'store'; R.wareStack.push(c); }
   }
 }
 
-// ---- decommission: an aged rack is pulled and hauled to disposal (EOL lifecycle)
+// ---- decommission: an aged rack is pulled to disposal (EOL lifecycle)
 function decommissionTick(dt) {
   SIM.decomTimer -= dt;
   for (var i = 0; i < R.rackSlots.length; i++) { if (R.rackSlots[i].active === true) R.rackSlots[i].age += dt; }
@@ -704,16 +667,15 @@ function decommissionTick(dt) {
   }
   if (!old) return;
   old.active = 'pulling';
-  var c = spawnCrate(old.pos.clone().setY(1), 'dead'); if (!c) { old.active = true; return; }
-  SIM.transit++;
+  var c = spawnCrate(new B.Vector3(old.pos.x, 1, old.pos.z), 'dead'); if (!c) { old.active = true; return; }
   logLine('lifecycle: rack EOL → decommission', 'warn');
   addJob({
-    from: c.position.clone(), to: new THREE.Vector3(Z.DISPOSAL.x, 1, 0), crate: c, kind: 'scrap',
+    from: c.position.clone(), to: new B.Vector3(Z.DISPOSAL.x, 1, 0), crate: c,
     onDone: function () {
-      killCrate(c); SIM.transit--;
+      killCrate(c);
       old.active = false; old.age = 0;
-      old.mesh.material.emissive.setHex(0x000000); old.mesh.material.emissiveIntensity = 0;
-      old.led.material.color.setHex(0x223040); old.led.material.emissive.setHex(0x142028);
+      old.mesh.material.emissiveColor = B.Color3.Black(); old.mesh.material.emissiveIntensity = 0;
+      old.led.material.emissiveColor = B.Color3.FromHexString('#22303f');
       logLine('asset disposed · provenance logged', 'bad');
     }
   });
@@ -722,12 +684,10 @@ function decommissionTick(dt) {
 // =====================================================================
 // MAIN LOOP
 // =====================================================================
-function animate() {
-  R.raf = requestAnimationFrame(animate);
-  var dt = Math.min(0.05, R.clock.getDelta());
+function frame() {
+  var dt = Math.min(0.05, R.engine.getDeltaTime() / 1000);
   if (SIM.playing) {
-    var sdt = dt * SIM.speed;
-    SIM.t += sdt; SIM.tickAcc += sdt;
+    var sdt = dt * SIM.speed; SIM.t += sdt; SIM.tickAcc += sdt;
     while (SIM.tickAcc >= 0.25) { SIM.tickAcc -= 0.25; SIM.tick++; }
     truckTick(sdt); requisitionTick(sdt); decommissionTick(sdt);
     assignJobs(); workerTick(sdt);
@@ -736,9 +696,7 @@ function animate() {
       if (r.active === true) r.led.material.emissiveIntensity = 1.0 + Math.sin(SIM.t * 3 + r.pos.x) * 0.5;
     }
   }
-  if (CAM.auto) { CAM.theta += dt * 0.06; applyCam(); }
   projectTags();
-  R.renderer.render(R.scene, R.camera);
 }
 
 // =====================================================================
@@ -747,27 +705,27 @@ function animate() {
 function mount(container) {
   if (R.mounted) return;
   R.container = container;
+  matN = 0;
   build();
   buildHUD();
   if (R.data) sync(R.data);
+  R.scene.registerBeforeRender(frame);
+  R.engine.runRenderLoop(function () { R.scene.render(); });
+  R._onResize = function () { if (R.engine) R.engine.resize(); };
+  window.addEventListener('resize', R._onResize);
   R.mounted = true;
-  animate();
 }
 function unmount() {
   if (!R.mounted) return;
-  cancelAnimationFrame(R.raf); R.raf = 0;
-  // detach input handlers
-  INPUT.handlers.forEach(function (h) { h[0].removeEventListener(h[1], h[2]); });
-  INPUT.handlers = [];
-  if (R.renderer) {
-    R.renderer.dispose();
-    if (R.renderer.domElement && R.renderer.domElement.parentNode) R.renderer.domElement.parentNode.removeChild(R.renderer.domElement);
-  }
+  if (R._onResize) { window.removeEventListener('resize', R._onResize); R._onResize = null; }
+  try { R.engine.stopRenderLoop(); } catch (e) {}
+  try { R.scene.dispose(); } catch (e) {}
+  try { R.engine.dispose(); } catch (e) {}
+  if (R.canvas && R.canvas.parentNode) R.canvas.parentNode.removeChild(R.canvas);
   if (R.hud && R.hud.parentNode) R.hud.parentNode.removeChild(R.hud);
-  // wipe scene refs so a fresh mount rebuilds cleanly
-  R.renderer = null; R.scene = null; R.camera = null; R.hud = null; R.tagLayer = null;
+  R.engine = null; R.scene = null; R.camera = null; R.glow = null; R.shadow = null;
+  R.pipe = null; R.ssao = null; R.hud = null; R.tagLayer = null; R.canvas = null;
   R.workers = []; R.trucks = []; R.cratePool = []; R.rackSlots = []; R.wareStack = []; R.jobs = [];
-  MAT = null;
   R.mounted = false;
 }
 

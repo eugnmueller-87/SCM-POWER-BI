@@ -125,6 +125,8 @@
 
   #tw-title{top:16px;left:16px;padding:14px 18px;max-width:340px}
   #tw-title .tw-kicker{font-family:'Chakra Petch',sans-serif;letter-spacing:.22em;font-size:10px;color:#2dd4bf;font-weight:700}
+  #tw-title .tw-badge{display:inline-block;margin-left:6px;font-size:8px;padding:2px 6px;border-radius:4px;
+    background:rgba(74,163,255,.15);border:1px solid rgba(74,163,255,.45);color:#9cc4ff;letter-spacing:.12em;vertical-align:middle}
   #tw-title h1{font-family:'Chakra Petch',sans-serif;font-size:19px;font-weight:700;line-height:1.1;margin:3px 0 0;color:#fff}
   #tw-title .tw-sub{font-size:10.5px;color:#7c8aa0;margin-top:6px;line-height:1.45}
   #tw-title .tw-clock{margin-top:9px;display:flex;align-items:center;gap:8px;font-size:11px;color:#7c8aa0}
@@ -147,7 +149,7 @@
   #tw-legend{bottom:16px;right:16px;padding:11px 13px;width:200px}
   #tw-legend .tw-h{font-size:8.5px;letter-spacing:.16em;color:#7c8aa0;text-transform:uppercase;margin-bottom:8px}
   #tw-legend .tw-item{display:flex;align-items:center;gap:8px;font-size:10.5px;margin:5px 0;color:#c3cdda}
-  #tw-legend .tw-dot{width:10px;height:10px;border-radius:3px;flex:none}
+  #tw-legend .tw-dot{width:10px;height:10px;border-radius:3px;flex:none;box-shadow:0 0 6px currentColor}
 
   #tw-log{bottom:16px;left:16px;padding:10px 12px;width:380px;max-height:172px;overflow:hidden}
   #tw-log .tw-h{font-size:8.5px;letter-spacing:.16em;color:#7c8aa0;text-transform:uppercase;margin-bottom:7px;display:flex;justify-content:space-between}
@@ -405,9 +407,10 @@
   <div class="drawer-body" id="dwBody"></div>
 </aside>
 
-<!-- 3D Control Tower (RTS home screen). THREE is vendored locally so the cockpit
-     stays CDN-independent like Chart.js. tower.js exposes window.SCMTower. -->
-<script src="three.min.js"></script>
+<!-- 3D Control Tower (RTS home screen, Tier-2 Babylon.js PBR render). Babylon is
+     vendored locally so the cockpit stays CDN-independent like Chart.js.
+     tower.js exposes window.SCMTower. -->
+<script src="babylon.js"></script>
 <script src="tower.js"></script>
 
 <script>

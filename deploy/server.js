@@ -4,6 +4,20 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const { buildInsights } = require("./insights");
+
+// Forecast accuracy = 1 − WMAPE (weighted MAPE) over the backtest rows. WMAPE
+// weights error by volume, so big SKUs dominate — the honest portfolio number.
+// Deterministic, no LLM. Returns null if there's nothing to score.
+function wmapeAccuracy(rows) {
+  let absErr = 0, actual = 0;
+  for (const r of rows || []) {
+    absErr += Math.abs(+r.abs_error || 0);
+    actual += Math.abs(+r.actual_demand || 0);
+  }
+  if (actual <= 0) return null;
+  return Math.max(0, 1 - absErr / actual);
+}
 
 const API   = process.env.API_BASE || "https://scm-master-production.up.railway.app";
 const USER  = process.env.API_USER || "admin@example.com";
@@ -92,6 +106,18 @@ async function refresh() {
       getJSON(token, "/api/v1/tco/by-class"), []);
     const tcoPortfolio = await safe("tco/portfolio",
       getJSON(token, "/api/v1/tco/portfolio?baseline=50000000"), null);
+
+    // Forecast accuracy = 1 − WMAPE over the backtest rows (deterministic, no LLM).
+    const forecastAccuracy = wmapeAccuracy(forecast);
+
+    // Deterministic, zero-token insights from the data above. These refresh every
+    // cycle for free; the LLM commentary (on demand) narrates OVER these.
+    const ruleInsights = buildInsights({
+      spend_by_supplier: bySup, spend_by_category: byCat, inventory,
+      tco_by_class: tcoByClass, should_cost_savings: shouldCostSavings,
+      forecast_accuracy: forecastAccuracy,
+    });
+
     cache = {
       generated_at: new Date().toISOString().replace("T", " ").slice(0, 16) + " UTC",
       error: null,
@@ -99,6 +125,7 @@ async function refresh() {
         generated_at: new Date().toISOString().replace("T", " ").slice(0, 16) + " UTC",
         spend_by_category: byCat, spend_by_supplier: bySup, spend_by_product: byProd,
         spend_total: spendTotal, inventory, insights, forecast,
+        rule_insights: ruleInsights, forecast_accuracy: forecastAccuracy,
         should_cost_savings: shouldCostSavings, should_cost_by_supplier: shouldCostBySupplier,
         tco_by_class: tcoByClass, tco_portfolio: tcoPortfolio,
       }
@@ -125,6 +152,31 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   if (url === "/healthz") { res.writeHead(200); res.end("ok"); return; }
+
+  // On-demand AI commentary: the browser POSTs the deterministic findings here,
+  // we forward them to the SCM API server-side (so the token never reaches the
+  // client). One LLM call per click; the backend rate-limits per day.
+  if (url === "/api/commentary" && req.method === "POST") {
+    let body = "";
+    req.on("data", (c) => { body += c; if (body.length > 64 * 1024) req.destroy(); });
+    req.on("end", async () => {
+      try {
+        const token = await login();
+        const r = await fetch(`${API}/api/v1/agent/commentary`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body,
+        });
+        const text = await r.text();
+        res.writeHead(r.status, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+        res.end(text);
+      } catch (e) {
+        res.writeHead(502, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ detail: String(e.message || e) }));
+      }
+    });
+    return;
+  }
 
   // static files from this folder
   let file = url === "/" ? "/index.html" : url;

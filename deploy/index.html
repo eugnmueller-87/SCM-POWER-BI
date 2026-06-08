@@ -57,6 +57,8 @@
   .insights li{margin:0 0 13px;padding-left:15px;position:relative;font-size:13px;line-height:1.45;color:#334155}
   .insights li::before{content:"";position:absolute;left:0;top:6px;width:7px;height:7px;border-radius:50%;background:var(--red)}
   .insights li.warn::before{background:var(--amber)}
+  .insights li.act::before{background:var(--red)}
+  .insights li.info::before{background:#94a3b8}
   .page{display:none}.page.active{display:block}
   footer{margin-top:28px;text-align:center;color:var(--muted);font-size:12px}
   .scsec{margin-bottom:8px;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;padding-left:2px}
@@ -132,7 +134,14 @@
     </div>
     <div class="grid row2">
       <div class="card"><h3>Spend by category <span style="font-weight:400;text-transform:none;font-size:11px">(click to filter)</span></h3><div class="chart-box"><canvas id="catBar"></canvas></div></div>
-      <div class="card"><h3>🤖 AI-generated insights</h3><div class="insights"><ul id="insightList"></ul></div></div>
+      <div class="card">
+        <h3 style="display:flex;align-items:center;gap:8px">📋 Procurement insights
+          <span style="font-weight:400;text-transform:none;font-size:11px;color:#94a3b8">deterministic · auditable</span>
+          <button id="aiBtn" style="margin-left:auto;font:inherit;font-size:11px;padding:4px 10px;border:1px solid #d7dbe3;border-radius:6px;background:#fff;cursor:pointer">✨ AI commentary</button>
+        </h3>
+        <div class="insights"><ul id="insightList"></ul></div>
+        <div id="aiCommentary" style="display:none;margin-top:10px;padding:10px 12px;background:#f8f6f2;border-left:3px solid #c8853a;border-radius:4px;font-size:12.5px;line-height:1.5;color:#3a3a3a"></div>
+      </div>
     </div>
   </section>
 
@@ -296,6 +305,7 @@ function buildModel(src){
     inv: arr(D.inventory).map(x=>({name:fixTxt(x.name), cat:x.category, on_hand:+x.on_hand, safety:+x.safety_stock, burn:num(x.daily_burn), lead:+x.lead_time_days, on_order:+x.on_order, eta:x.next_eta, price:num(x.unit_price)})),
     fc: arr(D.forecast).map(x=>({date:x.as_of_date, pred:num(x.predicted_demand), act:num(x.actual_demand), ape:num(x.ape), cat:x.category, prod:fixTxt(x.name), err:num(x.abs_error)})),
     ins: arr(D.insights),
+    ruleIns: arr(D.rule_insights),
     scRows: arr(D.should_cost_by_supplier).map(x=>({
       pid:x.product_id, floor:num(x.should_cost_floor), target:num(x.target_price),
       quote:num(x.quoted_price), gapT:num(x.gap_to_target_abs), gapTp:num(x.gap_to_target_pct),
@@ -421,10 +431,22 @@ function renderOverview(){
       plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>EUR(c.raw)}}},
       scales:{x:{grid:{color:"#f1f5f9"},ticks:{callback:v=>"€"+(v/1000)+"k"}},y:{grid:{display:false}}}}});
 
-  // insights
+  // insights — deterministic rule findings (zero-token, refresh every cycle).
   const ul=document.getElementById("insightList"); ul.innerHTML="";
-  if(!RAW.ins.length){ ul.innerHTML='<li style="color:#94a3b8">AI insights temporarily unavailable — core metrics below are live.</li>'; }
-  RAW.ins.slice(0,5).forEach((it,i)=>{const li=document.createElement("li");if(i>=3)li.className="warn";li.innerHTML=`<strong>${fixTxt(it.title||"")}</strong>`;ul.appendChild(li);});
+  const SEV={action:"act",watch:"warn",info:"info"};
+  if(RAW.ruleIns.length){
+    RAW.ruleIns.slice(0,6).forEach(it=>{
+      const li=document.createElement("li"); li.className=SEV[it.severity]||"info";
+      li.innerHTML=`<strong>${fixTxt(it.title||"")}</strong>`
+        +(it.metric?` <span style="color:#94a3b8">· ${fixTxt(it.metric)}</span>`:"")
+        +(it.detail?`<div style="color:#64748b;font-size:12px;margin-top:2px">${fixTxt(it.detail)}</div>`:"");
+      ul.appendChild(li);
+    });
+  } else if(RAW.ins.length){
+    RAW.ins.slice(0,5).forEach((it,i)=>{const li=document.createElement("li");if(i>=3)li.className="warn";li.innerHTML=`<strong>${fixTxt(it.title||"")}</strong>`;ul.appendChild(li);});
+  } else {
+    ul.innerHTML='<li style="color:#94a3b8">No findings — all metrics within tolerance.</li>';
+  }
 }
 
 function renderSpend(){
@@ -851,6 +873,28 @@ async function loadData(){
     showError((e&&e.message||e)+"  @  "+((e&&e.stack||"").split("\n")[1]||"").trim());
   }
 }
+// On-demand AI commentary — narrates OVER the deterministic findings (sent as
+// structured input, not raw data), so every number stays code-computed. One LLM
+// call per click; nothing happens automatically.
+document.addEventListener("click", async (e)=>{
+  if(e.target && e.target.id==="aiBtn"){
+    const btn=e.target, box=document.getElementById("aiCommentary");
+    const findings=(RAW&&RAW.ruleIns)||[];
+    if(!findings.length){ return; }
+    btn.disabled=true; const label=btn.textContent; btn.textContent="✨ Thinking…";
+    box.style.display="block"; box.textContent="Generating commentary over the findings…";
+    try{
+      const r=await fetch("/api/commentary",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({findings:findings.map(f=>({title:f.title,detail:f.detail,metric:f.metric,severity:f.severity}))})});
+      const j=await r.json();
+      box.textContent = r.ok ? (j.commentary||"(no commentary)")
+        : (r.status===429 ? "Daily AI-commentary limit reached — the deterministic findings above are always live."
+          : "AI commentary unavailable right now — the findings above are computed live and don't need it.");
+    }catch(err){ box.textContent="AI commentary unavailable — findings above are live."; }
+    finally{ btn.disabled=false; btn.textContent=label; }
+  }
+});
+
 loadData();
 setInterval(loadData, 60000); // auto-refresh every 60s — the board updates itself
 </script>

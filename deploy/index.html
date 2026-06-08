@@ -136,7 +136,6 @@
       <div class="card">
         <h3 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           Predicted vs Actual demand — <span id="lineSpan" style="font-weight:400;text-transform:none;font-size:12px;color:#64748b">walk-forward backtest</span>
-          <span id="yearSel" class="yearsel" style="margin-left:auto"></span>
         </h3>
         <div class="chart-box tall"><canvas id="lineChart"></canvas></div>
       </div>
@@ -175,7 +174,7 @@
   <!-- ===================== SPEND ===================== -->
   <section class="page" id="page-spend">
     <div class="grid kpis">
-      <div class="card kpi"><div class="label">Total Spend</div><div class="value" id="sTotal">–</div><span class="pill neut">selected scope</span></div>
+      <div class="card kpi"><div class="label">Total Spend</div><div class="value" id="sTotal">–</div><span class="pill neut">all-time · selected scope</span></div>
       <div class="card kpi"><div class="label">Units</div><div class="value" id="sUnits">–</div><span class="pill neut">items procured</span></div>
       <div class="card kpi"><div class="label">Avg Spend / Unit</div><div class="value" id="sAvg">–</div><span class="pill neut">blended</span></div>
       <div class="card kpi"><div class="label">Categories</div><div class="value" id="sCats">–</div><span class="pill neut">in scope</span></div>
@@ -383,11 +382,6 @@ let YEAR = null;   // selected backtest year for the demand line, or null = all
 const charts = {};
 function destroy(id){ if(charts[id]){charts[id].destroy(); delete charts[id];} }
 
-// Distinct years present in the backtest, ascending (derived from the data, never hardcoded).
-function backtestYears(){
-  return [...new Set(RAW.fc.map(x=>(x.date||"").slice(0,4)).filter(Boolean))].sort();
-}
-
 function applyFilter(){
   let prods = RAW.prods, fc = RAW.fc, cats = RAW.cats, sups = RAW.sups;
   if(FILTER){
@@ -407,14 +401,6 @@ function setFilter(type,value){
   if(FILTER && FILTER.type===type && FILTER.value===value) FILTER=null;
   else FILTER={type,value};
   renderFilterBar(); renderAll();
-}
-function setYear(y){ YEAR = (YEAR===y ? null : y); renderAll(); }
-function renderYearSel(){
-  const el=document.getElementById("yearSel"); if(!el) return;
-  const years=backtestYears();
-  const btn=(label,val)=>`<button class="${(YEAR===val||(val===null&&!YEAR))?'on':''}" data-yr="${val===null?'':val}">${label}</button>`;
-  el.innerHTML = btn("All",null) + years.map(y=>btn(y,y)).join("");
-  el.querySelectorAll("button").forEach(b=>b.onclick=()=>setYear(b.dataset.yr||null));
 }
 function renderFilterBar(){
   const fb=document.getElementById("filterbar");
@@ -439,15 +425,15 @@ function renderOverview(){
   document.getElementById("kShareP").textContent=topSup.k+" — concentration risk";
   document.getElementById("kStock").textContent=stockRisk;
 
-  // line — sliced by the selected year (if any); the product/category cross-filter
-  // (FILTER, applied above into `fc`) also flows through, so you can view e.g.
-  // "GPU demand in 2024" specifically.
-  renderYearSel();
-  const lineFc = (YEAR ? fc.filter(x=>(x.date||"").startsWith(YEAR)) : fc);
+  // line — all-time backtest overview; the product/category cross-filter (FILTER,
+  // applied above into `fc`) flows through so you can drill to one product. Year
+  // slicing lives on the FORECAST tab (where year-over-year accuracy is the point),
+  // not here — a year control on Overview would only move this one chart.
+  const lineFc = fc;
   const span = document.getElementById("lineSpan");
   if(span){
     const scope = FILTER ? FILTER.value : "all products — click a product/category below to drill in";
-    span.textContent = `${YEAR || "all years"} · ${scope}`;
+    span.textContent = `all-time · ${scope} · (year view on the Forecast tab)`;
   }
   destroy("lineChart");
   charts.lineChart=new Chart(document.getElementById("lineChart"),{type:"line",

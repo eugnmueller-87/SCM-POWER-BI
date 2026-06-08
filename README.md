@@ -73,8 +73,11 @@ PCF shadows, ACES tone-mapping, a glow layer, restrained bloom and SSAO — with
 toggle and speed/pause/orbit controls. The heavy WebGL only mounts while the Control Tower tab is
 active, so the data tabs are never taxed. Source: [`deploy/tower.js`](deploy/tower.js).
 
-<!-- Drop a screenshot at clip/control-tower.png and it renders here:
-![SCM Master 3D Control Tower](https://raw.githubusercontent.com/eugnmueller-87/SCM-POWER-BI/main/clip/control-tower.png) -->
+![SCM Master 3D Control Tower](https://raw.githubusercontent.com/eugnmueller-87/SCM-POWER-BI/main/clip/tower.gif)
+
+> The 3D Control Tower running live — trucks arriving with real POs, forklifts moving the
+> committed stock, racks lit to the deployed fleet. For the full-quality clip,
+> ▶︎ **[open `clip/tower.mp4`](https://github.com/eugnmueller-87/SCM-POWER-BI/blob/main/clip/tower.mp4)**.
 
 ## 🎥 Walkthrough
 

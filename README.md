@@ -64,7 +64,7 @@ and a **total-cost-of-ownership** view. It logs into the SCM Master API server-s
 | Tab | KPI / visual | What it answers |
 |---|---|---|
 | **Overview** | **Forecast Accuracy** (1 − WMAPE), **Total Spend**, **Top Supplier Share**, **Stockout Risk** | The four numbers a CEO checks first — is the AI forecast trustworthy, how much are we spending, are we over-reliant on one supplier, and is anything about to run out. |
-| **Overview** | **Predicted vs Actual Demand** (12-month line) + **Supplier Concentration** (donut) + **Spend by Category** (bars) + **AI-Generated Insights** | The forecast "money shot" against 12 months of actuals, plus a click-to-filter spend/supplier breakdown and the AI's plain-English read on the data. |
+| **Overview** | **Predicted vs Actual Demand** (12-month line) + **Supplier Concentration** (donut) + **Spend by Category** (bars) + **Procurement Insights** (deterministic) | The forecast "money shot" against 12 months of actuals, plus a click-to-filter spend/supplier breakdown and a rules-engine read of the data — concentration / HHI, weeks-of-cover, should-cost gap, TCO inversion — with an optional one-click **AI commentary** that narrates *over* those computed facts. |
 | **SC Scorecard** | **Inventory Turns**, **Days of Supply**, **Fill Rate**, **Forecast Bias**, **HHI concentration**, **Avg Lead Time**, **On-Order**, **SKUs below safety** … | The full supply-chain health panel — every tile is **click-to-drill**: it opens a slide-out with the exact formula and the underlying rows. |
 | **Spend** | Spend **by category / supplier / product**, **maverick & tail-spend %**, **top-supplier concentration** | Where the money goes and the concrete savings levers. Cross-filters the whole board on click. |
 | **Inventory** | On-hand, daily burn, **Reorder Point** (`burn × lead + safety`), **Days-to-reorder**, **Action** column (🔴 ORDER NOW / 🟡 order in N d / ✅ on order / 🟢 ok) | Tells planners *when* to reorder each SKU, not just what the stock is. |
@@ -105,7 +105,7 @@ The full stack:
 
 2. **A deployed backend (SCM Master API).** A FastAPI service on Railway exposes
    authenticated analytics endpoints (OAuth2 login → Bearer token) for spend, inventory,
-   forecast accuracy and AI-generated insights. This is the single source of truth both
+   forecast accuracy, should-cost and TCO. This is the single source of truth both
    front-ends read.
 
 3. **A live web cockpit** ([hosted here](https://scm-power-bi-production.up.railway.app)) —
@@ -128,6 +128,17 @@ The full stack:
    - **Total Cost of Ownership (TCO)** — beyond the sticker price: **portfolio TCO**, **TSCMC %**
      (SCOR — supply-chain cost excl. acquisition), **OpEx share**, and TCO stacked by layer
      (acquisition + landed + deployment + lifetime OpEx + end-of-life − recovery) per asset class.
+   - **Deterministic insights + on-demand AI** — the Overview "Procurement Insights" panel is a
+     **rules engine** ([`deploy/insights.js`](deploy/insights.js)): supplier concentration +
+     **Herfindahl–Hirschman Index** (DOJ/FTC threshold), weeks-of-cover stockout risk,
+     should-cost gap, TCO inversion (lifetime OpEx ≥ acquisition), forecast volatility. The
+     numbers match the KPIs exactly because they're computed the same way — **zero tokens,
+     reproducible, auditable**. A one-click **"✨ AI commentary"** button then asks the LLM to
+     synthesise a short read *over those findings* (sent as structured input, never raw data),
+     so every figure stays code-computed. The board never calls the LLM automatically.
+   - **Near-zero passive cost** — the priced LLM call (insights commentary) is the only
+     token-costing step, so it's decoupled from the data refresh: spend/inventory/forecast
+     refresh on the fast clock, AI commentary only on a deliberate click (rate-limited per day).
    - **Environment-aware deployment** — the same cockpit deploys to a **demo** stack and an
      isolated **production** stack (own Railway project), each wired to its environment's API via
      `API_BASE` with a read-only viewer account.
@@ -225,6 +236,17 @@ whether to invest in AI for procurement & supply-chain.
 | **7. Live API connection** | [`dashboard/live_api_connection.md`](dashboard/live_api_connection.md) | Paste-ready Power Query (M) to connect Power BI to the deployed backend — auto-login on every refresh (OAuth2 → Bearer). |
 | **8. Built dashboard** | [`Order_Accuracy_Forecast_2026.pbix`](Order_Accuracy_Forecast_2026.pbix) | The Power BI report itself, wired to the live API. *(Git LFS)* |
 | **9. Live web cockpit** | [`deploy/`](deploy/) → [**hosted**](https://scm-power-bi-production.up.railway.app) | Node server + Chart.js. Server-side API login, in-memory cache, auto-refresh. **7 tabs** (Overview, SC Scorecard, Spend, Inventory, Forecast, Should-Cost, TCO). Cross-filtering, click-to-drill KPIs, reorder alerts, forecast diagnostics, should-cost margin lever, TCO. Environment-aware (demo + isolated prod). Deployed on Railway. |
+
+## Architecture: the LLM advises, deterministic code decides
+
+The cockpit follows the same rule as the [SCM Master](https://github.com/eugnmueller-87/SCM-Master)
+backend it reads from: **facts are computed by tested code; the LLM only narrates over them.**
+The Overview insights are a deterministic rules engine (concentration/HHI, weeks-of-cover,
+should-cost gap, TCO inversion) — so "Dell is 64.9% of spend" is a threshold over real numbers,
+reproducible and auditable, not a figure a model might hallucinate. The optional AI commentary is
+handed those already-computed findings as structured input and asked only to *synthesise* a short
+read — it never re-derives a number. The result is an AI dashboard whose every figure is
+trustworthy and whose passive token cost is ≈ 0.
 
 ## Frameworks anchored (no ad-hoc KPIs)
 - **SCOR DS** Level-1 metrics: Perfect Order Fulfillment %, Order Fulfillment Cycle Time,

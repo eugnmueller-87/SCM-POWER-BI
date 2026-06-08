@@ -208,7 +208,13 @@ const server = http.createServer(async (req, res) => {
   const full = path.join(__dirname, path.normalize(file).replace(/^(\.\.[\/\\])+/, ""));
   fs.readFile(full, (err, buf) => {
     if (err) { res.writeHead(404); res.end("Not found"); return; }
-    res.writeHead(200, { "Content-Type": TYPES[path.extname(full)] || "application/octet-stream" });
+    // The dashboard markup carries the inline app JS, so a stale cached index.html
+    // pins old behaviour (e.g. the year filter not reaching every KPI). Force the
+    // browser to revalidate HTML every load; other assets may cache normally.
+    const ext = path.extname(full);
+    const headers = { "Content-Type": TYPES[ext] || "application/octet-stream" };
+    if (ext === ".html") headers["Cache-Control"] = "no-cache, must-revalidate";
+    res.writeHead(200, headers);
     res.end(buf);
   });
 });

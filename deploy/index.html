@@ -305,6 +305,10 @@
 
 <script>
 const EUR = n => "€" + Number(n).toLocaleString("en-US",{maximumFractionDigits:0});
+// Always en-US grouping so counts read "1,224" (a German browser locale would
+// otherwise render 1224 as "1.224", which looks like a decimal — a real bug seen
+// on the Units KPI). Use NUM() for every integer count shown to the user.
+const NUM = n => Number(n).toLocaleString("en-US",{maximumFractionDigits:0});
 const PCT = n => (n*100).toFixed(1) + "%";
 const arr = x => Array.isArray(x) ? x : (x && Array.isArray(x.value) ? x.value : []);
 const num = s => Number(String(s).replace(/[^0-9.\-]/g,""));
@@ -499,7 +503,7 @@ function renderSpend(){
   const units=prods.reduce((s,x)=>s+x.units,0);
   const allTotal=RAW.prods.reduce((s,x)=>s+x.spend,0);
   document.getElementById("sTotal").textContent=EUR(total);
-  document.getElementById("sUnits").textContent=units.toLocaleString();
+  document.getElementById("sUnits").textContent=NUM(units);
   document.getElementById("sAvg").textContent=units?EUR(total/units):"–";
   document.getElementById("sCats").textContent=new Set(prods.map(p=>p.cat)).size;
 
@@ -748,11 +752,11 @@ function renderScorecard(){
     scCard("mape","MAPE", PCT(k.mape), "mean absolute % error", k.mape<=0.15?"good":k.mape<=0.25?"warn":"bad"),
     scCard("bias","Forecast Bias", PCT(k.bias), k.bias>1?"over-forecasting":"under-forecasting", (k.bias>=0.95&&k.bias<=1.05)?"good":(k.bias>=0.9&&k.bias<=1.1)?"warn":"bad"),
     scCard("lead","Avg Lead Time", k.avgLead.toFixed(0)+" d", "supplier replenishment", k.avgLead<=14?"good":k.avgLead<=21?"warn":"bad"),
-    scCard("onorder","Units On Order", k.onOrder.toLocaleString(), "inbound pipeline", "neut"),
+    scCard("onorder","Units On Order", NUM(k.onOrder), "inbound pipeline", "neut"),
     scCard("burn","Demand Coverage", k.burn.toFixed(1)+" u/d", "total daily burn rate", "neut"),
   ].join("");
   document.getElementById("scSrc").innerHTML=[
-    scCard("spend","Total Spend", EUR(k.totalSpend), k.totalUnits.toLocaleString()+" units procured", "neut"),
+    scCard("spend","Total Spend", EUR(k.totalSpend), NUM(k.totalUnits)+" units procured", "neut"),
     scCard("suppliers","Active Suppliers", k.supplierCount, "in current scope", "neut"),
     scCard("hhi","Supplier HHI", k.hhi.toFixed(3), ">0.25 = concentrated", k.hhi<=0.25?"good":k.hhi<=0.4?"warn":"bad"),
     scCard("top1","Top-Supplier Share", PCT(k.top1), "single-vendor dependency", k.top1<=0.3?"good":k.top1<=0.5?"warn":"bad"),
@@ -813,7 +817,7 @@ const DRILL={
   lead:()=>({title:"Avg Lead Time",value:KPI.avgLead.toFixed(0)+" d",sub:"supplier replenishment · per SKU",
     formula:"<b>Lead time</b> = days from order to delivery, averaged across SKUs.",
     body:()=>{const r=RAW.inv.map(x=>({nm:x.name,val:x.lead,disp:x.lead+" d",color:x.lead<=14?C.green:x.lead<=21?C.amber:C.red})).sort((a,b)=>b.val-a.val);return miniBars(r);}}),
-  onorder:()=>({title:"Units On Order",value:KPI.onOrder.toLocaleString(),sub:"inbound pipeline · per SKU",
+  onorder:()=>({title:"Units On Order",value:NUM(KPI.onOrder),sub:"inbound pipeline · per SKU",
     formula:"<b>On order</b> = units currently inbound (POs not yet received).",
     body:()=>tableHTML([{t:"Product"},{t:"On order",num:1},{t:"Next ETA"}],RAW.inv.filter(x=>x.on_order>0).map(x=>[x.name,{t:x.on_order,num:1},x.eta||"—"]))}),
   burn:()=>({title:"Demand Coverage",value:KPI.burn.toFixed(1)+" u/d",sub:"daily burn rate · per SKU",

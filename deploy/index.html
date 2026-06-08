@@ -120,6 +120,7 @@
 </header>
 
 <div class="wrap">
+  <div id="renderErr" style="display:none;margin:10px 16px;padding:10px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;color:#b91c1c;font-size:13px"></div>
   <div class="filterbar" id="filterbar">
     <span class="hint">💡 Click any category, supplier or product to filter the whole board.</span>
   </div>
@@ -564,7 +565,7 @@ function renderInventory(){
   document.getElementById("iRisk").textContent=risk;
   document.getElementById("iValue").textContent=EUR(value);
 
-  renderCapacity();
+  try{ renderCapacity(); }catch(e){ console.warn("renderCapacity failed:",e); }
 
   destroy("invStock");
   charts.invStock=new Chart(document.getElementById("invStock"),{type:"bar",
@@ -845,13 +846,16 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape")closeDrill();});
 
 let CURRENT="overview";
 function renderAll(){
-  if(CURRENT==="overview")renderOverview();
-  else if(CURRENT==="scorecard")renderScorecard();
-  else if(CURRENT==="spend")renderSpend();
-  else if(CURRENT==="inventory")renderInventory();
-  else if(CURRENT==="forecast")renderForecast();
-  else if(CURRENT==="shouldcost")renderShouldCost();
-  else if(CURRENT==="tco")renderTCO();
+  const fn={overview:renderOverview,scorecard:renderScorecard,spend:renderSpend,
+            inventory:renderInventory,forecast:renderForecast,shouldcost:renderShouldCost,tco:renderTCO}[CURRENT];
+  if(!fn) return;
+  const note=document.getElementById("renderErr"); if(note) note.style.display="none";
+  // One tab's render error must not blank the whole board — log it and show a note.
+  try{ fn(); }
+  catch(e){
+    console.error(`render '${CURRENT}' failed:`, e);
+    if(note){ note.style.display="block"; note.textContent=`⚠ This view hit an error (${e.message}). The data is live; other tabs are unaffected.`; }
+  }
 }
 
 function renderShouldCost(){

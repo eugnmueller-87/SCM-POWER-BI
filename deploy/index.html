@@ -54,6 +54,11 @@
   table{width:100%;border-collapse:collapse;font-size:13px}
   th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}
   th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+  .ord-row:hover{background:#f8fafc}
+  .ord-drill td{background:#f8fafc;padding:0 10px 12px}
+  .ord-items{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}
+  .ord-items th{font-size:10px;padding:6px 8px}
+  .ord-items td{padding:6px 8px;border-bottom:1px solid #eef2f7}
   td.num{text-align:right;font-variant-numeric:tabular-nums}
   tr:last-child td{border-bottom:none}
   .insights ul{list-style:none;margin:0;padding:0}
@@ -256,6 +261,7 @@
     <button data-tab="scorecard">SC Scorecard</button>
     <button data-tab="spend">Spend</button>
     <button data-tab="inventory">Inventory</button>
+    <button data-tab="orders">Orders</button>
     <button data-tab="forecast">Forecast</button>
     <button data-tab="shouldcost">Should-Cost</button>
     <button data-tab="tco">TCO</button>
@@ -451,6 +457,22 @@
     </div>
     <div class="grid"><div class="card"><h3>Per-class detail <span style="font-weight:400;text-transform:none;font-size:11px">(avg per asset)</span></h3>
       <table id="tcoTable"><thead><tr><th>Class</th><th class="num">Assets</th><th class="num">Acquisition</th><th class="num">OpEx</th><th class="num">Landed+Deploy</th><th class="num">EOL−Recovery</th><th class="num">Avg TCO</th></tr></thead><tbody></tbody></table></div></div>
+  </section>
+
+  <!-- ===================== ORDERS (inbound pipeline + capacity coverage) ===================== -->
+  <section class="page" id="page-orders">
+    <div class="scsec">📦 Orders — what's arriving, and what it covers <span style="font-weight:400;text-transform:none;font-size:11px;color:#94a3b8">· current year</span></div>
+    <div class="grid kpis">
+      <div class="card kpi"><div class="label">Open orders</div><div class="value" id="ordOpen">–</div><span class="pill neut" id="ordOpenP">in flight</span></div>
+      <div class="card kpi"><div class="label">Incoming units</div><div class="value" id="ordIncoming">–</div><span class="pill warn">not yet delivered</span></div>
+      <div class="card kpi"><div class="label">Delivered (YTD)</div><div class="value" id="ordDelivered">–</div><span class="pill good" id="ordDeliveredP">orders</span></div>
+      <div class="card kpi"><div class="label">Inbound value</div><div class="value" id="ordValue">–</div><span class="pill neut">open POs</span></div>
+    </div>
+    <div class="grid"><div class="card">
+      <h3>Order pipeline <span style="font-weight:400;text-transform:none;font-size:11px">click a row to see its contents · soonest arrival first</span></h3>
+      <table id="ordTable"><thead><tr><th>PO</th><th>Supplier</th><th>Status</th><th class="num">Units</th><th class="num">Value</th><th class="num">Covers gap</th><th>ETA</th></tr></thead><tbody></tbody></table>
+      <div id="ordEmpty" style="display:none;color:#94a3b8;padding:18px;text-align:center">No orders for the current year.</div>
+    </div></div>
   </section>
 
   <!-- ===================== AUTONOMY (hidden — opened from the header) =========
@@ -1162,6 +1184,81 @@ function renderTower(){
   if(RAW) SCMTower.sync(RAW);
 }
 
+/* ===================== ORDERS tab (inbound pipeline + capacity coverage) =====
+   Reads /api/orders (PO list + line-item contents + per-PO 'covers_outstanding'
+   from the inventory-position model). Current-year only; delivered vs incoming;
+   click a row to expand what's in the order. Lazy-fetched on open. */
+let ORDERS=null, _ordOpenRow=null;
+const esc=(s)=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const DELIVERED_STATUS=new Set(["RECEIVED","DELIVERED"]);
+function ordYear(o){ return (o.date_ordered||"").slice(0,4); }
+function ordEta(o){ const e=o.items.map(i=>i.eta).filter(Boolean).sort(); return e[0]||null; }
+function ordUnits(o){ return o.items.reduce((s,i)=>s+(i.quantity||0),0); }
+function ordValue(o){ return o.items.reduce((s,i)=>s+(i.quantity||0)*(i.unit_price||0),0); }
+function ordCovers(o){ return o.items.reduce((s,i)=>s+(i.covers_outstanding||0),0); }
+
+async function renderOrders(){
+  const tb=document.querySelector("#ordTable tbody");
+  if(ORDERS===null){
+    if(tb) tb.innerHTML=`<tr><td colspan="7" style="color:#94a3b8;padding:16px">Loading orders…</td></tr>`;
+    try{ const r=await fetch("/api/orders",{cache:"no-store"}); ORDERS=r.ok?await r.json():[]; }
+    catch(e){ ORDERS=[]; }
+    if(!Array.isArray(ORDERS)) ORDERS=[];
+  }
+  const yr=String(new Date().getFullYear());
+  // current year (fall back to the latest year present if none match "now")
+  let rows=ORDERS.filter(o=>ordYear(o)===yr);
+  if(!rows.length && ORDERS.length){ const ys=[...new Set(ORDERS.map(ordYear).filter(Boolean))].sort(); const ly=ys[ys.length-1]; rows=ORDERS.filter(o=>ordYear(o)===ly); }
+
+  const open=rows.filter(o=>!DELIVERED_STATUS.has(o.status));
+  const delivered=rows.filter(o=>DELIVERED_STATUS.has(o.status));
+  const incomingUnits=open.reduce((s,o)=>s+ordUnits(o),0);
+  const inboundValue=open.reduce((s,o)=>s+ordValue(o),0);
+  document.getElementById("ordOpen").textContent=open.length;
+  document.getElementById("ordIncoming").textContent=NUM(incomingUnits);
+  document.getElementById("ordDelivered").textContent=delivered.length;
+  document.getElementById("ordValue").textContent=EUR(inboundValue);
+
+  const empty=document.getElementById("ordEmpty");
+  if(!rows.length){ if(tb) tb.innerHTML=""; if(empty) empty.style.display="block"; return; }
+  if(empty) empty.style.display="none";
+
+  // soonest arrival first (open before delivered)
+  const sorted=rows.slice().sort((a,b)=>{
+    const ad=DELIVERED_STATUS.has(a.status)?1:0, bd=DELIVERED_STATUS.has(b.status)?1:0;
+    if(ad!==bd) return ad-bd;
+    return (ordEta(a)||"9999").localeCompare(ordEta(b)||"9999");
+  });
+  const pill=s=>{ const cls=DELIVERED_STATUS.has(s)?"good":(s==="CANCELLED"?"bad":"warn"); return `<span class="pill ${cls}">${esc(s)}</span>`; };
+  tb.innerHTML=sorted.map(o=>{
+    const covers=ordCovers(o);
+    const contents=`<tr class="ord-drill" data-for="${esc(o.order_number)}" style="display:none"><td colspan="7">
+      <table class="ord-items"><thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Unit</th><th class="num">Line</th><th class="num">Covers gap</th><th>ETA</th></tr></thead><tbody>${
+        o.items.map(i=>`<tr><td>${esc(i.name)}</td><td class="num">${i.quantity}</td>`
+          +`<td class="num">${i.unit_price!=null?EUR(i.unit_price):"—"}</td>`
+          +`<td class="num">${i.unit_price!=null?EUR(i.quantity*i.unit_price):"—"}</td>`
+          +`<td class="num">${i.covers_outstanding?`<b style="color:#15803d">${i.covers_outstanding}</b>`:"—"}</td>`
+          +`<td>${i.eta?i.eta:"—"}</td></tr>`).join("")
+      }</tbody></table></td></tr>`;
+    return `<tr class="ord-row" data-po="${esc(o.order_number)}" style="cursor:pointer">
+      <td><b>${esc(o.order_number)}</b></td>
+      <td style="color:#64748b">${esc(String(o.supplier_id).slice(0,8))}</td>
+      <td>${pill(o.status)}</td>
+      <td class="num">${NUM(ordUnits(o))}</td>
+      <td class="num">${EUR(ordValue(o))}</td>
+      <td class="num">${covers?`<b style="color:#15803d">${covers}</b>`:"—"}</td>
+      <td>${ordEta(o)||"—"}</td>
+    </tr>${contents}`;
+  }).join("");
+  tb.querySelectorAll(".ord-row").forEach(tr=>tr.onclick=()=>{
+    const d=tb.querySelector(`.ord-drill[data-for="${CSS.escape(tr.dataset.po)}"]`);
+    if(!d) return;
+    const showing=d.style.display!=="none";
+    tb.querySelectorAll(".ord-drill").forEach(x=>x.style.display="none");
+    d.style.display=showing?"none":"table-row";
+  });
+}
+
 /* ===================== AUTONOMY tab (hidden decision loop + audit) =====================
    State is LOCAL to this tab; nothing here touches RAW or the /api/data batch. The
    audit table + drill-in read the new proxy branches (/api/decisions, /api/decision);
@@ -1308,7 +1405,7 @@ function autoCloseDrill(){ document.getElementById("autoDrillBg").classList.remo
 function renderAll(){
   const fn={tower:renderTower,overview:renderOverview,scorecard:renderScorecard,spend:renderSpend,
             inventory:renderInventory,forecast:renderForecast,shouldcost:renderShouldCost,tco:renderTCO,
-            autonomy:renderAutonomy}[CURRENT];
+            orders:renderOrders,autonomy:renderAutonomy}[CURRENT];
   if(!fn) return;
   const note=document.getElementById("renderErr"); if(note) note.style.display="none";
   // One tab's render error must not blank the whole board — log it and show a note.

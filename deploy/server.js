@@ -276,6 +276,36 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ---- Orders tab: PO list + contents + per-PO capacity coverage ------------
+  // Reuses the service token; safe()-wrapped. Joins purchase orders (with their
+  // line items) to product names and the inventory-position model so each PO
+  // can show what it contains AND how much outstanding demand it covers.
+  if (url === "/api/orders") {
+    const token = await login().catch(() => null);
+    const [orders, products, position] = await Promise.all([
+      safe("orders", token ? getJSON(token, "/api/v1/purchase-orders?limit=500") : Promise.reject(new Error("no token")), []),
+      safe("products", token ? getJSON(token, "/api/v1/products?limit=500") : Promise.reject(new Error("no token")), []),
+      safe("position", token ? getJSON(token, "/api/v1/planning/inventory-position") : Promise.reject(new Error("no token")), []),
+    ]);
+    const pname = {}; (products || []).forEach((p) => { pname[p.id] = p.name || p.product_code; });
+    // outstanding net requirement per product (what's still missing) for coverage.
+    const need = {}; (position || []).forEach((r) => { need[r.product_id] = r.net_requirement || 0; });
+    const enriched = (orders || []).map((o) => ({
+      order_number: o.order_number, status: o.status, supplier_id: o.supplier_id,
+      date_ordered: o.date_ordered, currency_code: o.currency_code,
+      items: (o.items || []).map((it) => ({
+        product_id: it.product_id, name: pname[it.product_id] || it.product_id,
+        quantity: it.quantity, unit_price: it.unit_price != null ? Number(it.unit_price) : null,
+        eta: it.estimated_delivery_date, delivered: it.actual_delivery_date,
+        // how much of this product's still-outstanding need this line helps cover.
+        covers_outstanding: Math.min(it.quantity, need[it.product_id] || 0),
+      })),
+    }));
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    res.end(JSON.stringify(enriched));
+    return;
+  }
+
   // static files from this folder
   let file = url === "/" ? "/index.html" : url;
   const full = path.join(__dirname, path.normalize(file).replace(/^(\.\.[\/\\])+/, ""));

@@ -9,6 +9,9 @@
 [![Babylon.js](https://img.shields.io/badge/Babylon.js-6.49-BB464B?style=flat&logo=babylondotjs&logoColor=white)](deploy/tower.js)
 [![WebGL](https://img.shields.io/badge/WebGL-PBR_%2B_SSAO-990000?style=flat&logo=webgl&logoColor=white)](deploy/tower.js)
 [![3D Control Tower](https://img.shields.io/badge/3D-Control_Tower-2dd4bf?style=flat)](deploy/tower.js)
+[![Autonomy](https://img.shields.io/badge/Autonomy-decision_loop_%2B_audit-4f46e5?style=flat)](deploy/index.html)
+[![Orders](https://img.shields.io/badge/Orders-inbound_%2B_delivery_perf-0ea5e9?style=flat)](deploy/index.html)
+[![Forecast](https://img.shields.io/badge/Forecast-WMAPE_%2B_bias-10b981?style=flat)](deploy/index.html)
 [![Deployed on Railway](https://img.shields.io/badge/Deployed-Railway-0B0D0E?style=flat&logo=railway&logoColor=white)](https://scm-power-bi-production.up.railway.app)
 [![Data](https://img.shields.io/badge/data-synthetic_%2B_public-8b5cf6?style=flat)](sources.md)
 [![Recommendation](https://img.shields.io/badge/recommendation-pilot-eab308?style=flat)](implementation/solution_proposal.md)
@@ -26,7 +29,7 @@ It ships in two forms: a **live, interactive web cockpit** (hosted, auto-refresh
 to a deployed API) and the **Power BI report** the lab requires — both reading the same
 backend so the numbers always agree.
 
-**Contents:** [Live dashboard](#-live-dashboard) · [3D Control Tower](#-3d-control-tower-home-screen) · [Walkthrough](#-walkthrough) · [What this project is](#what-this-project-is) · [Consulting case (Project 5)](#-the-consulting-case-project-5-deliverable) · [What's inside](#whats-inside) · [Quick start](#quick-start) · [Project structure](#project-structure) · [Status](#status)
+**Contents:** [Live dashboard](#-live-dashboard) · [3D Control Tower](#-3d-control-tower-home-screen) · [Orders & delivery](#-orders--delivery-performance) · [Autonomy](#-autonomy--the-decision-loop) · [Walkthrough](#-walkthrough) · [What this project is](#what-this-project-is) · [Consulting case (Project 5)](#-the-consulting-case-project-5-deliverable) · [What's inside](#whats-inside) · [Quick start](#quick-start) · [Project structure](#project-structure) · [Status](#status)
 
 > **Environment-aware.** The cockpit is a thin server-side proxy: it logs into **one**
 > [SCM Master](https://github.com/eugnmueller-87/SCM-Master) instance (set via `API_BASE`)
@@ -40,11 +43,13 @@ backend so the numbers always agree.
 ### ▶︎ **[scm-power-bi-production.up.railway.app](https://scm-power-bi-production.up.railway.app)**
 
 A fully interactive cockpit that opens on a **3D Control Tower** home screen (a real-time
-logistics view of the live supply chain) and drills into **7 analytics tabs** — Overview ·
-SC Scorecard · Spend · Inventory · Forecast · **Should-Cost** · **TCO** — with cross-filtering,
-click-to-drill KPIs, reorder alerts, a forecast "why was it wrong / how to predict better"
-diagnostic, a clean-sheet **should-cost margin lever**, and a **total-cost-of-ownership** view.
-It logs into the SCM Master API server-side and **auto-refreshes**, so the board is always current.
+logistics view of the live supply chain) and drills into **8 analytics tabs** — Overview ·
+SC Scorecard · Spend · Inventory · **Orders** · Forecast · **Should-Cost** · **TCO** — plus a
+hidden **Autonomy** panel (the agent's decision loop + audit trail). Cross-filtering,
+click-to-drill KPIs, reorder alerts, an **inbound-order pipeline with delivery-performance
+tracking**, a forecast "why was it wrong / how to predict better" diagnostic, a clean-sheet
+**should-cost margin lever**, and a **total-cost-of-ownership** view. It logs into the SCM
+Master API server-side and **auto-refreshes**, so the board is always current.
 
 ## 🛰 3D Control Tower (home screen)
 
@@ -79,6 +84,32 @@ active, so the data tabs are never taxed. Source: [`deploy/tower.js`](deploy/tow
 > committed stock, racks lit to the deployed fleet. For the full-quality clip,
 > ▶︎ **[open `clip/tower.mp4`](https://github.com/eugnmueller-87/SCM-POWER-BI/blob/main/clip/tower.mp4)**.
 
+## 📦 Orders & delivery performance
+
+The **Orders** tab is the inbound instrument: current-year purchase orders, **delivered vs
+incoming**, sorted soonest-arrival-first. Each PO shows units, value, ETA and **"covers gap"** —
+how much still-outstanding demand it fills (tied to the same inventory-position model the agent
+nets against). Click any order to expand its **line-item contents** (product · qty · unit · line ·
+covers · ETA) — so you can always see *what's in* an order, on the cockpit and in the SCM-Master
+Orders timeline.
+
+> **Delivery performance, lightweight.** It matches each shipment's **promised ETA vs actual**
+> (`eta_original` vs `eta_current` from the live tracking view) and surfaces the **slip** per order
+> plus a rollup: **delivery accuracy %** (on time or early), **avg slip**, **worst slip** — so you
+> can see at a glance whether lead-time assumptions need tweaking. Orders without a shipment record
+> just show their PO ETA — no fabricated data.
+
+## 🤖 Autonomy — the decision loop
+
+A hidden **Autonomy** panel (opened from the header) surfaces the agent's decision loop end to end:
+intake a requisition → a **live gate** resolving three checks (capacity OK? · price in band? ·
+confidence ≥ bar? → tier) → a **persistent, append-only audit trail** with click-to-drill from a
+decision to its inputs and, when placed, its purchase order via the provenance chain.
+
+> **LLM advises, deterministic code decides.** Real placing is fail-closed: dry-run by default,
+> live placement only behind an explicit `ALLOW_LIVE_PLACE` flag — a client can never force it.
+> Every figure is code-computed; the model only narrates over it.
+
 ## 🎥 Walkthrough
 
 ### 1 · Live web cockpit (hosted, auto-refreshing)
@@ -105,7 +136,8 @@ active, so the data tabs are never taxed. Source: [`deploy/tower.js`](deploy/tow
 | **SC Scorecard** | **Inventory Turns**, **Days of Supply**, **Fill Rate**, **Forecast Bias**, **HHI concentration**, **Avg Lead Time**, **On-Order**, **SKUs below safety** … | The full supply-chain health panel — every tile is **click-to-drill**: it opens a slide-out with the exact formula and the underlying rows. |
 | **Spend** | Spend **by category / supplier / product**, **maverick & tail-spend %**, **top-supplier concentration**, **per-year selector** (All-time · 2022…2026) | Where the money goes and the concrete savings levers — sliceable by year. Cross-filters the whole board on click. |
 | **Inventory** | On-hand, daily burn, **Reorder Point** (`burn × lead + safety`), **Days-to-reorder**, **Action** column (🔴 ORDER NOW / 🟡 order in N d / ✅ on order / 🟢 ok) | Tells planners *when* to reorder each SKU, not just what the stock is. |
-| **Forecast** | **MAPE / WMAPE**, accuracy by category, worst-category flag, **error trend by month**, a **per-year selector** (the whole tab reslices), click-to-drill **why-it-missed / how-to-fix** diagnostic + an honest **lumpy-demand** note where a SKU is intermittent | Why the forecast was wrong (bias, volatility) and how to predict better — and, on lumpy/project-batched SKUs, that low point-forecast accuracy is *expected* (they're managed by safety stock, not forecasts). |
+| **Orders** | **Open orders · Incoming units · Delivered YTD · Inbound value**, an order pipeline (delivered vs incoming, soonest first) with **"covers gap"** per PO, click-to-expand **line-item contents**, and a **delivery-performance** strip — *promised vs actual ETA, slip, accuracy %* | What's arriving, what it contains, how much outstanding demand it covers, and whether deliveries are on time — the signal for tuning lead-time assumptions. |
+| **Forecast** | **Accuracy (WMAPE)** + **Forecast bias** (over/under, drives safety stock) as the headline; **accuracy by category (WMAPE)**, worst-category flag, **error trend by month**, a **per-year selector**, click-to-drill **why-it-missed / how-to-fix** diagnostic. MAPE is kept at *detail* level, labelled — it's inflated by near-zero actuals on intermittent SKUs, so WMAPE+bias lead. | Why the forecast was wrong and how to predict better — with the metric matched to the demand profile (WMAPE/bias for intermittent SKUs, where per-point MAPE is meaningless). |
 | **Should-Cost** | **Addressable Savings**, **Avg Cost Gap %**, **Products Modelled**, **Total Margin Stacked**; *Quote vs Target vs Floor* bars + gap by supplier/component | The margin lever — a clean-sheet teardown shows how much negotiation headroom exists vs a fair price, and where margin leaks. |
 | **TCO** | **Portfolio TCO**, **Total Cost %**, **TSCMC %** (SCOR), **OpEx Share**; TCO stacked by layer per asset class | True lifetime cost beyond the sticker price (acquisition + landed + deployment + OpEx + EOL − recovery) → smarter buy decisions. |
 
@@ -272,7 +304,7 @@ whether to invest in AI for procurement & supply-chain.
 | **6c. Public evidence data** | [`data/processed/ai_adoption_evidence.csv`](data/processed/ai_adoption_evidence.csv) | Cited public AI-adoption / chip-risk figures powering the market-evidence layer. |
 | **7. Live API connection** | [`dashboard/live_api_connection.md`](dashboard/live_api_connection.md) | Paste-ready Power Query (M) to connect Power BI to the deployed backend — auto-login on every refresh (OAuth2 → Bearer). |
 | **8. Built dashboard** | [`Order_Accuracy_Forecast_2026.pbix`](Order_Accuracy_Forecast_2026.pbix) | The Power BI report itself, wired to the live API. *(Git LFS)* |
-| **9. Live web cockpit** | [`deploy/`](deploy/) → [**hosted**](https://scm-power-bi-production.up.railway.app) | Node server + Chart.js + **Babylon.js**. Server-side API login, in-memory cache, auto-refresh. A **3D Control Tower** home screen ([`deploy/tower.js`](deploy/tower.js)) + **7 tabs** (Overview, SC Scorecard, Spend, Inventory, Forecast, Should-Cost, TCO). Cross-filtering, click-to-drill KPIs, reorder alerts, forecast diagnostics, should-cost margin lever, TCO. Environment-aware (demo + isolated prod). Deployed on Railway. |
+| **9. Live web cockpit** | [`deploy/`](deploy/) → [**hosted**](https://scm-power-bi-production.up.railway.app) | Node server + Chart.js + **Babylon.js**. Server-side API login, in-memory cache, auto-refresh. A **3D Control Tower** home screen ([`deploy/tower.js`](deploy/tower.js)) + **8 tabs** (Overview, SC Scorecard, Spend, Inventory, **Orders**, Forecast, Should-Cost, TCO) + a hidden **Autonomy** decision-loop/audit panel. Cross-filtering, click-to-drill KPIs, reorder alerts, **inbound-order pipeline + delivery-performance tracking**, forecast diagnostics (WMAPE + bias), should-cost margin lever, TCO. Environment-aware (demo + isolated prod). Deployed on Railway. |
 
 ## Architecture: the LLM advises, deterministic code decides
 
@@ -349,7 +381,10 @@ SCM-POWER-BI/
 │   ├── cost_analysis.md        # pilot ~€43k / year-1 ~€135k
 │   └── timeline_estimate.md    # ~10-week pilot
 ├── measures/measures_dax.md    # every KPI: formula + DAX
-├── deploy/                     # live web cockpit (Node + Chart.js, Railway)
+├── deploy/                     # live web cockpit (Node + Chart.js + Babylon.js)
+│   ├── server.js               #   proxy + /api/* branches (data, orders, decisions, …)
+│   ├── index.html              #   8 tabs + hidden Autonomy panel (inline app JS)
+│   └── tower.js                #   3D Control Tower (Babylon.js, window.SCMTower)
 ├── clip/                       # walkthrough GIFs + mp4
 ├── Order_Accuracy_Forecast_2026.pbix   # Power BI report (Git LFS)
 ├── scripts/generate_data.py    # synthetic data generator
@@ -368,6 +403,9 @@ SCM-POWER-BI/
 - [x] **`.pbix` built in Power BI Desktop** — wired to the live API, forecast-accuracy measures + visuals live
 - [x] **Live web cockpit deployed** — [hosted on Railway](https://scm-power-bi-production.up.railway.app), auto-refreshing, with drill-downs + reorder alerts + forecast diagnostics
 - [x] **3D Control Tower home screen** — Babylon.js WebGL (PBR · IBL · SSAO · bloom), wired live to `/api/v1` (state-accurate; crates ∝ warehouse capacity, racks = deployed fleet, real POs + over-order guard); engine only mounts on its tab
+- [x] **Orders tab** — inbound pipeline (delivered vs incoming, current year), per-PO line-item contents, "covers gap" per order, and **delivery performance** (promised vs actual ETA, slip, accuracy %)
+- [x] **Autonomy panel** — the agent's decision loop (intake → live gate → tier) + a persistent append-only audit trail with provenance drill-down; fail-closed, dry-run by default
+- [x] **Forecast metrics matched to the demand profile** — WMAPE + bias lead the headline; MAPE demoted to labelled detail (it's inflated by intermittent near-zero actuals); accuracy-by-category uses WMAPE
 - [x] **Should-Cost / margin-lever tab** — clean-sheet teardown (quote vs target vs floor), addressable savings, wired to the live API
 - [x] **TCO tab** — total cost of ownership by layer + TSCMC % (SCOR), wired to the live API
 - [x] **Per-environment deployment** — same cockpit deploys to a **demo** stack and an isolated **production** stack (own Railway project), each wired to its environment's SCM Master API via `API_BASE` with a read-only viewer account

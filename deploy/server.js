@@ -23,6 +23,10 @@ const API   = process.env.API_BASE || "https://scm-master-production.up.railway.
 const USER  = process.env.API_USER || "admin@example.com";
 const PASS  = process.env.API_PASS || "admin";
 const PORT  = process.env.PORT || 8080;
+// Autonomy tab: real PO placing is OFF by default. The proxy forces dry_run=true
+// unless this flag is explicitly set, so the cockpit can never place live POs by
+// accident — even if a request asks for it.
+const ALLOW_LIVE_PLACE = process.env.ALLOW_LIVE_PLACE === "true";
 const REFRESH_MS = (process.env.REFRESH_SECONDS ? +process.env.REFRESH_SECONDS : 300) * 1000;
 // AI insights call the LLM, so they're the only refresh step that costs tokens.
 // They reason over slowly-changing analytics, so re-running them every data
@@ -199,6 +203,75 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(502, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ detail: String(e.message || e) }));
       }
+    });
+    return;
+  }
+
+  // ---- Autonomy tab: the decision loop + the persistent audit trail ----------
+  // Every branch reuses the service-account token, wraps the upstream call in
+  // safe() (a flaky agent endpoint degrades to a fallback, never a 500), and
+  // does NOT touch the /api/data batch above.
+
+  // The persistent decision audit trail (GET). Optional ?tier=&product_id=… pass
+  // straight through to /agent/decisions.
+  if (url === "/api/decisions") {
+    const token = await login().catch(() => null);
+    const qs = (req.url.split("?")[1] || "");
+    const rows = await safe("decisions",
+      token ? getJSON(token, `/api/v1/agent/decisions${qs ? "?" + qs : ""}`) : Promise.reject(new Error("no token")),
+      []);
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    res.end(JSON.stringify(rows));
+    return;
+  }
+
+  // One decision by id (drill-in): /api/decision?id=<uuid> -> /agent/decisions/{id}.
+  if (url === "/api/decision") {
+    const token = await login().catch(() => null);
+    const id = new URLSearchParams(req.url.split("?")[1] || "").get("id") || "";
+    const row = await safe("decision",
+      token && id ? getJSON(token, `/api/v1/agent/decisions/${encodeURIComponent(id)}`) : Promise.reject(new Error("no id/token")),
+      null);
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    res.end(JSON.stringify(row || { error: "not found" }));
+    return;
+  }
+
+  // Should-cost gap for a product (price-in-band check on the live gate view).
+  if (url === "/api/cost-gap") {
+    const token = await login().catch(() => null);
+    const id = new URLSearchParams(req.url.split("?")[1] || "").get("id") || "";
+    const gap = await safe("cost-gap",
+      token && id ? getJSON(token, `/api/v1/products/${encodeURIComponent(id)}/cost-gap`) : Promise.reject(new Error("no id/token")),
+      null);
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    res.end(JSON.stringify(gap || { error: "unavailable" }));
+    return;
+  }
+
+  // Run the decision gate (POST). dry_run defaults TRUE; real placing only when
+  // the server-side ALLOW_LIVE_PLACE flag is set — a client can never force it.
+  if (url === "/api/purchasing-run" && req.method === "POST") {
+    let body = "";
+    req.on("data", (c) => { body += c; if (body.length > 16 * 1024) req.destroy(); });
+    req.on("end", async () => {
+      let asked = {};
+      try { asked = body ? JSON.parse(body) : {}; } catch (_) { asked = {}; }
+      // Fail-closed: live placing requires BOTH the env flag and an explicit
+      // dry_run:false from the caller; otherwise force dry_run=true.
+      const dry_run = ALLOW_LIVE_PLACE ? (asked.dry_run !== false ? true : false) : true;
+      const payload = { dry_run, period_days: Number(asked.period_days) || 7 };
+      const token = await login().catch(() => null);
+      const result = await safe("purchasing-run",
+        token ? fetch(`${API}/api/v1/agent/purchasing-run`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }).then(r => r.ok ? r.json() : Promise.reject(new Error(`purchasing-run ${r.status}`)))
+          : Promise.reject(new Error("no token")),
+        null);
+      res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+      res.end(JSON.stringify(result || { error: "run unavailable", dry_run }));
     });
     return;
   }

@@ -177,6 +177,65 @@
   .tw-tag.deploy{color:#c9fff5;background:rgba(20,70,64,.7);border-color:#2dd4bf}
   @keyframes twTagPop{from{opacity:0;transform:translate(-50%,-70%) scale(.8)}to{opacity:1}}
   @keyframes twTagFade{to{opacity:0;transform:translate(-50%,-130%)}}
+
+  /* ===================== AUTONOMY (hidden decision-loop tab) ===================== */
+  .autobtn{font:inherit;font-size:12px;font-weight:600;color:rgba(255,255,255,.85);background:rgba(255,255,255,.1);
+    border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:7px 13px;cursor:pointer;transition:.15s}
+  .autobtn:hover{background:rgba(255,255,255,.2);color:#fff}
+  .auto-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px}
+  .auto-eyebrow{font-size:11px;letter-spacing:.5px;color:var(--muted);font-weight:700}
+  .auto-title{margin:2px 0 0;font-size:24px;font-weight:700;letter-spacing:-.01em}
+  .auto-sub{font-size:12.5px;color:var(--muted);margin-top:6px;max-width:720px;line-height:1.5}
+  .auto-badge{font-size:11px;font-weight:700;letter-spacing:.06em;padding:6px 12px;border-radius:999px;white-space:nowrap}
+  .auto-badge--dry{background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe}
+  .auto-badge--live{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}
+  .auto-grid{grid-template-columns:1fr 1.3fr}
+  @media(max-width:1080px){.auto-grid{grid-template-columns:1fr}}
+  .auto-intake{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+  .auto-intake label{display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:600;color:var(--muted)}
+  .auto-intake input{font:inherit;font-size:13px;color:var(--ink);padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:#fff;min-width:180px}
+  .auto-intake input[type=number]{min-width:90px}
+  .btn-auto{font:inherit;font-size:13px;font-weight:600;color:#fff;background:var(--blue);border:none;border-radius:9px;padding:10px 18px;cursor:pointer;transition:.15s}
+  .btn-auto:hover{filter:brightness(1.08)}
+  .btn-auto:disabled{opacity:.6;cursor:default}
+  .auto-gate{margin-top:18px;border-top:1px solid var(--line);padding-top:16px;display:flex;flex-direction:column;gap:10px}
+  .gate-check{display:flex;align-items:center;gap:10px;font-size:13px}
+  .gate-check .gate-dot{width:11px;height:11px;border-radius:50%;background:#cbd5e1;flex:none;transition:.3s}
+  .gate-check.ok .gate-dot{background:var(--green);box-shadow:0 0 0 3px rgba(16,185,129,.16)}
+  .gate-check.bad .gate-dot{background:var(--red);box-shadow:0 0 0 3px rgba(239,68,68,.16)}
+  .gate-check .gate-lab{font-weight:600;color:var(--ink);flex:1}
+  .gate-check .gate-val{color:var(--muted);font-variant-numeric:tabular-nums}
+  .gate-verdict{margin-top:6px;font-size:15px;font-weight:700;padding:10px 14px;border-radius:10px;text-align:center;letter-spacing:.02em}
+  .gate-verdict.act{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0}
+  .gate-verdict.propose{background:#fffbeb;color:#b45309;border:1px solid #fde68a}
+  .gate-verdict.escalate{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}
+  .gate-note{font-size:11.5px;color:var(--muted);line-height:1.5}
+  .auto-filters{display:flex;gap:6px;margin-bottom:12px}
+  .afilt{font:inherit;font-size:11px;font-weight:600;padding:5px 12px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--muted);cursor:pointer;text-transform:none}
+  .afilt:hover{border-color:#9aa3b2}
+  .afilt.on{background:#1f3a8a;border-color:#1f3a8a;color:#fff}
+  .auto-tablewrap{max-height:340px;overflow:auto}
+  #autoTable{width:100%;border-collapse:collapse;font-size:12.5px}
+  #autoTable th{position:sticky;top:0;background:#fff;text-align:left;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px;padding:8px 10px;border-bottom:1px solid var(--line)}
+  #autoTable td{padding:8px 10px;border-bottom:1px solid #f1f5f9}
+  #autoTable td.num,#autoTable th.num{text-align:right}
+  #autoTable tbody tr{cursor:pointer;transition:.12s}
+  #autoTable tbody tr:hover{background:#f8fafc}
+  .tier-pill{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;letter-spacing:.03em}
+  .tier-act{background:#ecfdf5;color:#047857}.tier-propose{background:#fffbeb;color:#b45309}.tier-escalate{background:#fef2f2;color:#b91c1c}
+  .auto-empty{padding:24px;text-align:center;color:var(--muted);font-size:13px}
+  .auto-drillbg{display:none;position:fixed;inset:0;background:rgba(15,23,42,.42);z-index:70}
+  .auto-drillbg.open{display:block}
+  .auto-drill{position:fixed;top:0;right:0;height:100%;width:440px;max-width:92vw;background:#fff;z-index:71;
+    box-shadow:-12px 0 40px rgba(15,23,42,.2);transform:translateX(100%);transition:transform .25s;overflow-y:auto}
+  .auto-drill.open{transform:none}
+  .auto-drill-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff}
+  .auto-drill-head span{font-size:16px;font-weight:700}
+  .auto-drill-x{border:none;background:transparent;font-size:24px;line-height:1;color:var(--muted);cursor:pointer}
+  .auto-drill-body{padding:18px 22px}
+  .auto-drill-body .dk{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:600;margin:16px 0 4px}
+  .auto-drill-body .dv{font-size:13.5px;color:var(--ink)}
+  .auto-drill-body pre{background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:11.5px;overflow:auto;white-space:pre-wrap;word-break:break-word}
 </style>
 </head>
 <body>
@@ -186,7 +245,10 @@
       <h1>SCM Master — Executive Cockpit</h1>
       <div class="sub">Procurement &amp; supply-chain analytics · live API</div>
     </div>
-    <div class="live"><span class="dot"></span> Live data · <span id="genDate"></span></div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <button id="autonomyOpen" class="autobtn" title="Decision loop + audit trail">⚙ Autonomy</button>
+      <div class="live"><span class="dot"></span> Live data · <span id="genDate"></span></div>
+    </div>
   </div>
   <nav class="tabs">
     <button data-tab="tower" class="active">🛰 Control Tower</button>
@@ -389,6 +451,68 @@
     </div>
     <div class="grid"><div class="card"><h3>Per-class detail <span style="font-weight:400;text-transform:none;font-size:11px">(avg per asset)</span></h3>
       <table id="tcoTable"><thead><tr><th>Class</th><th class="num">Assets</th><th class="num">Acquisition</th><th class="num">OpEx</th><th class="num">Landed+Deploy</th><th class="num">EOL−Recovery</th><th class="num">Avg TCO</th></tr></thead><tbody></tbody></table></div></div>
+  </section>
+
+  <!-- ===================== AUTONOMY (hidden — opened from the header) =========
+       The decision loop made visible: intake -> live gate (3 checks resolving to
+       a tier) -> the persistent audit table with click-to-drill into a decision's
+       inputs + its PO/assets via provenance. State is local to this tab and
+       lazy-fetched when the tab is first opened. -->
+  <section class="page" id="page-autonomy">
+    <div class="auto-head">
+      <div>
+        <div class="auto-eyebrow">AUTONOMOUS PROCUREMENT</div>
+        <h2 class="auto-title">Decision loop &amp; audit trail</h2>
+        <div class="auto-sub">The agent advises; deterministic code decides. Run the gate (dry-run by default), watch the three checks resolve to a tier, and read the permanent audit log below — click any row to trace a decision to its inputs and, when placed, its purchase order.</div>
+      </div>
+      <span id="autoLiveBadge" class="auto-badge auto-badge--dry">DRY-RUN</span>
+    </div>
+
+    <div class="grid auto-grid">
+      <!-- Intake + gate -->
+      <div class="card">
+        <h3>Intake — run a purchasing decision</h3>
+        <div class="auto-intake">
+          <label>Requisition / product
+            <input id="autoProduct" list="autoProductList" placeholder="pick or type a SKU…" autocomplete="off">
+            <datalist id="autoProductList"></datalist>
+          </label>
+          <label>Horizon (days)
+            <input id="autoDays" type="number" min="1" max="90" value="7">
+          </label>
+          <button id="autoRun" class="btn-auto">▶ Run gate</button>
+        </div>
+        <div id="autoGate" class="auto-gate" style="display:none">
+          <div class="gate-check" id="gateCap"><span class="gate-dot"></span><span class="gate-lab">Capacity OK?</span><span class="gate-val">—</span></div>
+          <div class="gate-check" id="gatePrice"><span class="gate-dot"></span><span class="gate-lab">Price in band?</span><span class="gate-val">—</span></div>
+          <div class="gate-check" id="gateConf"><span class="gate-dot"></span><span class="gate-lab">Confidence ≥ bar?</span><span class="gate-val">—</span></div>
+          <div class="gate-verdict" id="gateVerdict">—</div>
+          <div class="gate-note" id="gateNote"></div>
+        </div>
+      </div>
+
+      <!-- Audit table -->
+      <div class="card">
+        <h3>Decision audit trail <span style="font-weight:400;text-transform:none;font-size:11px">(append-only · newest first)</span></h3>
+        <div class="auto-filters">
+          <button class="afilt on" data-tier="">All</button>
+          <button class="afilt" data-tier="act">act</button>
+          <button class="afilt" data-tier="propose">propose</button>
+          <button class="afilt" data-tier="escalate">escalate</button>
+        </div>
+        <div id="autoTableWrap" class="auto-tablewrap">
+          <table id="autoTable"><thead><tr><th>When</th><th>Product</th><th class="num">Qty</th><th class="num">Total</th><th>Tier</th><th>Conf</th><th>PO</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div id="autoEmpty" class="auto-empty" style="display:none">No decisions logged yet — run the gate above to create one.</div>
+      </div>
+    </div>
+
+    <!-- Drill-in drawer (decision -> inputs + provenance) -->
+    <div id="autoDrillBg" class="auto-drillbg"></div>
+    <aside id="autoDrill" class="auto-drill">
+      <div class="auto-drill-head"><span id="autoDrillTitle">Decision</span><button id="autoDrillClose" class="auto-drill-x">×</button></div>
+      <div class="auto-drill-body" id="autoDrillBody"></div>
+    </aside>
   </section>
 
   <footer>Data: live SCM Master API · snapshot <span id="genDate2"></span> · Demo / illustrative.</footer>
@@ -1037,9 +1161,154 @@ function renderTower(){
   if(!SCMTower.isMounted()) SCMTower.mount(document.getElementById("towerMount"));
   if(RAW) SCMTower.sync(RAW);
 }
+
+/* ===================== AUTONOMY tab (hidden decision loop + audit) =====================
+   State is LOCAL to this tab; nothing here touches RAW or the /api/data batch. The
+   audit table + drill-in read the new proxy branches (/api/decisions, /api/decision);
+   the gate runs /api/purchasing-run (dry-run by default, server-enforced). All fetches
+   are best-effort — a failure degrades the panel, never the cockpit. */
+const AUTO = { loaded:false, rows:[], tier:"", products:[] };
+function _ae(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+function renderAutonomy(){
+  // Populate the product picker from the live inventory model (read-only use of RAW).
+  const dl=document.getElementById("autoProductList");
+  if(dl && RAW && RAW.inv){
+    AUTO.products = RAW.inv.map(x=>({name:x.name, cat:x.cat}));
+    dl.innerHTML = AUTO.products.map(p=>`<option value="${_ae(p.name)}">${_ae(p.cat||"")}</option>`).join("");
+  }
+  // Lazy-fetch the audit trail the first time the tab is opened.
+  if(!AUTO.loaded){ AUTO.loaded=true; autoLoadDecisions(); }
+  else { autoRenderTable(); }
+}
+
+async function autoLoadDecisions(){
+  const tbody=document.querySelector("#autoTable tbody");
+  if(tbody) tbody.innerHTML=`<tr><td colspan="7" style="color:#94a3b8;padding:16px">Loading audit trail…</td></tr>`;
+  try{
+    const qs = AUTO.tier ? `?tier=${encodeURIComponent(AUTO.tier)}` : "";
+    const r = await fetch(`/api/decisions${qs}`, {cache:"no-store"});
+    AUTO.rows = r.ok ? (await r.json()) : [];
+    if(!Array.isArray(AUTO.rows)) AUTO.rows=[];
+  }catch(e){ AUTO.rows=[]; }
+  autoRenderTable();
+}
+
+function autoRenderTable(){
+  const tbody=document.querySelector("#autoTable tbody");
+  const empty=document.getElementById("autoEmpty");
+  if(!tbody) return;
+  const rows = AUTO.tier ? AUTO.rows.filter(d=>d.tier===AUTO.tier) : AUTO.rows;
+  if(!rows.length){ tbody.innerHTML=""; if(empty) empty.style.display="block"; return; }
+  if(empty) empty.style.display="none";
+  const prodName = id => { const p=(RAW&&RAW.inv||[]).find(x=>x.name&&id&&x.name.includes(id)); return p?p.name:id; };
+  tbody.innerHTML = rows.map(d=>{
+    const when=(d.run_at||d.date_created||"").replace("T"," ").slice(0,16);
+    const tier=`<span class="tier-pill tier-${_ae(d.tier)}">${_ae(d.tier)}</span>`;
+    const po = d.placed_po_id ? `✅ ${_ae(String(d.placed_po_id).slice(0,8))}` : "—";
+    const conf = d.confidence!=null ? PCT(d.confidence) : "—";
+    return `<tr data-id="${_ae(d.id)}"><td>${_ae(when)}</td><td>${_ae(d.product_id||"")}</td>`
+      +`<td class="num">${NUM(d.qty||0)}</td><td class="num">${EUR(d.total||0)}</td>`
+      +`<td>${tier}</td><td>${conf}</td><td>${po}</td></tr>`;
+  }).join("");
+  tbody.querySelectorAll("tr[data-id]").forEach(tr=>tr.onclick=()=>autoDrill(tr.dataset.id));
+}
+
+// Run the gate for the intake: POST /api/purchasing-run, then resolve the three checks.
+async function autoRunGate(){
+  const btn=document.getElementById("autoRun");
+  const gate=document.getElementById("autoGate");
+  const days=Math.max(1, Math.min(90, +document.getElementById("autoDays").value||7));
+  if(btn){ btn.disabled=true; btn.textContent="… running"; }
+  if(gate) gate.style.display="flex";
+  setGate("gateCap",null,"checking…"); setGate("gatePrice",null,"checking…"); setGate("gateConf",null,"checking…");
+  const verdict=document.getElementById("gateVerdict"); if(verdict){ verdict.className="gate-verdict"; verdict.textContent="…"; }
+  document.getElementById("gateNote").textContent="";
+
+  // Check 1 — capacity, from the live capacity-flow already in the model.
+  const cf = RAW && RAW.capFlow;
+  const capOk = cf ? (cf.free_to_order > 0 && (cf.committed_pct||0) < 0.85) : null;
+  setGate("gateCap", capOk, cf ? `${Math.round((cf.committed_pct||0)*100)}% committed · ${cf.free_to_order} free` : "n/a");
+
+  // Run the decision engine (dry-run by default; server forces it unless ALLOW_LIVE_PLACE).
+  let result=null;
+  try{
+    const r=await fetch("/api/purchasing-run",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({dry_run:true, period_days:days})});
+    result = r.ok ? await r.json() : null;
+  }catch(e){ result=null; }
+
+  if(!result || !result.decisions || !result.decisions.length){
+    setGate("gatePrice",null,"no decision"); setGate("gateConf",null,"no decision");
+    if(verdict){ verdict.className="gate-verdict"; verdict.textContent="No actionable decision for this horizon"; }
+    document.getElementById("gateNote").textContent="The engine returned no buy for the chosen period — nothing breached a reorder/forecast/lifecycle trigger.";
+    if(btn){ btn.disabled=false; btn.textContent="▶ Run gate"; }
+    autoLoadDecisions();   // the run still logged its (empty/!) decisions server-side
+    return;
+  }
+  // Pick the decision matching the typed product if possible, else the first.
+  const typed=(document.getElementById("autoProduct").value||"").trim().toLowerCase();
+  const d = result.decisions.find(x=>(x.product_id||"").toLowerCase().includes(typed) || typed==="") || result.decisions[0];
+
+  // Check 2 — price in band, via the should-cost gap proxy.
+  let priceOk=null, priceTxt="n/a";
+  try{
+    const g=await fetch(`/api/cost-gap?id=${encodeURIComponent(d.product_id)}`,{cache:"no-store"}).then(r=>r.ok?r.json():null);
+    if(g && g.gap_to_target_pct!=null){ priceOk = g.gap_to_target_pct <= 0.05; priceTxt=`${PCT(g.gap_to_target_pct)} vs target`; }
+    else if(d.unit_price!=null){ priceOk=true; priceTxt=`@ ${EUR(d.unit_price)}/unit`; }
+  }catch(e){ if(d.unit_price!=null){ priceOk=true; priceTxt=`@ ${EUR(d.unit_price)}/unit`; } }
+  setGate("gatePrice", priceOk, priceTxt);
+
+  // Check 3 — confidence vs bar (the agent's own 0.85 auto-place floor).
+  const BAR=0.85;
+  const confOk = d.confidence!=null ? d.confidence>=BAR : null;
+  setGate("gateConf", confOk, d.confidence!=null ? `${PCT(d.confidence)} (bar ${PCT(BAR)})` : "n/a");
+
+  // Verdict = the engine's tier (act / propose / escalate).
+  if(verdict){ verdict.className="gate-verdict "+(d.tier||""); verdict.textContent=
+    d.tier==="act"?"AUTO-PLACE (act)":d.tier==="propose"?"PROPOSE → human approval":"ESCALATE → blocked"; }
+  document.getElementById("gateNote").textContent =
+    `${_ae(d.rationale||"")}${result.dry_run?" · dry-run — nothing placed":""}`;
+  if(btn){ btn.disabled=false; btn.textContent="▶ Run gate"; }
+  autoLoadDecisions();   // refresh the audit table with the just-logged decision
+}
+function setGate(id,ok,txt){
+  const el=document.getElementById(id); if(!el) return;
+  el.classList.remove("ok","bad");
+  if(ok===true) el.classList.add("ok"); else if(ok===false) el.classList.add("bad");
+  el.querySelector(".gate-val").textContent=txt;
+}
+
+// Drill into one decision -> its inputs + (when placed) its PO id for provenance.
+async function autoDrill(id){
+  const bg=document.getElementById("autoDrillBg"), dr=document.getElementById("autoDrill"), body=document.getElementById("autoDrillBody");
+  bg.classList.add("open"); dr.classList.add("open");
+  body.innerHTML=`<div class="dv" style="color:#94a3b8">Loading…</div>`;
+  let d=null;
+  try{ d=await fetch(`/api/decision?id=${encodeURIComponent(id)}`,{cache:"no-store"}).then(r=>r.ok?r.json():null); }catch(e){}
+  if(!d || d.error){ d = AUTO.rows.find(x=>x.id===id) || null; }
+  if(!d){ body.innerHTML=`<div class="dv">Decision not found.</div>`; return; }
+  document.getElementById("autoDrillTitle").textContent = `Decision · ${d.tier||""}`;
+  const row=(k,v)=>`<div class="dk">${_ae(k)}</div><div class="dv">${v}</div>`;
+  const prov = d.placed_po_id
+    ? `<div class="dv">Placed as PO <b>${_ae(String(d.placed_po_id).slice(0,8))}</b> — traceable through the provenance chain (PO → order line → asset).</div>`
+    : `<div class="dv" style="color:#94a3b8">Not placed${d.dry_run?" (dry-run)":""} — no PO. Provenance attaches only to placed buys.</div>`;
+  body.innerHTML =
+    row("Product", _ae(d.product_id||"—")) +
+    row("Supplier", _ae(d.supplier_id||"— (no contracted source)")) +
+    row("Quantity × unit price", `${NUM(d.qty||0)} × ${d.unit_price!=null?EUR(d.unit_price):"—"} = <b>${EUR(d.total||0)}</b>`) +
+    row("Tier / confidence", `<span class="tier-pill tier-${_ae(d.tier)}">${_ae(d.tier)}</span> · ${d.confidence!=null?PCT(d.confidence):"—"}`) +
+    row("Trigger", _ae(d.trigger_type||"—")) +
+    row("Rationale", _ae(d.rationale||"—")) +
+    row("Run", `${_ae((d.run_at||"").replace("T"," ").slice(0,16))}${d.dry_run?" · dry-run":""}${d.actor?" · "+_ae(d.actor):""}`) +
+    `<div class="dk">Provenance</div>${prov}` +
+    `<div class="dk">Evidence (inputs)</div><pre>${_ae(JSON.stringify(d.evidence||{}, null, 2))}</pre>`;
+}
+function autoCloseDrill(){ document.getElementById("autoDrillBg").classList.remove("open"); document.getElementById("autoDrill").classList.remove("open"); }
 function renderAll(){
   const fn={tower:renderTower,overview:renderOverview,scorecard:renderScorecard,spend:renderSpend,
-            inventory:renderInventory,forecast:renderForecast,shouldcost:renderShouldCost,tco:renderTCO}[CURRENT];
+            inventory:renderInventory,forecast:renderForecast,shouldcost:renderShouldCost,tco:renderTCO,
+            autonomy:renderAutonomy}[CURRENT];
   if(!fn) return;
   const note=document.getElementById("renderErr"); if(note) note.style.display="none";
   // One tab's render error must not blank the whole board — log it and show a note.
@@ -1137,6 +1406,29 @@ document.querySelectorAll("nav.tabs button").forEach(b=>{
     renderAll();
   };
 });
+
+// Autonomy is a HIDDEN tab (no nav button) — opened from the header chip.
+function openAutonomy(){
+  const prev=CURRENT;
+  document.querySelectorAll("nav.tabs button").forEach(x=>x.classList.remove("active"));
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.getElementById("page-autonomy").classList.add("active");
+  CURRENT="autonomy";
+  document.body.classList.remove("tower-active");
+  if(prev==="tower" && window.SCMTower) SCMTower.unmount();
+  renderAll();
+}
+(function wireAutonomy(){
+  const open=document.getElementById("autonomyOpen"); if(open) open.onclick=openAutonomy;
+  const run=document.getElementById("autoRun"); if(run) run.onclick=autoRunGate;
+  document.querySelectorAll(".afilt").forEach(b=>b.onclick=()=>{
+    document.querySelectorAll(".afilt").forEach(x=>x.classList.remove("on")); b.classList.add("on");
+    AUTO.tier=b.dataset.tier||""; autoRenderTable();
+  });
+  const x=document.getElementById("autoDrillClose"); if(x) x.onclick=autoCloseDrill;
+  const bg=document.getElementById("autoDrillBg"); if(bg) bg.onclick=autoCloseDrill;
+  document.addEventListener("keydown",e=>{ if(e.key==="Escape") autoCloseDrill(); });
+})();
 
 // ---------- live data loading + auto-refresh ----------
 function showError(msg){

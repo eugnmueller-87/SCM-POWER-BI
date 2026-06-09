@@ -381,10 +381,13 @@
   <!-- ===================== FORECAST ===================== -->
   <section class="page" id="page-forecast">
     <div class="grid kpis">
-      <div class="card kpi"><div class="label">Accuracy (WMAPE)</div><div class="value" id="fAcc">–</div><span class="pill good">weighted</span></div>
-      <div class="card kpi"><div class="label">MAPE</div><div class="value" id="fMape">–</div><span class="pill warn">simple mean</span></div>
+      <div class="card kpi"><div class="label">Accuracy (WMAPE)</div><div class="value" id="fAcc">–</div><span class="pill good">volume-weighted · headline</span></div>
+      <div class="card kpi"><div class="label">Forecast bias</div><div class="value" id="fBias">–</div><span class="pill neut" id="fBiasP">over / under · drives safety stock</span></div>
       <div class="card kpi"><div class="label">Forecasts</div><div class="value" id="fN">–</div><span class="pill neut">evaluated</span></div>
       <div class="card kpi"><div class="label">Worst Category</div><div class="value" id="fWorst" style="font-size:22px">–</div><span class="pill bad" id="fWorstP">improvement target</span></div>
+    </div>
+    <div style="font-size:11.5px;color:#94a3b8;margin:-6px 0 14px;padding-left:2px">
+      MAPE (simple mean) sits in the detail below — it is inflated by intermittent SKUs with near-zero actuals (dividing by a tiny number), so WMAPE + bias are the reliable headline for this demand profile.
     </div>
     <div class="grid main">
       <div class="card">
@@ -394,7 +397,8 @@
         </h3>
         <div class="chart-box tall"><canvas id="fLine"></canvas></div>
       </div>
-      <div class="card"><h3>Accuracy by category</h3><div class="chart-box tall"><canvas id="fMapeBar"></canvas></div></div>
+      <div class="card"><h3>Accuracy by category <span style="font-weight:400;text-transform:none;font-size:11px;color:#94a3b8">· WMAPE (lower = better)</span></h3><div class="chart-box tall"><canvas id="fMapeBar"></canvas></div>
+        <div id="fMapeDetail" style="font-size:11px;color:#94a3b8;margin-top:8px"></div></div>
     </div>
     <div class="grid"><div class="card"><h3>Error trend over forecast months</h3><div class="chart-box"><canvas id="fTrend"></canvas></div></div></div>
   </section>
@@ -967,15 +971,26 @@ function renderForecast(){
     span.innerHTML=`<span style="color:${zeroShare>=0.3?'#b45309':'#64748b'}">${note}</span>`;
   }
   const sumErr=fc.reduce((s,x)=>s+x.err,0), sumAct=fc.reduce((s,x)=>s+x.act,0);
-  const wmape=sumErr/sumAct, mape=fc.reduce((s,x)=>s+x.ape,0)/fc.length;
-  const byCat={}; fc.forEach(x=>{(byCat[x.cat]=byCat[x.cat]||[]).push(x.ape)});
-  const mapeCat=Object.entries(byCat).map(([k,v])=>({k,m:v.reduce((s,a)=>s+a,0)/v.length})).sort((a,b)=>a.m-b.m);
-  const worst=mapeCat[mapeCat.length-1];
+  const sumPred=fc.reduce((s,x)=>s+x.pred,0);
+  const wmape=sumAct?sumErr/sumAct:0;
+  // Bias = Σpredicted / Σactual − 1 → signed over/under (drives safety-stock sizing).
+  const biasPct=sumAct?(sumPred/sumAct-1):0;
+  // Category accuracy uses WMAPE per category (Σerr/Σact) — scale-robust, doesn't
+  // explode on intermittent SKUs the way per-point MAPE does. Lower = better.
+  const byCat={}; fc.forEach(x=>{(byCat[x.cat]=byCat[x.cat]||{e:0,a:0});byCat[x.cat].e+=x.err;byCat[x.cat].a+=x.act;});
+  const wmapeCat=Object.entries(byCat).map(([k,v])=>({k,m:v.a?v.e/v.a:0})).sort((a,b)=>a.m-b.m);
+  const worst=wmapeCat[wmapeCat.length-1]||{k:"—",m:0};
   document.getElementById("fAcc").textContent=PCT(1-wmape);
-  document.getElementById("fMape").textContent=PCT(mape);
+  const bEl=document.getElementById("fBias"), bP=document.getElementById("fBiasP");
+  if(bEl){ bEl.textContent=(biasPct>=0?"+":"")+PCT(biasPct); }
+  if(bP){ bP.textContent=Math.abs(biasPct)<0.03?"balanced · ±3%":(biasPct>0?"over-forecasting · trim or raise buffer":"under-forecasting · widen safety stock"); }
   document.getElementById("fN").textContent=fc.length;
   document.getElementById("fWorst").textContent=worst.k;
-  document.getElementById("fWorstP").textContent=PCT(worst.m)+" error";
+  document.getElementById("fWorstP").textContent=PCT(worst.m)+" WMAPE";
+  // keep the simple-mean MAPE available at detail level (labelled), not headline.
+  const mape=fc.length?fc.reduce((s,x)=>s+x.ape,0)/fc.length:0;
+  const md=document.getElementById("fMapeDetail");
+  if(md) md.textContent=`MAPE (simple mean): ${PCT(mape)} — inflated by near-zero actuals on intermittent SKUs; not the headline metric.`;
 
   destroy("fLine");
   charts.fLine=new Chart(document.getElementById("fLine"),{type:"line",
@@ -987,11 +1002,11 @@ function renderForecast(){
 
   destroy("fMapeBar");
   charts.fMapeBar=new Chart(document.getElementById("fMapeBar"),{type:"bar",
-    data:{labels:mapeCat.map(x=>x.k),datasets:[{data:mapeCat.map(x=>x.m*100),
-      backgroundColor:mapeCat.map(x=>x.m<=0.13?C.green:x.m<=0.18?C.amber:C.red),borderRadius:6}]},
+    data:{labels:wmapeCat.map(x=>x.k),datasets:[{data:wmapeCat.map(x=>x.m*100),
+      backgroundColor:wmapeCat.map(x=>x.m<=0.20?C.green:x.m<=0.40?C.amber:C.red),borderRadius:6}]},
     options:{maintainAspectRatio:false,
-      onClick:(e,el)=>{if(el.length)openForecastDrill(mapeCat[el[0].index].k);},
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toFixed(1)+"% error — click to drill"}}},
+      onClick:(e,el)=>{if(el.length)openForecastDrill(wmapeCat[el[0].index].k);},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toFixed(1)+"% WMAPE — click to drill"}}},
       scales:{x:{grid:{display:false}},y:{grid:{color:"#f1f5f9"},ticks:{callback:v=>v+"%"}}}}});
 
   // error trend by month

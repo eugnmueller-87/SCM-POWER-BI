@@ -468,9 +468,15 @@
       <div class="card kpi"><div class="label">Delivered (YTD)</div><div class="value" id="ordDelivered">–</div><span class="pill good" id="ordDeliveredP">orders</span></div>
       <div class="card kpi"><div class="label">Inbound value</div><div class="value" id="ordValue">–</div><span class="pill neut">open POs</span></div>
     </div>
+    <div class="grid kpis" id="ordPerf" style="display:none">
+      <div class="card kpi"><div class="label">Delivery accuracy</div><div class="value" id="ordAcc">–</div><span class="pill good" id="ordAccP">on time or early</span></div>
+      <div class="card kpi"><div class="label">Avg slip</div><div class="value" id="ordAvgSlip">–</div><span class="pill neut" id="ordAvgSlipP">vs promised ETA</span></div>
+      <div class="card kpi"><div class="label">Worst slip</div><div class="value" id="ordWorst">–</div><span class="pill warn">single order</span></div>
+      <div class="card kpi"><div class="label">Tuning</div><div class="value" style="font-size:15px;line-height:1.3">promised vs actual</div><span class="pill neut">planned-delivery match</span></div>
+    </div>
     <div class="grid"><div class="card">
       <h3>Order pipeline <span style="font-weight:400;text-transform:none;font-size:11px">click a row to see its contents · soonest arrival first</span></h3>
-      <table id="ordTable"><thead><tr><th>PO</th><th>Supplier</th><th>Status</th><th class="num">Units</th><th class="num">Value</th><th class="num">Covers gap</th><th>ETA</th></tr></thead><tbody></tbody></table>
+      <table id="ordTable"><thead><tr><th>PO</th><th>Supplier</th><th>Status</th><th class="num">Units</th><th class="num">Value</th><th class="num">Covers gap</th><th>Promised</th><th>Actual / now</th><th class="num">Slip</th></tr></thead><tbody></tbody></table>
       <div id="ordEmpty" style="display:none;color:#94a3b8;padding:18px;text-align:center">No orders for the current year.</div>
     </div></div>
   </section>
@@ -1219,6 +1225,27 @@ async function renderOrders(){
   document.getElementById("ordDelivered").textContent=delivered.length;
   document.getElementById("ordValue").textContent=EUR(inboundValue);
 
+  // Delivery performance — planned (promised) vs actual ETA, from the shipment
+  // tracking merged into each order. "Accuracy" = share that landed on time or
+  // early (delay_days <= 0). Only orders WITH a shipment record count.
+  const tracked=rows.filter(o=>o.delay_days!=null);
+  const perf=document.getElementById("ordPerf");
+  if(perf){
+    if(tracked.length){
+      const onTime=tracked.filter(o=>o.delay_days<=0).length;
+      const acc=onTime/tracked.length;
+      const slips=tracked.map(o=>o.delay_days);
+      const avgSlip=slips.reduce((s,x)=>s+x,0)/slips.length;
+      const worst=Math.max(...slips);
+      document.getElementById("ordAcc").textContent=PCT(acc);
+      document.getElementById("ordAccP").textContent=`${onTime}/${tracked.length} on time or early`;
+      document.getElementById("ordAvgSlip").textContent=(avgSlip>0?"+":"")+avgSlip.toFixed(1)+"d";
+      document.getElementById("ordAvgSlipP").textContent=avgSlip>0.5?"running late — widen lead times":avgSlip<-0.5?"early — lead times conservative":"on plan";
+      document.getElementById("ordWorst").textContent=(worst>0?"+":"")+worst+"d";
+      perf.style.display="";
+    } else { perf.style.display="none"; }
+  }
+
   const empty=document.getElementById("ordEmpty");
   if(!rows.length){ if(tb) tb.innerHTML=""; if(empty) empty.style.display="block"; return; }
   if(empty) empty.style.display="none";
@@ -1230,9 +1257,17 @@ async function renderOrders(){
     return (ordEta(a)||"9999").localeCompare(ordEta(b)||"9999");
   });
   const pill=s=>{ const cls=DELIVERED_STATUS.has(s)?"good":(s==="CANCELLED"?"bad":"warn"); return `<span class="pill ${cls}">${esc(s)}</span>`; };
+  const slipCell=(o)=>{
+    if(o.delay_days==null) return "—";
+    if(o.delay_days>0) return `<b style="color:#ef4444">+${o.delay_days}d</b>`;
+    if(o.delay_days<0) return `<b style="color:#15803d">${o.delay_days}d</b>`;
+    return `<span style="color:#15803d">on time</span>`;
+  };
   tb.innerHTML=sorted.map(o=>{
     const covers=ordCovers(o);
-    const contents=`<tr class="ord-drill" data-for="${esc(o.order_number)}" style="display:none"><td colspan="7">
+    const promised=o.eta_promised||ordEta(o)||"—";
+    const actual=o.eta_actual||"—";
+    const contents=`<tr class="ord-drill" data-for="${esc(o.order_number)}" style="display:none"><td colspan="9">
       <table class="ord-items"><thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Unit</th><th class="num">Line</th><th class="num">Covers gap</th><th>ETA</th></tr></thead><tbody>${
         o.items.map(i=>`<tr><td>${esc(i.name)}</td><td class="num">${i.quantity}</td>`
           +`<td class="num">${i.unit_price!=null?EUR(i.unit_price):"—"}</td>`
@@ -1247,7 +1282,9 @@ async function renderOrders(){
       <td class="num">${NUM(ordUnits(o))}</td>
       <td class="num">${EUR(ordValue(o))}</td>
       <td class="num">${covers?`<b style="color:#15803d">${covers}</b>`:"—"}</td>
-      <td>${ordEta(o)||"—"}</td>
+      <td>${promised}</td>
+      <td>${actual}</td>
+      <td class="num">${slipCell(o)}</td>
     </tr>${contents}`;
   }).join("");
   tb.querySelectorAll(".ord-row").forEach(tr=>tr.onclick=()=>{

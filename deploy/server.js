@@ -282,17 +282,27 @@ const server = http.createServer(async (req, res) => {
   // can show what it contains AND how much outstanding demand it covers.
   if (url === "/api/orders") {
     const token = await login().catch(() => null);
-    const [orders, products, position] = await Promise.all([
+    const [orders, products, position, tracking] = await Promise.all([
       safe("orders", token ? getJSON(token, "/api/v1/purchase-orders?limit=500") : Promise.reject(new Error("no token")), []),
       safe("products", token ? getJSON(token, "/api/v1/products?limit=500") : Promise.reject(new Error("no token")), []),
       safe("position", token ? getJSON(token, "/api/v1/planning/inventory-position") : Promise.reject(new Error("no token")), []),
+      safe("tracking", token ? getJSON(token, "/api/v1/v_order_tracking") : Promise.reject(new Error("no token")), []),
     ]);
     const pname = {}; (products || []).forEach((p) => { pname[p.id] = p.name || p.product_code; });
     // outstanding net requirement per product (what's still missing) for coverage.
     const need = {}; (position || []).forEach((r) => { need[r.product_id] = r.net_requirement || 0; });
-    const enriched = (orders || []).map((o) => ({
+    // shipment tracking by PO: promised vs now ETA + slip (delivery performance).
+    const trk = {}; (tracking || []).forEach((t) => { trk[t.po_id] = t; });
+    const enriched = (orders || []).map((o) => {
+    const t = trk[o.order_number] || null;
+    return {
       order_number: o.order_number, status: o.status, supplier_id: o.supplier_id,
       date_ordered: o.date_ordered, currency_code: o.currency_code,
+      // delivery performance (from v_order_tracking; null when no shipment record):
+      eta_promised: t ? t.eta_original : null,
+      eta_actual: t ? t.eta_current : null,
+      delay_days: t ? t.delay_days : null,
+      track_status: t ? t.current_status : null,
       items: (o.items || []).map((it) => ({
         product_id: it.product_id, name: pname[it.product_id] || it.product_id,
         quantity: it.quantity, unit_price: it.unit_price != null ? Number(it.unit_price) : null,
@@ -300,7 +310,8 @@ const server = http.createServer(async (req, res) => {
         // how much of this product's still-outstanding need this line helps cover.
         covers_outstanding: Math.min(it.quantity, need[it.product_id] || 0),
       })),
-    }));
+    };
+    });
     res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
     res.end(JSON.stringify(enriched));
     return;

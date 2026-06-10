@@ -42,7 +42,13 @@
     transition:opacity .45s ease, transform .45s ease;
   }
   .slide.active{opacity:1; pointer-events:auto; transform:none}
-  .inner{width:100%; max-width:1180px; margin:0 auto}
+  .inner{width:100%; max-width:1180px; margin:0 auto; position:relative}
+  .inner>*:not(.illus){position:relative; z-index:1}
+  .illus{position:absolute; top:-6px; right:0; width:clamp(92px,11.5vw,150px); height:auto;
+    opacity:.9; pointer-events:none; z-index:0; overflow:visible}
+  .illus.hero{top:7%; right:3vw; width:clamp(150px,22vw,300px); opacity:.95}
+  .slide.active .illus{animation:rise .6s both; animation-delay:.18s}
+  @media (max-width:860px){ .illus{display:none} }
 
   /* eyebrow / step rail */
   .eyebrow{display:flex; align-items:center; gap:12px; flex-wrap:wrap;
@@ -109,7 +115,7 @@
   /* numbered flow (code<->AI) */
   ol.flow{list-style:none; counter-reset:f; display:flex; flex-direction:column; gap:12px; margin-top:4px}
   ol.flow li{counter-increment:f; position:relative; padding-left:46px; font-size:clamp(14px,1.45vw,18px);
-    line-height:1.4; color:#d6e2f2; min-height:30px; display:flex; align-items:center}
+    line-height:1.4; color:#d6e2f2; display:block; min-height:32px; padding-top:5px}
   ol.flow li::before{content:counter(f,decimal-leading-zero); position:absolute; left:0; top:0;
     width:32px; height:32px; border-radius:8px; display:grid; place-items:center;
     font-family:var(--mono); font-size:13px; color:var(--bg); font-weight:600;
@@ -188,13 +194,18 @@
 
   /* presenter notes */
   .notes{position:fixed; left:0; right:0; bottom:44px; z-index:39; transform:translateY(120%);
-    transition:transform .3s ease; padding:16px 20px;
-    background:linear-gradient(0deg,#0a1422f7,#0a1422ee); border-top:1px solid #2a3f5e}
+    transition:transform .3s ease; padding:16px 20px 18px;
+    max-height:46vh; overflow-y:auto;
+    background:linear-gradient(0deg,#0a1422fb,#0a1422f2); border-top:1px solid #2a3f5e}
   .notes.show{transform:none}
   .notes .nlabel{font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
-    color:var(--validate); margin-bottom:6px}
-  .notes .ntext{font-size:clamp(15px,1.7vw,20px); line-height:1.45; color:#e7eef8; max-width:90ch}
-  .notes .ntime{font-family:var(--mono); font-size:12px; color:var(--dim); margin-top:8px}
+    color:var(--validate); margin-bottom:8px}
+  .notes .ntext{font-size:clamp(14px,1.45vw,18px); line-height:1.5; color:#e7eef8; max-width:96ch}
+  .notes .ntext b{color:#fff}
+  .notes .ntext .pw{display:block; margin-top:9px; padding-top:9px; border-top:1px dashed #2a3f5e;
+    font-size:.92em; color:var(--signal)}
+  .notes .ntext .pw b{color:var(--signal)}
+  .notes .ntime{font-family:var(--mono); font-size:12px; color:var(--dim); margin-top:10px}
 
   /* help */
   .help{position:fixed; inset:0; z-index:60; display:none; place-items:center; background:#060b13d9; backdrop-filter:blur(4px)}
@@ -205,6 +216,40 @@
   .help kbd{font-family:var(--mono); font-size:12px; background:#0f1c2e; border:1px solid var(--line);
     padding:2px 8px; border-radius:6px; color:#9fb3d1}
 
+  /* ── ambient illustration animations (subtle, slow, looping) ── */
+  .illus .rot{transform-box:view-box; transform-origin:var(--o,60px 60px);
+    animation:ill-spin var(--d,12s) linear infinite}
+  .illus .blip{animation:ill-blip var(--d,3.2s) ease-in-out infinite; animation-delay:var(--dl,0s)}
+  .illus .flow{animation:ill-flow var(--d,2.6s) linear infinite}
+  .illus .draw{stroke-dasharray:var(--len,120); stroke-dashoffset:var(--len,120);
+    animation:ill-draw var(--d,6s) ease-in-out infinite; animation-delay:var(--dl,0s)}
+  .illus .tilt{transform-box:view-box; transform-origin:var(--o,60px 60px);
+    animation:ill-tilt var(--d,7s) ease-in-out infinite}
+  .illus .eq{transform-box:fill-box; transform-origin:center bottom;
+    animation:ill-eq var(--d,4s) ease-in-out infinite; animation-delay:var(--dl,0s)}
+  .illus .sway{transform-box:view-box; transform-origin:var(--o,60px 60px);
+    animation:ill-sway var(--d,5s) ease-in-out infinite}
+  .illus .drip{animation:ill-drip var(--d,3.6s) ease-in-out infinite; animation-delay:var(--dl,0s)}
+  .illus .soft{animation:ill-soft var(--d,4s) ease-in-out infinite; animation-delay:var(--dl,0s)}
+  .illus .grow{transform-box:fill-box; transform-origin:center;
+    animation:ill-grow var(--d,4.5s) ease-in-out infinite}
+  @keyframes ill-spin{to{transform:rotate(360deg)}}
+  @keyframes ill-blip{0%,100%{opacity:.3}50%{opacity:1}}
+  @keyframes ill-flow{to{stroke-dashoffset:-24}}
+  @keyframes ill-draw{0%{stroke-dashoffset:var(--len,120); opacity:0}
+    10%{opacity:1} 55%{stroke-dashoffset:0} 84%{stroke-dashoffset:0; opacity:1}
+    96%,100%{stroke-dashoffset:0; opacity:0}}
+  @keyframes ill-tilt{0%,100%{transform:rotate(-2.2deg)}50%{transform:rotate(2.2deg)}}
+  @keyframes ill-eq{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.62)}}
+  @keyframes ill-sway{0%,100%{transform:rotate(0deg)}50%{transform:rotate(-5deg)}}
+  @keyframes ill-drip{0%{transform:translateY(-26px); opacity:0}
+    14%{opacity:.9} 68%{transform:translateY(10px); opacity:.9}
+    92%,100%{transform:translateY(14px); opacity:0}}
+  @keyframes ill-soft{0%,100%{opacity:.55}50%{opacity:1}}
+  @keyframes ill-grow{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+  /* don't burn cycles on hidden slides */
+  .slide:not(.active) .illus *{animation-play-state:paused}
+
   @media (max-width:820px){
     .grid2,.grid2.lean,.cards4{grid-template-columns:1fr}
     .slide{padding:5vh 6vw 13vh}
@@ -213,6 +258,7 @@
   @media (prefers-reduced-motion:reduce){
     .slide{transition:opacity .2s} .slide.active .rev{animation:none}
     .hud .live .blink{animation:none}
+    .illus *{animation:none!important; opacity:1; stroke-dashoffset:0!important}
   }
 </style>
 </head>
@@ -220,8 +266,22 @@
 <div class="deck" id="deck">
 
   <!-- 1 TITLE -->
-  <section class="slide" data-note="A big cloud company asked one question — is AI for our supply chain actually worth the money? We answered it with a working system, not a slide of opinions." data-time="0:15">
+  <section class="slide" data-note="A big cloud company asked one question — is AI for our supply chain actually worth the money? We answered it with a working system, not a slide of opinions." data-time="0:12">
     <div class="inner">
+      <svg class="illus hero" viewBox="0 0 200 200" style="color:#2dd4bf">
+        <circle cx="100" cy="100" r="82" fill="none" stroke="currentColor" stroke-width="2" stroke-opacity=".3"/>
+        <circle cx="100" cy="100" r="56" fill="none" stroke="currentColor" stroke-width="2" stroke-opacity=".45"/>
+        <circle cx="100" cy="100" r="30" fill="none" stroke="currentColor" stroke-width="2" stroke-opacity=".7"/>
+        <line x1="18" y1="100" x2="182" y2="100" stroke="currentColor" stroke-width="1.5" stroke-opacity=".25"/>
+        <line x1="100" y1="18" x2="100" y2="182" stroke="currentColor" stroke-width="1.5" stroke-opacity=".25"/>
+        <g class="rot" style="--o:100px 100px; --d:9s">
+          <path d="M100,100 L100,18 A82,82 0 0 1 158,42 Z" fill="currentColor" fill-opacity=".1"/>
+          <line x1="100" y1="100" x2="158" y2="42" stroke="currentColor" stroke-width="2.4" stroke-opacity=".7"/>
+        </g>
+        <circle class="blip" style="--d:4.5s" cx="64" cy="74" r="4" fill="currentColor"/>
+        <circle class="blip" style="--d:4.5s; --dl:1.5s" cx="138" cy="122" r="5.5" fill="#13c08a"/>
+        <circle class="blip" style="--d:4.5s; --dl:3s" cx="112" cy="150" r="3" fill="currentColor" fill-opacity=".7"/>
+      </svg>
       <div class="title-tag rev">AI Adoption Opportunity · Project 5</div>
       <h1 class="rev" style="--i:1">Is AI worth it<br>for our supply chain?</h1>
       <p class="lede rev" style="--i:2; margin-top:22px">The SCM Analytics Cockpit — a working answer for <b style="color:#fff">Cleo</b>, CEO of a ~5,000-person cloud / hosting enterprise. Not opinions: a live system you can click.</p>
@@ -238,8 +298,20 @@
   </section>
 
   <!-- 2 DISCOVERY -->
-  <section class="slide" data-note="We picked the one problem that hurts most and is cheapest to prove — bad forecasts on hardware with wild lead times." data-time="0:30">
+  <section class="slide" data-note="We picked the one problem that hurts most and is cheapest to prove — bad forecasts on hardware with wild lead times." data-time="0:25">
     <div class="inner">
+      <svg class="illus" viewBox="0 0 120 120" style="color:#2dd4bf">
+        <circle class="blip" style="--d:4s" cx="24" cy="20" r="4" fill="currentColor"/>
+        <circle class="blip" style="--d:4s; --dl:1s" cx="48" cy="20" r="4" fill="currentColor"/>
+        <circle class="blip" style="--d:4s; --dl:2s" cx="72" cy="20" r="4" fill="currentColor"/>
+        <circle class="blip" style="--d:4s; --dl:3s" cx="96" cy="20" r="4" fill="currentColor"/>
+        <path d="M24,24 L48,44 M48,24 L54,44 M72,24 L66,44 M96,24 L72,44" stroke="currentColor" stroke-width="2" stroke-opacity=".6" fill="none"/>
+        <path d="M40,46 L80,46 L66,74 L54,74 Z" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/>
+        <line x1="60" y1="74" x2="60" y2="84" stroke="currentColor" stroke-width="3.2"/>
+        <circle class="drip" style="--d:4s" cx="60" cy="80" r="2.6" fill="currentColor"/>
+        <circle cx="60" cy="98" r="11" fill="none" stroke="currentColor" stroke-width="3.2"/>
+        <path class="soft" style="--d:4s" d="M55,98 l3,4 l6,-8" fill="none" stroke="#13c08a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
       <div class="eyebrow rev"><span class="step">Step 01</span><span class="sep">/</span> Use-case discovery <span class="chip evidence">selected</span></div>
       <h2 class="rev" style="--i:1">The problem worth solving</h2>
       <ul class="points">
@@ -253,8 +325,15 @@
   </section>
 
   <!-- 3 MARKET -> PLAY -->
-  <section class="slide" data-note="The market proves AI saves money in supply chains. Our play: an ML model predicts demand, Claude explains it, and it plugs straight into how we already buy — cutting errors and taking people out of the firefighting. It grows from one category to the whole catalogue, and from advising to acting as it earns trust." data-time="0:40">
+  <section class="slide" data-note="The market proves AI saves money in supply chains. Our play: an ML model predicts demand, Claude explains it, and it plugs straight into how we already buy — cutting errors and taking people out of the firefighting. It grows from one category to the whole catalogue, and from advising to acting as it earns trust." data-time="0:35">
     <div class="inner">
+      <svg class="illus" viewBox="0 0 120 120" style="color:#13c08a">
+        <path d="M22,22 L22,92 L100,92" fill="none" stroke="#3a4d6e" stroke-width="3" stroke-linecap="round"/>
+        <polyline class="draw" style="--len:100; --d:7s" points="28,80 48,66 64,72 84,44 98,30" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <path class="blip" style="--d:7s; --dl:3.5s" d="M98,30 L87,32 M98,30 L96,41" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/>
+        <circle class="blip" style="--d:7s; --dl:1.2s" cx="48" cy="66" r="2.6" fill="currentColor"/>
+        <circle class="blip" style="--d:7s; --dl:2.6s" cx="84" cy="44" r="2.6" fill="currentColor"/>
+      </svg>
       <div class="eyebrow rev"><span class="step">Step 02</span><span class="sep">/</span> Market research → our play <span class="chip evidence">evidence-backed</span></div>
       <h2 class="rev" style="--i:1">The market proves it — <span class="hl">here's our play</span></h2>
       <div class="grid2 lean">
@@ -278,8 +357,20 @@
   </section>
 
   <!-- 4 HYPE vs EVIDENCE -->
-  <section class="slide" data-note="We split the real from the vendor noise — the upside is real, but most companies stall, so we don't write a blank cheque." data-time="0:30">
+  <section class="slide" data-note="We split the real from the vendor noise — the upside is real, but most companies stall, so we don't write a blank cheque." data-time="0:25">
     <div class="inner">
+      <svg class="illus" viewBox="0 0 120 120" style="color:#2dd4bf">
+        <line x1="48" y1="98" x2="72" y2="98" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>
+        <line x1="60" y1="98" x2="60" y2="42" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>
+        <g class="tilt" style="--o:60px 43px; --d:8s">
+          <line x1="30" y1="52" x2="90" y2="34" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>
+          <line x1="30" y1="52" x2="30" y2="64" stroke="currentColor" stroke-width="2.4"/>
+          <path d="M22,64 Q30,75 38,64" fill="none" stroke="#13c08a" stroke-width="3.2" stroke-linecap="round"/>
+          <line x1="90" y1="34" x2="90" y2="46" stroke="currentColor" stroke-width="2.4"/>
+          <path d="M82,46 Q90,57 98,46" fill="none" stroke="#f5a524" stroke-width="3.2" stroke-linecap="round"/>
+          <circle cx="30" cy="60" r="3" fill="#13c08a"/><circle cx="90" cy="42" r="2.2" fill="#f5a524"/>
+        </g>
+      </svg>
       <div class="eyebrow rev"><span class="step">Step 03</span><span class="sep">/</span> Hype vs evidence</div>
       <h2 class="rev" style="--i:1">What's real, what's noise</h2>
       <div class="grid2">
@@ -303,8 +394,18 @@
   </section>
 
   <!-- 5 OPPORTUNITY & RISK -->
-  <section class="slide" data-note="We mapped what could go right and wrong. The biggest risk isn't the tech — it's nobody owning the model after launch." data-time="0:25">
+  <section class="slide" data-note="We mapped what could go right and wrong. The biggest risk isn't the tech — it's nobody owning the model after launch." data-time="0:22">
     <div class="inner">
+      <svg class="illus" viewBox="0 0 120 120" style="color:#f5a524">
+        <path d="M22,20 L22,92 L100,92" fill="none" stroke="#3a4d6e" stroke-width="2.6" stroke-linecap="round"/>
+        <path class="flow" style="--d:3.5s" d="M26,34 L98,36" fill="none" stroke="#13c08a" stroke-width="3" stroke-linecap="round" stroke-dasharray="2 6"/>
+        <path class="draw" style="--len:115; --d:8s" d="M26,34 Q58,40 78,64 T98,86" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>
+        <g class="soft" style="--d:3.4s">
+          <path d="M84,56 L93,72 L75,72 Z" fill="#ef535018" stroke="#ef5350" stroke-width="2.6" stroke-linejoin="round"/>
+          <line x1="84" y1="61" x2="84" y2="67" stroke="#ef5350" stroke-width="2.4" stroke-linecap="round"/>
+          <circle cx="84" cy="70" r="1.3" fill="#ef5350"/>
+        </g>
+      </svg>
       <div class="eyebrow rev"><span class="step">Step 04</span><span class="sep">/</span> Opportunity &amp; risk map</div>
       <h2 class="rev" style="--i:1">Where the upside &mdash; and the trap &mdash; live</h2>
       <div class="grid2">
@@ -328,8 +429,25 @@
   </section>
 
   <!-- 6 THE AI (1/2) -->
-  <section class="slide" data-note="We threw out deep learning on purpose — too little data, it's a black box, and it's expensive overkill that drifts. We used a right-sized explainable model, with Claude on top only to explain it." data-time="0:40">
+  <section class="slide" data-note="We threw out deep learning on purpose — too little data, it's a black box, and it's expensive overkill that drifts. We used a right-sized explainable model, with Claude on top only to explain it." data-time="0:30">
     <div class="inner">
+      <svg class="illus" viewBox="0 0 120 120" style="color:#2dd4bf">
+        <rect x="14" y="28" width="50" height="64" rx="8" fill="none" stroke="#3a4d6e" stroke-width="2.6"/>
+        <path d="M26,44 L46,38 M26,44 L46,58 M26,64 L46,58 M26,64 L46,78 M26,84 L46,78 M26,84 L46,58" stroke="currentColor" stroke-width="1.5" stroke-opacity=".55"/>
+        <circle class="blip" style="--d:5s" cx="26" cy="44" r="3.2" fill="#0A111C" stroke="currentColor" stroke-width="2.2"/>
+        <circle class="blip" style="--d:5s; --dl:1.6s" cx="26" cy="64" r="3.2" fill="#0A111C" stroke="currentColor" stroke-width="2.2"/>
+        <circle class="blip" style="--d:5s; --dl:3.2s" cx="26" cy="84" r="3.2" fill="#0A111C" stroke="currentColor" stroke-width="2.2"/>
+        <circle class="blip" style="--d:5s; --dl:.8s" cx="46" cy="38" r="3.2" fill="#0A111C" stroke="currentColor" stroke-width="2.2"/>
+        <circle class="blip" style="--d:5s; --dl:2.4s" cx="46" cy="58" r="3.2" fill="#0A111C" stroke="currentColor" stroke-width="2.2"/>
+        <circle class="blip" style="--d:5s; --dl:4s" cx="46" cy="78" r="3.2" fill="#0A111C" stroke="currentColor" stroke-width="2.2"/>
+        <line class="draw" style="--len:80; --d:7s" x1="17" y1="92" x2="61" y2="28" stroke="#ef5350" stroke-width="3.6" stroke-linecap="round"/>
+        <path d="M70,60 L82,60" stroke="#3a4d6e" stroke-width="3" stroke-linecap="round"/>
+        <path d="M78,56 L82,60 L78,64" fill="none" stroke="#3a4d6e" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <g class="grow" style="--d:5s">
+          <circle cx="100" cy="60" r="12" fill="none" stroke="#13c08a" stroke-width="3.4"/>
+          <path d="M94,60 l4,5 l8,-10" fill="none" stroke="#13c08a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+      </svg>
       <div class="eyebrow rev"><span class="step">Step 05</span><span class="sep">/</span> The AI — which, and why <span class="chip evidence">1 / 2</span></div>
       <h2 class="rev" style="--i:1">We considered deep learning &mdash; <span class="hl">and said no</span></h2>
       <div class="grid2 lean">
@@ -350,8 +468,32 @@
   </section>
 
   <!-- 7 THE AI (2/2) -->
-  <section class="slide" data-note="The data lives in the backend, not the dashboard. Code does all the maths first, then hands the finished numbers to Claude to put into words. The AI is downstream of the math, never upstream." data-time="0:35">
+  <section class="slide" data-note="The data lives in the backend, not the dashboard. Code does all the maths first, then hands the finished numbers to Claude to put into words. The AI is downstream of the math, never upstream." data-time="0:32">
     <div class="inner">
+      <svg class="illus" viewBox="0 0 120 120" style="color:#2dd4bf">
+        <ellipse cx="24" cy="40" rx="12" ry="5" fill="none" stroke="currentColor" stroke-width="3"/>
+        <path d="M12,40 L12,70 A12,5 0 0 0 36,70 L36,40" fill="none" stroke="currentColor" stroke-width="3"/>
+        <path d="M12,55 A12,5 0 0 0 36,55" fill="none" stroke="currentColor" stroke-width="2.2" stroke-opacity=".6"/>
+        <g class="blip" style="--d:4.4s">
+          <path d="M40,56 L50,56" stroke="#3a4d6e" stroke-width="3" stroke-linecap="round"/>
+          <path d="M47,53 L50,56 L47,59" fill="none" stroke="#3a4d6e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        <g class="rot" style="--o:66px 56px; --d:14s" stroke="#13c08a" stroke-width="2.8">
+          <circle cx="66" cy="56" r="9" fill="none"/>
+          <line x1="66" y1="44" x2="66" y2="49"/><line x1="66" y1="63" x2="66" y2="68"/>
+          <line x1="54" y1="56" x2="59" y2="56"/><line x1="73" y1="56" x2="78" y2="56"/>
+          <line x1="57.5" y1="47.5" x2="61" y2="51"/><line x1="71" y1="61" x2="74.5" y2="64.5"/>
+        </g>
+        <circle cx="66" cy="56" r="3" fill="#13c08a"/>
+        <g class="blip" style="--d:4.4s; --dl:2.2s">
+          <path d="M82,56 L90,56" stroke="#3a4d6e" stroke-width="3" stroke-linecap="round"/>
+          <path d="M87,53 L90,56 L87,59" fill="none" stroke="#3a4d6e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        <path d="M92,44 h20 a4,4 0 0 1 4,4 v12 a4,4 0 0 1 -4,4 h-12 l-4,6 v-6 a4,4 0 0 1 -4,-4 v-12 a4,4 0 0 1 4,-4 Z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>
+        <circle class="blip" style="--d:1.8s" cx="98" cy="54" r="1.4" fill="currentColor"/>
+        <circle class="blip" style="--d:1.8s; --dl:.3s" cx="103" cy="54" r="1.4" fill="currentColor"/>
+        <circle class="blip" style="--d:1.8s; --dl:.6s" cx="108" cy="54" r="1.4" fill="currentColor"/>
+      </svg>
       <div class="eyebrow rev"><span class="step">Step 05</span><span class="sep">/</span> Data + how code and AI interact <span class="chip evidence">2 / 2</span></div>
       <div class="grid2 lean">
         <div class="rev" style="--i:1">
@@ -377,8 +519,23 @@
   </section>
 
   <!-- 8 DASHBOARD -->
-  <section class="slide" data-note="Two dashboards off one live source — the metrics a CEO checks first, and every number drills to its formula." data-time="0:25">
+  <section class="slide" data-note="Two dashboards off one live source — the metrics a CEO checks first, and every number drills to its formula." data-time="0:22">
     <div class="inner">
+      <svg class="illus" viewBox="0 0 120 120" style="color:#2dd4bf">
+        <rect x="14" y="18" width="40" height="28" rx="4" fill="none" stroke="currentColor" stroke-width="3"/>
+        <line class="eq" style="--d:4.2s" x1="22" y1="40" x2="22" y2="32" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+        <line class="eq" style="--d:4.2s; --dl:.5s" x1="28" y1="40" x2="28" y2="28" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+        <line class="eq" style="--d:4.2s; --dl:1s" x1="34" y1="40" x2="34" y2="34" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+        <line class="eq" style="--d:4.2s; --dl:1.5s" x1="40" y1="40" x2="40" y2="30" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+        <line class="eq" style="--d:4.2s; --dl:2s" x1="46" y1="40" x2="46" y2="36" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+        <rect x="66" y="18" width="40" height="28" rx="4" fill="none" stroke="currentColor" stroke-width="3"/>
+        <path d="M74,40 A12,12 0 0 1 98,40" fill="none" stroke="#13c08a" stroke-width="2.6" stroke-linecap="round"/>
+        <line class="sway" style="--o:86px 40px; --d:6s" x1="86" y1="40" x2="94" y2="32" stroke="#13c08a" stroke-width="2.4" stroke-linecap="round"/>
+        <path class="flow" style="--d:2.8s" d="M34,46 L60,82" stroke="#3a4d6e" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="4 8"/>
+        <path class="flow" style="--d:2.8s" d="M86,46 L60,82" stroke="#3a4d6e" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="4 8"/>
+        <ellipse cx="60" cy="84" rx="14" ry="5" fill="none" stroke="currentColor" stroke-width="3"/>
+        <path d="M46,84 L46,100 A14,5 0 0 0 74,100 L74,84" fill="none" stroke="currentColor" stroke-width="3"/>
+      </svg>
       <div class="eyebrow rev"><span class="step">Step 06</span><span class="sep">/</span> The dashboard</div>
       <h2 class="rev" style="--i:1">One source of truth, <span class="hl">two front-ends</span></h2>
       <div class="grid2">
@@ -402,8 +559,17 @@
   </section>
 
   <!-- 9 RECOMMENDATION -->
-  <section class="slide" data-note="Don't bet the farm, don't sit still — run a cheap 10-week pilot to prove it on our own data, with the go/no-go gate fixed before we start." data-time="0:35">
+  <section class="slide" data-note="Don't bet the farm, don't sit still — run a cheap 10-week pilot to prove it on our own data, with the go/no-go gate fixed before we start." data-time="0:30">
     <div class="inner">
+      <svg class="illus" viewBox="0 0 120 120" style="color:#f5a524">
+        <path class="flow" style="--d:3s" d="M22,98 C40,90 38,62 60,58 S86,40 96,22" fill="none" stroke="#3a4d6e" stroke-width="3.4" stroke-linecap="round" stroke-dasharray="1 7"/>
+        <circle class="soft" style="--d:3.6s" cx="22" cy="98" r="4" fill="currentColor"/>
+        <line x1="50" y1="52" x2="50" y2="68" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+        <line x1="59" y1="49" x2="59" y2="65" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+        <line x1="48" y1="52" x2="61" y2="49" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+        <line x1="96" y1="22" x2="96" y2="6" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+        <path class="sway" style="--o:96px 8px; --d:4.5s" d="M96,8 L83,12 L96,17 Z" fill="#f5a524" stroke="none"/>
+      </svg>
       <div class="eyebrow rev"><span class="step">Step 07</span><span class="sep">/</span> Recommendation + plan <span class="chip validate">pilot</span></div>
       <div class="rev" style="--i:1"><div class="big-reco">🟡 Run a 10-week pilot</div>
         <div class="reco-sub">Not invest-at-scale. Not wait. The direction is evidence-backed; the magnitude is unproven on <b style="color:#fff">our</b> SKUs.</div>
@@ -425,8 +591,19 @@
   </section>
 
   <!-- 10 COST -->
-  <section class="slide" data-note="Real cost: low hundreds a month, even at 15 users. And the AI tokens are the smallest line on the bill — the dashboard does its maths for free and only calls Claude on a click. No team, no licence trap." data-time="0:25">
+  <section class="slide" data-note="Real cost: low hundreds a month, even at 15 users. And the AI tokens are the smallest line on the bill — the dashboard does its maths for free and only calls Claude on a click. No team, no licence trap." data-time="0:22">
     <div class="inner">
+      <svg class="illus" viewBox="0 0 120 120" style="color:#13c08a">
+        <line x1="18" y1="92" x2="106" y2="92" stroke="#3a4d6e" stroke-width="2.6" stroke-linecap="round"/>
+        <rect class="eq" style="--d:5s" x="24" y="62" width="14" height="30" fill="#26395566" stroke="#3a4d6e" stroke-width="2"/>
+        <rect class="eq" style="--d:5s; --dl:.8s" x="46" y="48" width="14" height="44" fill="#26395566" stroke="#3a4d6e" stroke-width="2"/>
+        <rect class="eq" style="--d:5s; --dl:1.6s" x="68" y="36" width="14" height="56" fill="#26395566" stroke="#3a4d6e" stroke-width="2"/>
+        <rect class="soft" style="--d:5s" x="90" y="80" width="14" height="12" fill="#13c08a" stroke="#13c08a" stroke-width="2"/>
+        <g class="drip" style="--d:4.2s">
+          <circle cx="97" cy="72" r="3" fill="#13c08a"/>
+          <path d="M97,75 L97,78" stroke="#13c08a" stroke-width="2" stroke-linecap="round"/>
+        </g>
+      </svg>
       <div class="eyebrow rev"><span class="step">Step 08</span><span class="sep">/</span> What it costs to run</div>
       <h2 class="rev" style="--i:1">No team. No licence trap. <span class="hl">Just infra.</span></h2>
       <table class="rev" style="--i:2">
@@ -445,8 +622,20 @@
   </section>
 
   <!-- 11 DELIVERABLES -->
-  <section class="slide" data-note="Every single rubric box maps to a file in the repo. Nothing's missing — here's the receipt." data-time="0:20">
+  <section class="slide" data-note="Every single rubric box maps to a file in the repo. Nothing's missing — here's the receipt." data-time="0:16">
     <div class="inner">
+      <svg class="illus" viewBox="0 0 120 120" style="color:#13c08a">
+        <rect x="26" y="20" width="68" height="84" rx="8" fill="none" stroke="currentColor" stroke-width="3"/>
+        <rect x="50" y="13" width="20" height="11" rx="3" fill="#0A111C" stroke="currentColor" stroke-width="3"/>
+        <path class="blip" style="--d:4.8s" d="M34,40 l3.5,3.5 l7,-8" fill="none" stroke="#13c08a" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path class="blip" style="--d:4.8s; --dl:1.2s" d="M34,56 l3.5,3.5 l7,-8" fill="none" stroke="#13c08a" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path class="blip" style="--d:4.8s; --dl:2.4s" d="M34,72 l3.5,3.5 l7,-8" fill="none" stroke="#13c08a" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path class="blip" style="--d:4.8s; --dl:3.6s" d="M34,88 l3.5,3.5 l7,-8" fill="none" stroke="#13c08a" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <line x1="52" y1="40" x2="84" y2="40" stroke="#3a4d6e" stroke-width="3" stroke-linecap="round"/>
+        <line x1="52" y1="56" x2="84" y2="56" stroke="#3a4d6e" stroke-width="3" stroke-linecap="round"/>
+        <line x1="52" y1="72" x2="84" y2="72" stroke="#3a4d6e" stroke-width="3" stroke-linecap="round"/>
+        <line x1="52" y1="88" x2="84" y2="88" stroke="#3a4d6e" stroke-width="3" stroke-linecap="round"/>
+      </svg>
       <div class="eyebrow rev"><span class="sep">●</span> Deliverables map <span class="chip evidence">complete</span></div>
       <h2 class="rev" style="--i:1">Every rubric box → a file</h2>
       <div class="grid2 rev" style="--i:2; gap:0 40px">
@@ -475,8 +664,19 @@
   </section>
 
   <!-- 12 DEMO -->
-  <section class="slide" data-note="Now the live system. Watch the 3D control tower — every count is real data. Then forecast accuracy, one drill-down to a formula, the worst category we don't hide, and a single AI-commentary click." data-time="2:00">
+  <section class="slide" data-note="Now the live system. Watch the 3D control tower — every count is real data. Then forecast accuracy, one drill-down to a formula, the worst category we don't hide, and a single AI-commentary click." data-time="2:15">
     <div class="inner">
+      <svg class="illus" viewBox="0 0 120 120" style="color:#13c08a">
+        <rect x="16" y="22" width="88" height="66" rx="8" fill="none" stroke="currentColor" stroke-width="3"/>
+        <line x1="16" y1="38" x2="104" y2="38" stroke="currentColor" stroke-width="2.6"/>
+        <circle class="blip" style="--d:3.6s" cx="26" cy="30" r="2" fill="currentColor"/>
+        <circle class="blip" style="--d:3.6s; --dl:.6s" cx="33" cy="30" r="2" fill="currentColor"/>
+        <circle class="blip" style="--d:3.6s; --dl:1.2s" cx="40" cy="30" r="2" fill="currentColor"/>
+        <g class="grow" style="--d:4s">
+          <circle cx="60" cy="63" r="16" fill="none" stroke="#13c08a" stroke-width="3"/>
+          <path d="M55,55 L55,71 L70,63 Z" fill="#13c08a" stroke="none"/>
+        </g>
+      </svg>
       <div class="eyebrow rev"><span class="sep">▶</span> Live demo <span class="chip validate">~2 min</span></div>
       <h2 class="rev" style="--i:1">Let's open the cockpit</h2>
       <a class="demo-cta rev" style="--i:2" href="https://scm-power-bi-production.up.railway.app" target="_blank">▶ scm-power-bi-production.up.railway.app</a>
@@ -531,6 +731,33 @@
   const help=document.getElementById('help'), timerEl=document.getElementById('timer');
   let cur=0, notesOn=false;
 
+  // Short read-aloud presenter notes — ~20–30 seconds per slide, demo ~2 min.
+  const NOTES=[
+  `One question from the CEO: <b>is AI for our supply chain worth the money?</b> My client Cleo runs a ~5,000-person cloud business with €640m of spend. My answer isn't opinions — it's a <b>working system</b>. Headline: the forecast is <b>~85% accurate</b>, backtested against a full year of data.`,
+
+  `Step one: pick the right problem. Procurement, planners, finance and ops share <b>four pains</b> — wrong forecasts, late deliveries, manual spreadsheets, too many approvals. I chose <b>AI demand forecasting with a dynamic reorder point</b>: biggest pain, cheapest to prove. <span class="pw">A reorder point is the stock level that triggers a new order — "dynamic" means it adjusts itself.</span>`,
+
+  `The market backs it: AI adoption jumped <b>78% → 88%</b>, and forecasting reliably cuts error <b>30–50%</b>. With ~90% of advanced chips from Taiwan and memory prices spiking, fixed reorder points break. Our play: <b>ML predicts, Claude only explains</b> — plugged into how we already buy.`,
+
+  `Now the honest part. The 30–50% cut is real — but it's a <b>best case, not a promise</b>. Only <b>39%</b> of companies see profit impact, and <b>~64%</b> of AI projects stall in pilot. The upside is genuine — so we test it, we don't write a blank cheque.`,
+
+  `Opportunities versus risks. Forecasting wins: best evidence, working prototype. The biggest risk isn't technical — it's <b>model drift</b>: the model learns from the past and quietly rots as the world changes. The fix is organisational: <b>name an owner</b> who retrains it on a schedule.`,
+
+  `Which AI — starting with what we <b>rejected</b>. Deep learning is the wrong tool here: too little data, so it overfits; a black box that can't explain itself; expensive overkill. Instead: <b>Layer 1</b>, a right-sized explainable model. <b>Layer 2</b>, Claude — only to explain. It <b>never invents a number</b>.`,
+
+  `How it's wired. It predicts from demand history, PO timing and lateness, and lead-time signals. The data lives in the <b>backend on Railway</b> — the dashboard only reads results. Code fetches, code does <b>all the maths</b>, then on a click hands finished findings to Claude to put into words. <b>The AI is downstream of the math — never upstream.</b>`,
+
+  `The dashboard: <b>two front-ends, one source of truth</b> — the Power BI report plus a live web cockpit, both reading the same API, so the numbers can't disagree. It shows what a CEO checks first, and <b>every number drills to its formula</b>.`,
+
+  `The recommendation: not all-in, not wait — a <b>10-week pilot</b>. The direction is proven; the size of the win on <b>our</b> products isn't. Flips to <b>invest</b> if a real-data backtest hits 30–50% and an owner is named. Flips to <b>stop</b> if it can't beat the spreadsheet.`,
+
+  `What it costs: no team, no licence — just infrastructure. All in, roughly <b>€2.5–4k a year</b>, even at 15 users. The surprise: <b>the AI tokens are the smallest line on the bill</b> — the maths runs for free, Claude only fires on a click.`,
+
+  `Before the demo, the receipt: <b>every rubric box maps to a named file</b> in the repo — research, risk map, sources, dashboard, docs, proposal, plan, costs. Nothing missing.`,
+
+  `Now the live system. ① The <b>3D control tower</b> — looks like a game, every truck is real data. ② <b>Overview</b>: ~85% accuracy, predicted vs actual. ③ One KPI <b>drills to its formula</b>. ④ Our <b>weakest category</b> — Networking — we don't hide it. ⑤ One click of <b>AI commentary</b>: explaining, not inventing.`
+  ];
+
   // build segment bar
   slides.forEach(()=>{const i=document.createElement('i'); seg.appendChild(i);});
   const segs=[...seg.children];
@@ -542,7 +769,7 @@
     segs.forEach((s,i)=>s.classList.toggle('on',i<=cur));
     count.textContent=`${pad(cur+1)} / ${pad(slides.length)}`;
     const s=slides[cur];
-    noteText.textContent=s.dataset.note||'';
+    noteText.innerHTML=NOTES[cur]||'';
     noteTime.textContent='⏱ this slide ≈ '+(s.dataset.time||'');
   }
   const next=()=>show(cur+1), prev=()=>show(cur-1);

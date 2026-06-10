@@ -12,6 +12,7 @@
 [![Autonomy](https://img.shields.io/badge/Autonomy-decision_loop_%2B_audit-4f46e5?style=flat)](deploy/index.html)
 [![Orders](https://img.shields.io/badge/Orders-inbound_%2B_delivery_perf-0ea5e9?style=flat)](deploy/index.html)
 [![Forecast](https://img.shields.io/badge/Forecast-WMAPE_%2B_bias-10b981?style=flat)](deploy/index.html)
+[![Slides](https://img.shields.io/badge/Slides-live_deck-FF4088?style=flat&logo=googleslides&logoColor=white)](https://eugnmueller-87.github.io/SCM-POWER-BI/Presentation/scm-cockpit-deck.html)
 [![Deployed on Railway](https://img.shields.io/badge/Deployed-Railway-0B0D0E?style=flat&logo=railway&logoColor=white)](https://scm-power-bi-production.up.railway.app)
 [![Data](https://img.shields.io/badge/data-synthetic_%2B_public-8b5cf6?style=flat)](sources.md)
 [![Recommendation](https://img.shields.io/badge/recommendation-pilot-eab308?style=flat)](implementation/solution_proposal.md)
@@ -29,7 +30,7 @@ It ships in two forms: a **live, interactive web cockpit** (hosted, auto-refresh
 to a deployed API) and the **Power BI report** the lab requires — both reading the same
 backend so the numbers always agree.
 
-**Contents:** [Live dashboard](#-live-dashboard) · [3D Control Tower](#-3d-control-tower-home-screen) · [Orders & delivery](#-orders--delivery-performance) · [Autonomy](#-autonomy--the-decision-loop) · [Walkthrough](#-walkthrough) · [What this project is](#what-this-project-is) · [Consulting case (Project 5)](#-the-consulting-case-project-5-deliverable) · [What's inside](#whats-inside) · [Quick start](#quick-start) · [Project structure](#project-structure) · [Status](#status)
+**Contents:** [Live dashboard](#-live-dashboard) · [Presentation](#-presentation) · [3D Control Tower](#-3d-control-tower-home-screen) · [Orders & delivery](#-orders--delivery-performance) · [Autonomy](#-autonomy--the-decision-loop) · [Walkthrough](#-walkthrough) · [What this project is](#what-this-project-is) · [Consulting case (Project 5)](#-the-consulting-case-project-5-deliverable) · [What's inside](#whats-inside) · [Quick start](#quick-start) · [Project structure](#project-structure) · [Status](#status)
 
 > **Environment-aware.** The cockpit is a thin server-side proxy: it logs into **one**
 > [SCM Master](https://github.com/eugnmueller-87/SCM-Master) instance (set via `API_BASE`)
@@ -50,6 +51,15 @@ click-to-drill KPIs, reorder alerts, an **inbound-order pipeline with delivery-p
 tracking**, a forecast "why was it wrong / how to predict better" diagnostic, a clean-sheet
 **should-cost margin lever**, and a **total-cost-of-ownership** view. It logs into the SCM
 Master API server-side and **auto-refreshes**, so the board is always current.
+
+## 🖥 Presentation
+
+### ▶︎ **[View the slide deck (live)](https://eugnmueller-87.github.io/SCM-POWER-BI/Presentation/scm-cockpit-deck.html)**
+
+A 12-slide interactive deck telling the consulting story — *is AI worth it?* → the problem,
+the market proof, hype-vs-evidence, the opportunity & the trap, the solution, the rubric→file
+map, and a live-demo hand-off. Hosted on **GitHub Pages** (renders in any browser); source at
+[`Presentation/scm-cockpit-deck.html`](Presentation/scm-cockpit-deck.html). Use ← / → to navigate.
 
 ## 🛰 3D Control Tower (home screen)
 

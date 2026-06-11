@@ -185,7 +185,9 @@
   <!-- ===================== FORECAST ===================== -->
   <section class="page" id="page-forecast">
     <div class="grid kpis">
-      <div class="card kpi"><div class="label">Forecast accuracy</div><div class="value" id="fAcc">–</div><span class="pill good">1 − WMAPE · higher = better</span></div>
+      <div class="card kpi" title="Pooled, volume-weighted: 1 − ( Σ|predicted−actual| ÷ Σactual ) across ALL forecasts. This is NOT the average of the category bars — it can sit below them because GPU/Compute have error larger than their demand, so they pull the pooled number down. Weighting by volume is the honest headline.">
+        <div class="label">Forecast accuracy <span style="color:#94a3b8;font-weight:600;cursor:help">ⓘ</span></div>
+        <div class="value" id="fAcc">–</div><span class="pill good">1 − WMAPE · pooled · higher = better</span></div>
       <div class="card kpi"><div class="label">MAPE</div><div class="value" id="fMape">–</div><span class="pill warn">simple mean</span></div>
       <div class="card kpi"><div class="label">Forecasts</div><div class="value" id="fN">–</div><span class="pill neut">evaluated</span></div>
       <div class="card kpi"><div class="label">Worst Category</div><div class="value" id="fWorst" style="font-size:22px">–</div><span class="pill bad" id="fWorstP">improvement target</span></div>

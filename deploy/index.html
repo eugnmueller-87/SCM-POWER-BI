@@ -397,7 +397,7 @@
         </h3>
         <div class="chart-box tall"><canvas id="fLine"></canvas></div>
       </div>
-      <div class="card"><h3>Forecast error by category <span style="font-weight:400;text-transform:none;font-size:11px;color:#94a3b8">· WMAPE (lower = better)</span></h3><div class="chart-box tall"><canvas id="fMapeBar"></canvas></div>
+      <div class="card"><h3>Accuracy by category <span style="font-weight:400;text-transform:none;font-size:11px;color:#94a3b8">· 1 − WMAPE (higher = better)</span></h3><div class="chart-box tall"><canvas id="fMapeBar"></canvas></div>
         <div id="fMapeDetail" style="font-size:11px;color:#94a3b8;margin-top:8px"></div></div>
     </div>
     <div class="grid"><div class="card"><h3>Error trend over forecast months</h3><div class="chart-box"><canvas id="fTrend"></canvas></div></div></div>
@@ -986,11 +986,11 @@ function renderForecast(){
   if(bP){ bP.textContent=Math.abs(biasPct)<0.03?"balanced · ±3%":(biasPct>0?"over-forecasting · trim or raise buffer":"under-forecasting · widen safety stock"); }
   document.getElementById("fN").textContent=fc.length;
   document.getElementById("fWorst").textContent=worst.k;
-  document.getElementById("fWorstP").textContent=PCT(worst.m)+" WMAPE";
+  document.getElementById("fWorstP").textContent=PCT(Math.max(0,1-worst.m))+" accurate · improvement target";
   // keep the simple-mean MAPE available at detail level (labelled), not headline.
   const mape=fc.length?fc.reduce((s,x)=>s+x.ape,0)/fc.length:0;
   const md=document.getElementById("fMapeDetail");
-  if(md) md.textContent=`MAPE (simple mean): ${PCT(mape)} — inflated by near-zero actuals on intermittent SKUs; not the headline metric.`;
+  if(md) md.textContent=`Accuracy = 1 − WMAPE, floored at 0% for very intermittent categories (GPU/Compute have sporadic, near-zero demand → any miss is huge in % terms). MAPE (simple mean): ${PCT(mape)} — even more inflated by those near-zero actuals; not the headline metric.`;
 
   destroy("fLine");
   charts.fLine=new Chart(document.getElementById("fLine"),{type:"line",
@@ -1000,14 +1000,18 @@ function renderForecast(){
     options:{maintainAspectRatio:false,plugins:{legend:{position:"top",labels:{usePointStyle:true,boxWidth:8}}},
       scales:{x:{grid:{display:false},ticks:{maxTicksLimit:8}},y:{grid:{color:"#f1f5f9"},beginAtZero:true}}}});
 
+  // Accuracy by category = (1 − WMAPE), floored at 0 so a wildly off category reads
+  // "0% accurate" rather than a giant negative. Everything on this tab now points the
+  // same way: higher = better, green = good. Sorted best → worst (left → right).
+  const accCat=wmapeCat.map(x=>({k:x.k, a:Math.max(0,1-x.m)})).sort((a,b)=>b.a-a.a);
   destroy("fMapeBar");
   charts.fMapeBar=new Chart(document.getElementById("fMapeBar"),{type:"bar",
-    data:{labels:wmapeCat.map(x=>x.k),datasets:[{data:wmapeCat.map(x=>x.m*100),
-      backgroundColor:wmapeCat.map(x=>x.m<=0.20?C.green:x.m<=0.40?C.amber:C.red),borderRadius:6}]},
+    data:{labels:accCat.map(x=>x.k),datasets:[{data:accCat.map(x=>x.a*100),
+      backgroundColor:accCat.map(x=>x.a>=0.80?C.green:x.a>=0.60?C.amber:C.red),borderRadius:6}]},
     options:{maintainAspectRatio:false,
-      onClick:(e,el)=>{if(el.length)openForecastDrill(wmapeCat[el[0].index].k);},
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toFixed(1)+"% WMAPE — click to drill"}}},
-      scales:{x:{grid:{display:false}},y:{grid:{color:"#f1f5f9"},ticks:{callback:v=>v+"%"}}}}});
+      onClick:(e,el)=>{if(el.length)openForecastDrill(accCat[el[0].index].k);},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toFixed(1)+"% accurate — click to drill"}}},
+      scales:{x:{grid:{display:false}},y:{grid:{color:"#f1f5f9"},min:0,max:100,ticks:{callback:v=>v+"%"}}}}});
 
   // error trend by month
   destroy("fTrend");

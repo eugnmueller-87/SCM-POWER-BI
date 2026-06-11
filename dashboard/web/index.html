@@ -192,7 +192,7 @@
     </div>
     <div class="grid main">
       <div class="card"><h3>Predicted vs Actual demand</h3><div class="chart-box tall"><canvas id="fLine"></canvas></div></div>
-      <div class="card"><h3>Forecast error by category <span style="font-weight:400;text-transform:none;font-size:11px;color:#94a3b8">· WMAPE (lower = better)</span></h3><div class="chart-box tall"><canvas id="fMapeBar"></canvas></div></div>
+      <div class="card"><h3>Accuracy by category <span style="font-weight:400;text-transform:none;font-size:11px;color:#94a3b8">· 1 − WMAPE (higher = better)</span></h3><div class="chart-box tall"><canvas id="fMapeBar"></canvas></div></div>
     </div>
     <div class="grid"><div class="card"><h3>Error trend over forecast months</h3><div class="chart-box"><canvas id="fTrend"></canvas></div></div></div>
   </section>
@@ -463,14 +463,16 @@ function renderForecast(){
     options:{maintainAspectRatio:false,plugins:{legend:{position:"top",labels:{usePointStyle:true,boxWidth:8}}},
       scales:{x:{grid:{display:false},ticks:{maxTicksLimit:8}},y:{grid:{color:"#f1f5f9"},beginAtZero:true}}}});
 
+  // Accuracy by category = (1 − error), floored at 0 — everything reads higher = better.
+  const accCat=mapeCat.map(x=>({k:x.k, a:Math.max(0,1-x.m)})).sort((a,b)=>b.a-a.a);
   destroy("fMapeBar");
   charts.fMapeBar=new Chart(document.getElementById("fMapeBar"),{type:"bar",
-    data:{labels:mapeCat.map(x=>x.k),datasets:[{data:mapeCat.map(x=>x.m*100),
-      backgroundColor:mapeCat.map(x=>x.m<=0.13?C.green:x.m<=0.18?C.amber:C.red),borderRadius:6}]},
+    data:{labels:accCat.map(x=>x.k),datasets:[{data:accCat.map(x=>x.a*100),
+      backgroundColor:accCat.map(x=>x.a>=0.80?C.green:x.a>=0.60?C.amber:C.red),borderRadius:6}]},
     options:{maintainAspectRatio:false,
-      onClick:(e,el)=>{if(el.length)openForecastDrill(mapeCat[el[0].index].k);},
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toFixed(1)+"% error — click to drill"}}},
-      scales:{x:{grid:{display:false}},y:{grid:{color:"#f1f5f9"},ticks:{callback:v=>v+"%"}}}}});
+      onClick:(e,el)=>{if(el.length)openForecastDrill(accCat[el[0].index].k);},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toFixed(1)+"% accurate — click to drill"}}},
+      scales:{x:{grid:{display:false}},y:{grid:{color:"#f1f5f9"},min:0,max:100,ticks:{callback:v=>v+"%"}}}}});
 
   // error trend by month
   destroy("fTrend");

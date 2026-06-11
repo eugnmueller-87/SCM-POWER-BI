@@ -185,14 +185,14 @@
   <!-- ===================== FORECAST ===================== -->
   <section class="page" id="page-forecast">
     <div class="grid kpis">
-      <div class="card kpi"><div class="label">Accuracy (WMAPE)</div><div class="value" id="fAcc">–</div><span class="pill good">weighted</span></div>
+      <div class="card kpi"><div class="label">Forecast accuracy</div><div class="value" id="fAcc">–</div><span class="pill good">1 − WMAPE · higher = better</span></div>
       <div class="card kpi"><div class="label">MAPE</div><div class="value" id="fMape">–</div><span class="pill warn">simple mean</span></div>
       <div class="card kpi"><div class="label">Forecasts</div><div class="value" id="fN">–</div><span class="pill neut">evaluated</span></div>
       <div class="card kpi"><div class="label">Worst Category</div><div class="value" id="fWorst" style="font-size:22px">–</div><span class="pill bad" id="fWorstP">improvement target</span></div>
     </div>
     <div class="grid main">
       <div class="card"><h3>Predicted vs Actual demand</h3><div class="chart-box tall"><canvas id="fLine"></canvas></div></div>
-      <div class="card"><h3>Accuracy by category</h3><div class="chart-box tall"><canvas id="fMapeBar"></canvas></div></div>
+      <div class="card"><h3>Forecast error by category <span style="font-weight:400;text-transform:none;font-size:11px;color:#94a3b8">· WMAPE (lower = better)</span></h3><div class="chart-box tall"><canvas id="fMapeBar"></canvas></div></div>
     </div>
     <div class="grid"><div class="card"><h3>Error trend over forecast months</h3><div class="chart-box"><canvas id="fTrend"></canvas></div></div></div>
   </section>

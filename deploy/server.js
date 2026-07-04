@@ -317,9 +317,14 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // static files from this folder
-  let file = url === "/" ? "/index.html" : url;
-  const full = path.join(__dirname, path.normalize(file).replace(/^(\.\.[\/\\])+/, ""));
+  // static files from this folder — resolve then CONTAIN: reject anything that escapes
+  // __dirname (path traversal). The old prefix-strip regex missed Windows cases like
+  // "/..\.env" that normalize to a leading backslash and slip past a "../" filter.
+  const file = url === "/" ? "/index.html" : decodeURIComponent(url);
+  const full = path.resolve(__dirname, "." + file);
+  if (full !== __dirname && !full.startsWith(__dirname + path.sep)) {
+    res.writeHead(403); res.end("Forbidden"); return;
+  }
   fs.readFile(full, (err, buf) => {
     if (err) { res.writeHead(404); res.end("Not found"); return; }
     // The dashboard markup carries the inline app JS, so a stale cached index.html

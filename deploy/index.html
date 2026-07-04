@@ -570,6 +570,9 @@
      tower.js exposes window.SCMTower. -->
 <script src="babylon.js"></script>
 <script src="tower.js"></script>
+<!-- Offline fallback snapshot (window.SCM_DATA). Ignored when served live (the cockpit
+     prefers /api/data); used only when opened from file:// with no server. -->
+<script src="data.js"></script>
 
 <script>
 const EUR = n => "€" + Number(n).toLocaleString("en-US",{maximumFractionDigits:0});
@@ -691,8 +694,11 @@ function setFilter(type,value){
 }
 function renderFilterBar(){
   const fb=document.getElementById("filterbar");
-  if(!FILTER){ fb.innerHTML='<span class="hint">💡 Click any category, supplier or product to filter the whole board.</span>'; return; }
-  fb.innerHTML=`<span class="tag">Filter: <b>${FILTER.value}</b> <button class="clear" id="clr">×</button></span>`;
+  if(!FILTER){ fb.innerHTML='<span class="hint">💡 Click a category or product to filter the whole board; click a supplier to highlight it in the concentration view.</span>'; return; }
+  // Category/product genuinely reslice the board; supplier can't (the data has no
+  // supplier→product link), so we say plainly that it only highlights — no false "filter".
+  const verb = FILTER.type==="supplier" ? "Highlighting supplier" : "Filter";
+  fb.innerHTML=`<span class="tag">${verb}: <b>${FILTER.value}</b> <button class="clear" id="clr">×</button></span>`;
   document.getElementById("clr").onclick=()=>{FILTER=null;renderFilterBar();renderAll();};
 }
 
@@ -847,8 +853,14 @@ function renderSpend(){
   destroy("sDonut");
   const ss=RAW.sups.slice().sort((a,b)=>b.spend-a.spend);
   const allSpend=ss.reduce((s,x)=>s+x.spend,0);
+  // A selected supplier keeps full colour; the rest dim — an honest, real highlight
+  // (the data has no supplier→product link, so a whole-board filter isn't possible).
+  const selSup = (FILTER && FILTER.type==="supplier") ? FILTER.value : null;
+  const baseCol = (x,i)=> i===0?C.red:pie[(i+1)%pie.length];
   charts.sDonut=new Chart(document.getElementById("sDonut"),{type:"doughnut",
-    data:{labels:ss.map(x=>x.k),datasets:[{data:ss.map(x=>x.spend),backgroundColor:ss.map((x,i)=>i===0?C.red:pie[(i+1)%pie.length]),borderWidth:2,borderColor:"#fff"}]},
+    data:{labels:ss.map(x=>x.k),datasets:[{data:ss.map(x=>x.spend),
+      backgroundColor:ss.map((x,i)=> selSup && x.k!==selSup ? "#e2e8f0" : baseCol(x,i)),
+      borderWidth:2,borderColor:"#fff"}]},
     options:{maintainAspectRatio:false,cutout:"60%",onClick:(e,el)=>{if(el.length)setFilter("supplier",ss[el[0].index].k);},
       plugins:{legend:{position:"bottom",labels:{usePointStyle:true,boxWidth:8,padding:12}},tooltip:{callbacks:{label:c=>c.label+": "+EUR(c.raw)+" ("+PCT(c.raw/allSpend)+")"}}}}});
 
@@ -1227,7 +1239,7 @@ function ordCovers(o){ return o.items.reduce((s,i)=>s+(i.covers_outstanding||0),
 async function renderOrders(){
   const tb=document.querySelector("#ordTable tbody");
   if(ORDERS===null){
-    if(tb) tb.innerHTML=`<tr><td colspan="7" style="color:#94a3b8;padding:16px">Loading orders…</td></tr>`;
+    if(tb) tb.innerHTML=`<tr><td colspan="9" style="color:#94a3b8;padding:16px">Loading orders…</td></tr>`;
     try{ const r=await fetch("/api/orders",{cache:"no-store"}); ORDERS=r.ok?await r.json():[]; }
     catch(e){ ORDERS=[]; }
     if(!Array.isArray(ORDERS)) ORDERS=[];
@@ -1534,9 +1546,10 @@ function renderTCO(){
       {label:"Deployment",data:rows.map(r=>r.deploy),backgroundColor:"#8b5cf6"},
       {label:"OpEx (5y)",data:rows.map(r=>r.opex),backgroundColor:"#f59e0b"},
       {label:"EOL",data:rows.map(r=>r.eol),backgroundColor:"#ef4444"},
-      {label:"Recovery",data:rows.map(r=>r.rec),backgroundColor:"#10b981"},
+      {label:"Recovery (credit)",data:rows.map(r=>r.rec),backgroundColor:"#10b981"},
     ]},
     options:{responsive:true,maintainAspectRatio:false,
+      plugins:{tooltip:{callbacks:{label:c=>c.dataset.label+": "+EUR(c.raw)+(c.raw<0?" (subtracted from TCO)":"")}}},
       scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:v=>"€"+(v/1000)+"k"}}}}});
   // Per-class table
   const body = rows.map(r=>
@@ -1596,14 +1609,11 @@ function showError(msg){
   }
   b.textContent="⚠ Dashboard render error — "+msg;
 }
-async function loadData(){
-  let src;
-  try{
-    const r = await fetch("/api/data", {cache:"no-store"});
-    if(!r.ok){ showError("API HTTP "+r.status); return; }
-    src = await r.json();
-  }catch(e){ showError("fetch failed: "+(e&&e.message||e)); return; }
-  if(!src || src.error){ showError("API returned: "+(src&&src.error||"empty")); return; }
+// OFFLINE FALLBACK: when the page is opened from file:// (no server), fetch fails.
+// If a baked snapshot was loaded via <script src="data.js"> (window.SCM_DATA), render
+// that instead — so this ONE file works both live (server) and offline (snapshot),
+// which is why there is no separate "static twin" to drift out of sync.
+function renderFromSource(src){
   try{
     buildModel(src); renderFilterBar(); renderAll();
     // Re-sync the Control Tower to the fresh model even if it isn't the active tab,
@@ -1614,6 +1624,20 @@ async function loadData(){
     console.error("render failed", e);
     showError((e&&e.message||e)+"  @  "+((e&&e.stack||"").split("\n")[1]||"").trim());
   }
+}
+async function loadData(){
+  let src;
+  try{
+    const r = await fetch("/api/data", {cache:"no-store"});
+    if(!r.ok){ showError("API HTTP "+r.status); return; }
+    src = await r.json();
+  }catch(e){
+    // No server (file:// / offline). Fall back to the baked snapshot if present.
+    if(window.SCM_DATA){ renderFromSource(window.SCM_DATA); return; }
+    showError("fetch failed: "+(e&&e.message||e)); return;
+  }
+  if(!src || src.error){ showError("API returned: "+(src&&src.error||"empty")); return; }
+  renderFromSource(src);
 }
 // On-demand AI commentary — narrates OVER the deterministic findings (sent as
 // structured input, not raw data), so every number stays code-computed. One LLM

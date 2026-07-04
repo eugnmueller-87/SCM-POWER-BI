@@ -37,7 +37,6 @@ import os
 
 import numpy as np
 import pandas as pd
-from dateutil.relativedelta import relativedelta  # noqa: F401  (fallback below if missing)
 
 # --------------------------------------------------------------------------------------
 # 0. CONFIG & REPRODUCIBILITY

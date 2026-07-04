@@ -57,8 +57,8 @@ as the rubric requires.
 2. **The evidence is strong:** supply-chain is a proven AI savings area (61% report savings `[A1]`);
    AI forecasting cuts error 30–50% `[D1]`.
 3. **The lift is low:** we already have the data, the measure layer, and a working dashboard hitting
-   ~85% backtested accuracy — a pilot is *validation*, not greenfield build.
-4. **It is honest:** by leading with the *worst* category (Networking ~21% error) and a model-drift
+   ~72–76% backtested accuracy on steady categories — a pilot is *validation*, not greenfield build.
+4. **It is honest:** by leading with the *worst* categories (GPU/Compute, near-0% on sporadic demand) and a model-drift
    owner, it survives a skeptical CEO — the opposite of the 64% of projects that stall in hype `[B1]`.
 
 ---
@@ -72,4 +72,4 @@ as the rubric requires.
 - A repeatable, owned model — not a one-off dashboard.
 
 **Recommendation:** see [`../implementation/solution_proposal.md`](../implementation/solution_proposal.md)
-— **run a focused 10-week pilot before any rollout.**
+— **run a focused pilot (~9 weeks to a go/no-go decision, ~11 to rollout) before committing.**

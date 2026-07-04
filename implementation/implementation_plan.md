@@ -23,8 +23,9 @@ Citations `[n]` in [`../sources.md`](../sources.md).
 ## Phase 0 — Discovery validation (Weeks 1–2)
 - Confirm the pain with Procurement + planners (the assumptions in
   [`../research/use_case_discovery.md`](../research/use_case_discovery.md)).
-- Lock pilot scope: **one category first** (recommend the worst — Networking ~21% error — for
-  maximum upside, or the highest-value — Servers — for maximum $ impact).
+- Lock pilot scope: **one category first** (recommend a weak-but-material one — e.g. Networking/Storage,
+  ~47–51% accurate — for maximum upside, or the highest-value Servers for maximum $ impact; the
+  near-zero GPU/Compute categories are too intermittent to be a fair first test).
 - **Owner:** exec sponsor (Cleo) + procurement lead. **Exit:** signed scope + success criteria.
 
 ## Phase 1 — Data access & preparation (Weeks 2–3)

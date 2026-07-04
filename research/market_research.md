@@ -5,7 +5,7 @@
 **Decision owner:** Cleo — non-technical CEO asking *"Is AI/analytics investment worth it?"*
 
 All external claims are cited inline as `[n]` and listed in [`../sources.md`](../sources.md).
-Operational figures (e.g. our 85% backtested accuracy) come from the **synthetic** dataset and
+Operational figures (e.g. our backtested forecast accuracy) come from the **synthetic** dataset and
 are labelled as such.
 
 ---
@@ -74,8 +74,9 @@ the hype-vs-evidence analysis).
 - Supply-chain is a **proven** savings area (61% report cost savings) `[A1]`.
 - The category's external volatility (chips/geopolitics) `[E1][E2][E3]` is exactly where ML
   forecasting + dynamic reorder logic beats static planning.
-- Our own **synthetic backtest** shows ~**85% accuracy (WMAPE 13.9%)** across 78 forecasts — a
-  credible internal proof-of-concept the dashboard already visualizes.
+- Our own **synthetic backtest** (720 forecasts across 5 years) shows the steady, high-volume
+  categories running **~72–76% accurate**, with two intermittent categories (GPU/Compute) much
+  worse — a credible, *honest* internal proof-of-concept the dashboard visualizes per category.
 
 **Argues for caution (the cold water):**
 - Only **39% of orgs attribute any EBIT impact** to AI, and most of those see <5% `[B1]`.

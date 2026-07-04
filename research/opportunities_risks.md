@@ -16,7 +16,7 @@ forecast into a **dynamic reorder point** (`burn × lead-time + safety`) that up
 move.
 
 - **Value:** AI forecasting cuts errors **30–50%** `[D1]`; supply-chain is a proven savings area
-  (**61%** report cost savings `[A1]`). Directly attacks our worst category (Networking ~21% error).
+  (**61%** report cost savings `[A1]`). Directly attacks our worst categories (GPU/Compute, near-0% on sporadic demand).
 - **Why it fits us:** lead-time volatility from chip geopolitics `[E1][E2]` breaks static reorder
   points — the exact failure mode AI addresses.
 - **Effort:** Low–medium. We already have the data, the measures, and a working dashboard.
@@ -69,7 +69,7 @@ these are the ones that most commonly turn a promising AI forecast into shelfwar
 | Readiness factor | Status | Note |
 |---|---|---|
 | Data available | 🟢 | Usage, lead time, spend, forecast-vs-actual already modelled |
-| Working proof-of-concept | 🟢 | Live dashboard + 85% backtested accuracy (synthetic) |
+| Working proof-of-concept | 🟢 | Live dashboard + ~72–76% backtested accuracy on steady categories (synthetic) |
 | Executive sponsor | 🟡 | Cleo deciding — that's this project |
 | Owner for the model | 🔴 | **Must assign** before scaling (R1) |
 | Change-management plan | 🟡 | Human-in-the-loop design lowers the bar |

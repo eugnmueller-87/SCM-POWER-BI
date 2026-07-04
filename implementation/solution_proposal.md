@@ -21,7 +21,7 @@ Citations `[n]` resolve in [`../sources.md`](../sources.md).
 
 ## 2. Investment recommendation
 
-> ## 🟡 Recommendation: **RUN A SMALL PILOT** (≈10 weeks). Not "invest at full scale," not "wait."
+> ## 🟡 Recommendation: **RUN A SMALL PILOT** (~9 weeks to a go/no-go decision, ~11 to full rollout). Not "invest at full scale," not "wait."
 
 **Why this and not the alternatives:**
 

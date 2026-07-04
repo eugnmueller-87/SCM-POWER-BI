@@ -21,7 +21,7 @@ wait / pilot decision rests on data, not vendor claims.
 | 1 | **Forecast Accuracy** | `1 − WMAPE` over 12-month backtest | The headline trust number — is the AI right enough to act on? |
 | 2 | **MAPE / WMAPE** | mean & volume-weighted abs % error | Separates "right on small items" from "right on what matters" |
 | 3 | **Forecast Bias** | `Σpredicted / Σactual` | Tells *direction* of error (over/under-forecasting) → fixable |
-| 4 | **Accuracy by category** | WMAPE per category | Shows where AI works (Storage 8.5%) vs fails (Networking ~21%) → where to pilot |
+| 4 | **Accuracy by category** | 1 − WMAPE per category | Shows where AI works (steady categories ~72–76%) vs fails (GPU/Compute, intermittent, near-0%) → where to pilot |
 | 5 | **Total Spend** | Σ purchase spend | Scale of the operation the decision affects (~€640m) |
 | 6 | **Top Supplier Share / HHI** | concentration of spend | Single-source risk — ties to chip geopolitics `[E1]` |
 | 7 | **Stockout Risk** | SKUs with cover < lead time | The cost of a wrong forecast, in plain terms |

@@ -15,7 +15,7 @@ Cleo must validate before investing**. Citations `[n]` resolve in [`../sources.m
 |---|---|---|
 | "AI is mainstream, not experimental" | 78% (2024) → 88% (2025) of orgs use AI in ≥1 function `[A1][B1]` | Two independent, authoritative surveys agree. Low novelty risk. |
 | "Supply chain is a real place AI saves money" | 61% report cost savings, 63% revenue gains in SCM `[A1]` | Function-specific, from the academic index — not a vendor. |
-| "AI improves demand-forecast accuracy" | 30–50% error reduction `[D1]`; our synthetic backtest ~85% accuracy | Direction is well-established; magnitude needs local proof. |
+| "AI improves demand-forecast accuracy" | 30–50% error reduction `[D1]`; our synthetic backtest runs ~72–76% accurate on steady categories | Direction is well-established; magnitude needs local proof. |
 | "Forecasting is getting harder with classical methods" | ARIMA/smoothing miss external drivers `[D2][D4]` | Structural, not marketing — modern demand has more signals. |
 | "Chip supply is a live geopolitical risk" | ~90% advanced chips from Taiwan `[A3]`; memory +4× `[E1]` | Hard market facts; directly relevant to our SKUs. |
 
@@ -62,7 +62,7 @@ Cleo must validate before investing**. Citations `[n]` resolve in [`../sources.m
   unproven and ~64% of full bets stall `[B1]`. A blind rollout is the high-risk path.
 - **Why not "wait":** the problem is acute *now* (chip volatility `[E1]`), and we already have a
   working proof-of-concept — waiting forfeits a cheap, high-evidence opportunity.
-- **Why "pilot":** a 10-week pilot validates assumptions 1–5 at low cost and converts "85% on
+- **Why "pilot":** a ~9-week pilot (to a go/no-go decision) validates assumptions 1–5 at low cost and converts "85% on
   synthetic data" into "X% on our real SKUs," giving Cleo a data-backed rollout decision.
 
 Full reasoning, scope, cost and timeline in

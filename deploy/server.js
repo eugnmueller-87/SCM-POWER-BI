@@ -28,6 +28,18 @@ const PORT  = process.env.PORT || 8080;
 // accident — even if a request asks for it.
 const ALLOW_LIVE_PLACE = process.env.ALLOW_LIVE_PLACE === "true";
 const REFRESH_MS = (process.env.REFRESH_SECONDS ? +process.env.REFRESH_SECONDS : 300) * 1000;
+// No single call may hold a refresh open. Aborting the client does NOT stop the server
+// working on it, so this is a seatbelt, not a fix: the fix is never to ask an endpoint
+// for something it cannot answer quickly. See TCO_ENABLED below.
+const FETCH_TIMEOUT_MS = (process.env.FETCH_TIMEOUT_SECONDS ? +process.env.FETCH_TIMEOUT_SECONDS : 20) * 1000;
+// The per-asset TCO endpoints walk the whole asset table and hold it in memory. Against
+// the datacenter demo of about a thousand assets that was fine. Against the device fleet
+// of 431,200 serials, /tco/portfolio takes over nine minutes and the container runs out
+// of memory: on 23.09.2026 this cockpit was taking the demo API down every five minutes,
+// by asking it politely, on schedule. A dashboard must never be able to kill the system
+// it reports on. So these two calls are OFF until the backend has a read that aggregates
+// in the database; TCO_ENABLED=1 turns them back on once it does.
+const TCO_ENABLED = process.env.TCO_ENABLED === "1";
 // AI insights call the LLM, so they're the only refresh step that costs tokens.
 // They reason over slowly-changing analytics, so re-running them every data
 // refresh (every 5 min = 288 calls/day) burns tokens for no new information.
@@ -52,12 +64,12 @@ async function login() {
 }
 
 async function getJSON(token, p) {
-  const r = await fetch(`${API}${p}`, { headers: { Authorization: `Bearer ${token}` } });
+  const r = await fetch(`${API}${p}`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   if (!r.ok) throw new Error(`${p} → ${r.status}`);
   return r.json();
 }
 async function getCSV(token, p) {
-  const r = await fetch(`${API}${p}`, { headers: { Authorization: `Bearer ${token}` } });
+  const r = await fetch(`${API}${p}`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   if (!r.ok) throw new Error(`${p} → ${r.status}`);
   const text = await r.text();
   const lines = text.trim().split(/\r?\n/);
@@ -106,10 +118,13 @@ async function refresh() {
     const shouldCostBySupplier = await safe("should-cost/by-supplier",
       getJSON(token, "/api/v1/analytics/should-cost/by-supplier"), []);
     // TCO is new — tolerate a backend that lacks the endpoints (renders empty).
-    const tcoByClass = await safe("tco/by-class",
-      getJSON(token, "/api/v1/tco/by-class"), []);
-    const tcoPortfolio = await safe("tco/portfolio",
-      getJSON(token, "/api/v1/tco/portfolio?baseline=50000000"), null);
+    // Off by default: see TCO_ENABLED above for why asking cost the demo its uptime.
+    const tcoByClass = TCO_ENABLED
+      ? await safe("tco/by-class", getJSON(token, "/api/v1/tco/by-class"), [])
+      : [];
+    const tcoPortfolio = TCO_ENABLED
+      ? await safe("tco/portfolio", getJSON(token, "/api/v1/tco/portfolio?baseline=50000000"), null)
+      : null;
     // Forward warehouse capacity: free space net of inbound already on the way, so
     // the cockpit can show committed vs free as a % of max and block over-ordering.
     const storageHeadroom = await safe("storage-headroom",

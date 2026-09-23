@@ -638,27 +638,34 @@ function buildModel(src){
 
 // ---------- Supply-chain KPI engine (all derived from live data, none fabricated) ----------
 function computeKPI(){ return (()=> {
-  const inv=RAW.inv, sup=RAW.sups, fc=RAW.fc;
+  const inv=RAW.inv||[], sup=RAW.sups||[], fc=RAW.fc||[];
+  // A block with no rows is a normal state, not a crash. An empty production database
+  // says nothing about spend, and on 23.09.2026 that fact killed this whole dashboard
+  // on `sorted[0].spend`: one undefined read, every tile gone, a red error bar instead
+  // of the honest answer "there is nothing to show yet". Missing data gets reported as
+  // null from here on, and the tiles render a dash.
+  const avg = (rows, pick) => rows.length ? rows.reduce((s,x)=>s+pick(x),0)/rows.length : null;
+  const share = (rows, test) => rows.length ? rows.filter(test).length/rows.length : null;
   const onHand=inv.reduce((s,x)=>s+x.on_hand,0);
   const burn=inv.reduce((s,x)=>s+x.burn,0);
   const invValue=inv.reduce((s,x)=>s+x.on_hand*x.price,0);
-  const dos = burn? onHand/burn : 0;                          // days of supply
-  const turns = dos? 365/dos : 0;                             // inventory turns
-  const fillRate = inv.filter(x=>x.on_hand>=x.safety).length/inv.length;
+  const dos = burn? onHand/burn : null;                       // days of supply
+  const turns = dos? 365/dos : null;                          // inventory turns
+  const fillRate = share(inv, x=>x.on_hand>=x.safety);
   const stockRisk = inv.filter(x=>x.burn>0 && (x.on_hand/x.burn)<x.lead).length;
   const belowSafety = inv.filter(x=>x.on_hand<x.safety).length;
-  const avgLead = inv.reduce((s,x)=>s+x.lead,0)/inv.length;
+  const avgLead = avg(inv, x=>x.lead);
   const onOrder = inv.reduce((s,x)=>s+x.on_order,0);
   const sumP=fc.reduce((s,x)=>s+x.pred,0), sumA=fc.reduce((s,x)=>s+x.act,0), sumE=fc.reduce((s,x)=>s+x.err,0);
-  const bias = sumA? sumP/sumA : 0;                           // forecast bias
-  const wmape = sumA? sumE/sumA : 0;
-  const accuracy = 1-wmape;
-  const mape = fc.reduce((s,x)=>s+x.ape,0)/fc.length;
+  const bias = sumA? sumP/sumA : null;                        // forecast bias
+  const wmape = sumA? sumE/sumA : null;
+  const accuracy = wmape===null ? null : 1-wmape;
+  const mape = avg(fc, x=>x.ape);
   const totalSpend=sup.reduce((s,x)=>s+x.spend,0);
-  const hhi=sup.reduce((s,x)=>s+Math.pow(x.spend/totalSpend,2),0); // Herfindahl
+  const hhi = totalSpend ? sup.reduce((s,x)=>s+Math.pow(x.spend/totalSpend,2),0) : null; // Herfindahl
   const sorted=sup.slice().sort((a,b)=>b.spend-a.spend);
-  const top1=sorted[0].spend/totalSpend;
-  const top2=(sorted[0].spend+(sorted[1]?sorted[1].spend:0))/totalSpend;
+  const top1 = totalSpend && sorted[0] ? sorted[0].spend/totalSpend : null;
+  const top2 = totalSpend && sorted[0] ? (sorted[0].spend+(sorted[1]?sorted[1].spend:0))/totalSpend : null;
   const totalUnits=sup.reduce((s,x)=>s+x.units,0);
   return {onHand,burn,invValue,dos,turns,fillRate,stockRisk,belowSafety,avgLead,onOrder,
           bias,wmape,accuracy,mape,totalSpend,hhi,top1,top2,totalUnits,

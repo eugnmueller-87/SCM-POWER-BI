@@ -135,6 +135,28 @@
   .kpi-tbl .kn{font-weight:600;color:var(--ink)}
   .kpi-tbl .kd{font-size:11px;color:#94a3b8;margin-top:1px}
   .kpi-tbl .kr{font-size:11px;color:#94a3b8;font-style:italic}
+  /* a row or a card opens to say where its number comes from; the words are the API's
+     (SCM Master, services/kpis.py, next to the function that computes it), never this file's */
+  .kpi-tbl tr.krow{cursor:pointer}
+  .kpi-tbl tr.krow:hover td{background:#f8fafc}
+  .kpi-tbl tr.krow.open td{background:#eef2ff}
+  .kpi-tbl tr.kdrill td{background:#f8fafc;padding:0 14px 16px}
+  .kcard[data-kid]{cursor:pointer;transition:transform .12s,box-shadow .12s}
+  .kcard[data-kid]:hover{transform:translateY(-2px);box-shadow:0 4px 10px rgba(15,23,42,.10),0 14px 34px rgba(15,23,42,.10)}
+  .kcard .drillhint{position:absolute;right:14px;top:14px;color:#cbd5e1;font-size:14px}
+  .kxh{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;font-size:12px;color:var(--muted);margin-top:12px}
+  .kxh .warn-t{color:#b45309}
+  .kbasis{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:1px 7px;border-radius:999px;border:1px solid currentColor;cursor:help}
+  .kbasis.measured{color:#15803d}.kbasis.derived{color:#1d4ed8;border-style:dashed}.kbasis.placeholder{color:#b45309;border-style:dashed}
+  .kxcp{font-size:11px;color:var(--muted);margin-top:4px}
+  .kx{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 28px;margin-top:12px}
+  @media(max-width:900px){.kx{grid-template-columns:1fr}}
+  .kx .kxl{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+  .kx .kxt{font-size:12.5px;line-height:1.55;color:#334155;max-width:76ch}
+  .kx .kxt.mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11.5px;color:#475569}
+  .kx .kxna{border-left:3px solid var(--amber);padding-left:10px}
+  .drawer-body .kx{margin-top:14px;grid-template-columns:1fr}
+  .drawer-body .hy4{grid-template-columns:repeat(2,1fr)}
   .kfleet .kf-head{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:flex-start}
   .kfleet .kf-now{font-size:40px;font-weight:700;line-height:1;margin-top:8px;font-variant-numeric:tabular-nums}
   .kfleet .kf-now.na{font-size:18px;color:#94a3b8;margin-top:10px}
@@ -1270,7 +1292,8 @@ function kcard(k,a,word,nowKey,two){
   const cur = k.current==null
     ? `<div class="value na">not measurable</div><div class="note">${esc(k.reason||"no measurement")}</div>`
     : `<div class="value">${kfmt(k.current,k.unit)}</div><div class="note">measured ${kdate(k.as_of)} · ${k.direction==="lower"?"lower is better":"higher is better"}</div>`;
-  return `<div class="card kcard" title="${esc(k.definition||"")}"><span class="edge ${edge}"></span>
+  // data-kid makes the card open its explanation (bound in renderKPIs); a missing KPI has no card to open.
+  return `<div class="card kcard" data-kid="${esc(k.id)}" title="${esc(k.definition||"")} · click for where this number comes from"><span class="edge ${edge}"></span><span class="drillhint">⤢</span>
     <div class="label">${esc(k.name)}${word?`<span class="kword">${esc(word)}</span>`:""}</div>
     ${cur}
     <div class="kstat">${kpill(k,a)}</div>
@@ -1334,9 +1357,53 @@ function renderFleetGoal(nowKey){
         y:{beginAtZero:true,grid:{color:"#f1f5f9"},ticks:{callback:v=>v>=1e6?(v/1e6)+"M":(v/1e3)+"k"}}}}});   // from zero, so the slope is not flattered
 }
 
+// Where a number comes from. The words about a KPI (basis, calculation, reads, caveats,
+// why, needs) arrive on its /api/v1/kpis row, written next to the function that computes
+// it; this cockpit draws them and adds only what it knows itself: the derived half-year
+// checkpoints, how far off, the target's state and when the value was measured. An API
+// that does not serve the words yet says so instead of leaving a blank.
+const KPI_BASIS_HINT={
+  measured:"every input is a row, or a count of rows, in the tables named under 'where the data comes from'",
+  derived:"an input is estimated by a rule in code because the data does not record it",
+  placeholder:"a design parameter with an owner enters the number; it changes when that person sets the real value",
+};
+function kexplainHtml(k,a,nowKey){
+  const blk=(l,t,cls)=>`<div><div class="kxl">${l}</div><div class="kxt${cls?" "+cls:""}">${esc(t||"")}</div></div>`;
+  const at=k.measured_at?new Date(k.measured_at).toLocaleString("en-GB",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"—";
+  // A value measured before the simulation moved the dataset's calendar must not read as today's.
+  const when=k.stale_days>0
+    ? `<span class="warn-t">measured ${at}, ${k.stale_days} simulated day${k.stale_days===1?"":"s"} ago, before the dataset's calendar last moved</span>`
+    : `<span>measured ${at}, describing ${kdate(k.measured_on||k.as_of)}</span>`;
+  // A placeholder row without a value has no seeded targets yet: say so, not "placeholder targets".
+  const target=!k.placeholder
+    ? `<span>targets set by ${esc(k.updated_by||"a person")}${k.owner?`, owner ${esc(k.owner)}`:""}${k.note?` (${esc(k.note)})`:""}</span>`
+    : k.target_y1==null
+      ? `<span class="warn-t">no targets yet: the backend seeds a placeholder from the first measurement once there is one, and it waits for an owner</span>`
+      : `<span class="warn-t">placeholder targets, derived from the first measurement (10/20/30 % better), waiting for ${k.owner?esc(k.owner):"an owner"} to set the real ones</span>`;
+  const head=`<div class="kxh">${k.basis?`<span class="kbasis ${esc(k.basis)}" title="${esc(KPI_BASIS_HINT[k.basis]||"")}">${esc(k.basis)}</span>`:""}${when}<span>·</span>${target}<span>·</span>${kpill(k,a)}</div>`;
+  const cps=`<div class="hy4">${a.checkpoints.map(c=>kcell(k,a,c,nowKey)).join("")}</div><div class="kxcp">half-year checkpoints derived in this cockpit: a straight line from the first measurement to the yearly targets, read off on 30.06. and 31.12.</div>`;
+  if(!k.calculation) return head+cps+`<div class="kx"><div><div class="kxt" style="color:#94a3b8">This API does not serve the explanation yet (basis, calculation, reads, caveats, why and needs on /api/v1/kpis): the deployed backend is older than this cockpit. The definition it does serve: ${esc(k.definition||"")}</div></div></div>`;
+  // Not measurable: the reason and what would make it measurable, side by side.
+  const needs=k.current==null
+    ? `<div class="kxna"><div class="kxl">Not measurable, and what would make it so</div><div class="kxt"><b>${esc(k.reason||"")}.</b> ${esc(k.needs||"")}</div></div>`
+    : blk("What the measurement needs",k.needs);
+  return head+cps+`<div class="kx">${blk("How it is calculated",k.calculation)}${blk("Where the data comes from",k.reads,"mono")}${blk("What it excludes or assumes",k.caveats)}${blk("Why it matters",k.why)}${needs}</div>`;
+}
+// A card opens the same explanation in the drawer the scorecard cards use.
+function openKpiDrill(k,a,nowKey){
+  document.getElementById("dwTitle").textContent=k.name;
+  document.getElementById("dwValue").textContent=k.current==null?"not measurable":kfmt(k.current,k.unit);
+  document.getElementById("dwSub").textContent=`${k.direction==="lower"?"lower is better":"higher is better"} · ${k.source||""} · ${k.definition||""}`;
+  document.getElementById("dwBody").innerHTML=kexplainHtml(k,a,nowKey);
+  document.getElementById("drawer").classList.add("open");
+  document.getElementById("drawerBg").classList.add("open");
+}
+let _kpiOpenRow=null;   // the table row left open across the 60-second redraw
+
 function kpiHowText(k){
   const first = k ? KPIHalfYear.firstMeasured(k) : null;
   return `<b>Today</b> is the backend's measurement (once a day, /api/v1/kpis). A KPI the data cannot measure says why and is never zero-filled.<br>
+    <b>Click a row or a card</b> for where its number comes from: how it is calculated, which tables it reads, what it excludes or assumes, why it matters and what the measurement needs, plus whether it is measured, derived or rests on a placeholder. Those words are served by the backend with the value, from the code that computes it; this cockpit writes none of them.<br>
     <b>Half-year checkpoints are derived here</b>, because the backend's targets are yearly and no half-year target exists in the data: a straight line from the first measurement${first?` (${kdate(first.as_of)})`:""} to the one-year target, on to year two and year three, read off on 30.06. and 31.12. A half-year that ended before the first measurement shows a dash.<br>
     <span class="ph">Dashed</span> marks a <b>placeholder target</b>: the backend seeded it 10/20/30 % better than the first value until a person sets the real one (SCM Master, KPIs tab). The mark carries through to every checkpoint derived from it.<br>
     <b>How far off</b> compares today's value with the line's value today, in the KPI's own unit and good direction (for half of them lower is better). Within 1 % of the one-year distance counts as on the line; met means already at the one-year target. The backend's own status judges the whole one-year distance regardless of date, so it can say behind where this tab says on the line; it sits in each pill's tooltip.<br>
@@ -1374,10 +1441,27 @@ function renderKPIs(){
           return `<td class="num${now?" now":""}">${a.placeholder?`<span class="ph" title="${esc(PH_TITLE)}">${v}</span>`:v}</td>`;
         }).join("");
         const far = k.current==null ? `<span class="kr">${esc(k.reason||"no measurement")}</span>` : kpill(k,a);
-        return `<tr><td><div class="kn">${esc(k.name)}</div><div class="kd">${k.direction==="lower"?"lower is better":"higher is better"} · ${esc(k.source||"")}</div></td><td class="num">${today}</td>${cells}<td>${far}</td></tr>`;
+        // The Orders tab's pattern: the row, then a hidden drill row it toggles; one open at a time.
+        const open=_kpiOpenRow===k.id;
+        return `<tr class="krow${open?" open":""}" data-kid="${esc(k.id)}" title="click for where this number comes from"><td><div class="kn">${esc(k.name)}</div><div class="kd">${k.direction==="lower"?"lower is better":"higher is better"} · ${esc(k.source||"")}</div></td><td class="num">${today}</td>${cells}<td>${far}</td></tr>`
+          +`<tr class="kdrill" data-for="${esc(k.id)}" style="display:${open?"table-row":"none"}"><td colspan="7">${open?kexplainHtml(k,a,nowKey):""}</td></tr>`;
       }).join("");
     }).join("");
     all.innerHTML=`<div style="overflow-x:auto"><table class="kpi-tbl">${head}<tbody>${body}</tbody></table></div>`;
+    // A row opens on click and closes on the next; the open row survives the 60-second redraw.
+    all.querySelectorAll("tr.krow").forEach(tr=>tr.onclick=()=>{
+      const id=tr.dataset.kid, k=byId[id]; if(!k) return;
+      const d=all.querySelector(`tr.kdrill[data-for="${CSS.escape(id)}"]`);
+      const showing=d && d.style.display!=="none";
+      all.querySelectorAll("tr.kdrill").forEach(x=>{ x.style.display="none"; x.firstElementChild.innerHTML=""; });
+      all.querySelectorAll("tr.krow").forEach(x=>x.classList.remove("open"));
+      _kpiOpenRow=showing?null:id;
+      if(!showing && d){ d.firstElementChild.innerHTML=kexplainHtml(k,A[id],nowKey); d.style.display="table-row"; tr.classList.add("open"); }
+    });
+    // The five warehouse cards and the ordering cards open the same explanation in the drawer.
+    document.querySelectorAll("#kpiFive .kcard[data-kid], #kpiOrder .kcard[data-kid]").forEach(c=>c.onclick=()=>{
+      const k=byId[c.dataset.kid]; if(k) openKpiDrill(k,A[k.id],nowKey);
+    });
   }
   document.getElementById("kpiHow").innerHTML=kpiHowText(rows[0]||null);
   // The older cockpit-computed scorecard sits below; its failure must not take the KPIs down.

@@ -106,6 +106,45 @@
   .formula b{color:#0f172a}
   .barlabel{font-size:12px}
 
+  /* ===================== KPIs tab ===================== */
+  .scsub{font-weight:400;text-transform:none;letter-spacing:0;color:#94a3b8}
+  .kfive{grid-template-columns:repeat(5,1fr)}
+  @media(max-width:1180px){.kfive{grid-template-columns:repeat(3,1fr)}}
+  .kcard{position:relative;overflow:hidden;padding:16px 18px 14px}
+  .kcard .label{font-size:12px;color:var(--muted);font-weight:600;line-height:1.35}
+  .kcard .kword{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;background:#eef2ff;color:#3730a3;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;vertical-align:1px}
+  .kcard .value{font-size:28px;font-weight:700;margin:6px 0 2px;line-height:1;font-variant-numeric:tabular-nums}
+  .kcard .value.na{font-size:16px;color:#94a3b8;line-height:1.2;margin-top:8px}
+  .kcard .note{font-size:11.5px;color:var(--muted)}
+  .kcard .kstat{margin:8px 0 10px}
+  .hy4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+  .hy4.two{grid-template-columns:repeat(2,1fr)}
+  .hy{border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:#fafbfd;min-width:0}
+  .hy.now{border-color:#1f3a8a;background:#eef2ff}
+  .hy .hk{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+  .hy .hv{font-size:14px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .hy .hv.dim{color:#94a3b8;font-weight:600}
+  .hy .hn{font-size:10.5px;color:var(--muted);margin-top:2px;line-height:1.3}
+  .ph{border-bottom:2px dashed #f59e0b;cursor:help}
+  .kpi-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+  .kpi-tbl th{background:#fff}
+  .kpi-tbl td.num,.kpi-tbl th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .kpi-tbl td.now,.kpi-tbl th.now{background:#f5f7ff}
+  .kpi-tbl tr.grp td{background:#f8fafc;font-weight:700;color:#334155;font-size:11.5px;text-transform:uppercase;letter-spacing:.5px;padding-top:12px}
+  .kpi-tbl tr.grp td span{font-weight:400;text-transform:none;letter-spacing:0;color:#94a3b8;margin-left:8px}
+  .kpi-tbl .kn{font-weight:600;color:var(--ink)}
+  .kpi-tbl .kd{font-size:11px;color:#94a3b8;margin-top:1px}
+  .kpi-tbl .kr{font-size:11px;color:#94a3b8;font-style:italic}
+  .kfleet .kf-head{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:flex-start}
+  .kfleet .kf-now{font-size:40px;font-weight:700;line-height:1;margin-top:8px;font-variant-numeric:tabular-nums}
+  .kfleet .kf-now.na{font-size:18px;color:#94a3b8;margin-top:10px}
+  .kfleet .kf-goal{text-align:right;font-size:13px;color:#334155}
+  .kfleet .kf-goal b{font-size:22px;font-variant-numeric:tabular-nums}
+  .kfleet .kf-goal .kf-owned{font-size:11px;color:var(--muted);margin-top:4px}
+  .kfleet .kf-pace{display:flex;gap:22px;flex-wrap:wrap;font-size:12.5px;color:#475569;margin-top:12px}
+  .kfleet .kf-pace b{color:var(--ink);font-variant-numeric:tabular-nums}
+  .kfleet .kf-basis{font-size:11.5px;color:var(--muted);margin-top:10px;line-height:1.5}
+
   /* ===================== CONTROL TOWER (3D RTS) ===================== */
   /* Full-bleed dark stage that breaks out of the light .wrap container. */
   body.tower-active{background:#0a0e16}
@@ -258,7 +297,7 @@
   <nav class="tabs">
     <button data-tab="tower" class="active">🛰 Control Tower</button>
     <button data-tab="overview">Overview</button>
-    <button data-tab="scorecard">SC Scorecard</button>
+    <button data-tab="kpis">KPIs</button>
     <button data-tab="spend">Spend</button>
     <button data-tab="inventory">Inventory</button>
     <button data-tab="orders">Orders</button>
@@ -323,9 +362,24 @@
     </div>
   </section>
 
-  <!-- ===================== SC SCORECARD ===================== -->
-  <section class="page" id="page-scorecard">
-    <div class="scsec">📦 Inventory &amp; warehouse cycle <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#94a3b8">· live snapshot (now)</span></div>
+  <!-- ===================== KPIs (the backend's steering KPIs, by half year) =====================
+       Order of the tab: the device goal first (the goal the rest serve), then the five
+       warehouse KPIs the role names, the ordering side, the whole list by half year, and at
+       the bottom the older cockpit-computed scorecard. Every number is measured, derived and
+       labelled as such, or an owned target. The arithmetic lives in kpi_halfyear.js. -->
+  <section class="page" id="page-kpis">
+    <div id="kpiFleet"></div>
+    <div class="scsec" style="margin-top:22px">The five warehouse KPIs <span class="scsub">· availability, capital tied up, cover, aging, write-down risk · the role's standard measures, as the backend groups them</span></div>
+    <div class="grid kfive" id="kpiFive"></div>
+    <div class="scsec" style="margin-top:22px">Ordering: delivery reliability and forecast quality <span class="scsub">· the flow around the five, from the same response</span></div>
+    <div class="grid sc6" id="kpiOrder"></div>
+    <div class="scsec" style="margin-top:22px">All KPIs by half year <span class="scsub" id="kpiAllSub"></span></div>
+    <div class="card" id="kpiAll" style="padding:6px 0 0"></div>
+    <div class="grid" style="margin-top:18px"><div class="card"><h3>How to read the KPIs</h3>
+      <div style="font-size:13px;color:#475569;line-height:1.7" id="kpiHow"></div></div></div>
+
+    <div class="scsec" style="margin-top:36px;padding-top:18px;border-top:1px solid var(--line)">Cockpit scorecard <span class="scsub">· computed in this cockpit from the inventory, spend and backtest reads, not the backend's KPI list · the steering numbers are above</span></div>
+    <div class="scsec" style="margin-top:14px">📦 Inventory &amp; warehouse cycle <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#94a3b8">· live snapshot (now)</span></div>
     <div class="grid sc6" id="scInv"></div>
     <div class="scsec" style="margin-top:22px">🎯 Demand planning &amp; forecast <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#94a3b8">· full backtest (all years)</span></div>
     <div class="grid sc6" id="scPlan"></div>
@@ -573,6 +627,9 @@
 <!-- Offline fallback snapshot (window.SCM_DATA). Ignored when served live (the cockpit
      prefers /api/data); used only when opened from file:// with no server. -->
 <script src="data.js"></script>
+<!-- Half-year checkpoints and the fleet path for the KPIs tab: pure arithmetic, shared
+     with a Node check so every number on that tab can be re-run on the command line. -->
+<script src="kpi_halfyear.js"></script>
 
 <script>
 const EUR = n => "€" + Number(n).toLocaleString("en-US",{maximumFractionDigits:0});
@@ -629,7 +686,10 @@ function buildModel(src){
       deploy:num(x.deployment), opex:num(x.opex), eol:num(x.eol), rec:num(x.recovery),
       total:num(x.tco_total), avg:num(x.avg_tco),
     })),
-    tcoPortfolio: D.tco_portfolio || null
+    tcoPortfolio: D.tco_portfolio || null,
+    // KPIs tab: the backend's KPI list, its capacity plan (absent on a deployment that
+    // does not serve it yet) and the fleet summary the derived path falls back to.
+    kpis: arr(D.kpis), plan: D.capacity_plan || null, fleet: D.fleet_summary || null,
   };
   document.getElementById("genDate").textContent = D.generated_at;
   document.getElementById("genDate2").textContent = D.generated_at;
@@ -1101,32 +1161,227 @@ function scCard(key,label,value,note,status){
 }
 function renderScorecard(){
   const k=KPI;
+  // An empty production database leaves every figure here null. A null renders a dash
+  // and a neutral edge; the cards never throw, so the KPI blocks above them stay up.
+  const F1=(v,suf)=>v==null?"—":v.toFixed(1)+suf;
+  const F0=(v,suf)=>v==null?"—":v.toFixed(0)+suf;
+  const P=(v)=>v==null?"—":PCT(v);
+  const E=(v)=>v==null?"—":EUR(v);
+  const st=(v,fn)=>v==null?"neut":fn(v);
   document.getElementById("scInv").innerHTML=[
-    scCard("turns","Inventory Turns", k.turns.toFixed(1)+"×", "annualised · higher = leaner", k.turns>=12?"good":k.turns>=6?"warn":"bad"),
-    scCard("dos","Days of Supply", k.dos.toFixed(1)+" d", "on-hand ÷ daily burn", k.dos<=20?"good":k.dos<=35?"warn":"bad"),
-    scCard("fill","In-Stock / Fill Rate", PCT(k.fillRate), "SKUs at/above safety stock", k.fillRate>=0.9?"good":k.fillRate>=0.7?"warn":"bad"),
-    scCard("invval","Inventory Value", EUR(k.invValue), k.onHand+" units on hand", "neut"),
-    scCard("stockrisk","Stockout Risk", k.stockRisk+" / "+k.skuCount, "cover below lead time", k.stockRisk===0?"good":k.stockRisk<=2?"warn":"bad"),
-    scCard("safety","Below Safety Stock", k.belowSafety+" / "+k.skuCount, "need replenishment", k.belowSafety===0?"good":k.belowSafety<=2?"warn":"bad"),
+    scCard("turns","Inventory Turns", F1(k.turns,"×"), "annualised · higher = leaner", st(k.turns,v=>v>=12?"good":v>=6?"warn":"bad")),
+    scCard("dos","Days of Supply", F1(k.dos," d"), "on-hand ÷ daily burn", st(k.dos,v=>v<=20?"good":v<=35?"warn":"bad")),
+    scCard("fill","In-Stock / Fill Rate", P(k.fillRate), "SKUs at/above safety stock", st(k.fillRate,v=>v>=0.9?"good":v>=0.7?"warn":"bad")),
+    scCard("invval","Inventory Value", E(k.invValue), NUM(k.onHand)+" units on hand", "neut"),
+    scCard("stockrisk","Stockout Risk", k.stockRisk+" / "+k.skuCount, "cover below lead time", k.skuCount?(k.stockRisk===0?"good":k.stockRisk<=2?"warn":"bad"):"neut"),
+    scCard("safety","Below Safety Stock", k.belowSafety+" / "+k.skuCount, "need replenishment", k.skuCount?(k.belowSafety===0?"good":k.belowSafety<=2?"warn":"bad"):"neut"),
   ].join("");
   document.getElementById("scPlan").innerHTML=[
-    scCard("accuracy","Forecast Accuracy", PCT(k.accuracy), "1 − WMAPE (volume-weighted)", k.accuracy>=0.85?"good":k.accuracy>=0.75?"warn":"bad"),
-    scCard("mape","MAPE", PCT(k.mape), "mean absolute % error", k.mape<=0.15?"good":k.mape<=0.25?"warn":"bad"),
-    scCard("bias","Forecast Bias", PCT(k.bias), k.bias>1?"over-forecasting":"under-forecasting", (k.bias>=0.95&&k.bias<=1.05)?"good":(k.bias>=0.9&&k.bias<=1.1)?"warn":"bad"),
-    scCard("lead","Avg Lead Time", k.avgLead.toFixed(0)+" d", "supplier replenishment", k.avgLead<=14?"good":k.avgLead<=21?"warn":"bad"),
+    scCard("accuracy","Forecast Accuracy", P(k.accuracy), "1 − WMAPE (volume-weighted)", st(k.accuracy,v=>v>=0.85?"good":v>=0.75?"warn":"bad")),
+    scCard("mape","MAPE", P(k.mape), "mean absolute % error", st(k.mape,v=>v<=0.15?"good":v<=0.25?"warn":"bad")),
+    scCard("bias","Forecast Bias", P(k.bias), k.bias==null?"no backtest rows":(k.bias>1?"over-forecasting":"under-forecasting"), st(k.bias,v=>(v>=0.95&&v<=1.05)?"good":(v>=0.9&&v<=1.1)?"warn":"bad")),
+    scCard("lead","Avg Lead Time", F0(k.avgLead," d"), "supplier replenishment", st(k.avgLead,v=>v<=14?"good":v<=21?"warn":"bad")),
     scCard("onorder","Units On Order", NUM(k.onOrder), "inbound pipeline", "neut"),
-    scCard("burn","Demand Coverage", k.burn.toFixed(1)+" u/d", "total daily burn rate", "neut"),
+    scCard("burn","Demand Coverage", F1(k.burn," u/d"), "total daily burn rate", "neut"),
   ].join("");
   document.getElementById("scSrc").innerHTML=[
-    scCard("spend","Total Spend", EUR(k.totalSpend), NUM(k.totalUnits)+" units procured", "neut"),
+    scCard("spend","Total Spend", E(k.totalSpend), NUM(k.totalUnits)+" units procured", "neut"),
     scCard("suppliers","Active Suppliers", k.supplierCount, "in current scope", "neut"),
-    scCard("hhi","Supplier HHI", k.hhi.toFixed(3), ">0.25 = concentrated", k.hhi<=0.25?"good":k.hhi<=0.4?"warn":"bad"),
-    scCard("top1","Top-Supplier Share", PCT(k.top1), "single-vendor dependency", k.top1<=0.3?"good":k.top1<=0.5?"warn":"bad"),
-    scCard("top2","Top-2 Share", PCT(k.top2), "concentration in 2 vendors", k.top2<=0.5?"good":k.top2<=0.75?"warn":"bad"),
-    scCard("avgunit","Avg Spend / Unit", EUR(k.totalSpend/k.totalUnits), "blended unit cost", "neut"),
+    scCard("hhi","Supplier HHI", k.hhi==null?"—":k.hhi.toFixed(3), ">0.25 = concentrated", st(k.hhi,v=>v<=0.25?"good":v<=0.4?"warn":"bad")),
+    scCard("top1","Top-Supplier Share", P(k.top1), "single-vendor dependency", st(k.top1,v=>v<=0.3?"good":v<=0.5?"warn":"bad")),
+    scCard("top2","Top-2 Share", P(k.top2), "concentration in 2 vendors", st(k.top2,v=>v<=0.5?"good":v<=0.75?"warn":"bad")),
+    scCard("avgunit","Avg Spend / Unit", k.totalUnits?EUR(k.totalSpend/k.totalUnits):"—", "blended unit cost", "neut"),
   ].join("");
   // wire clicks
-  document.querySelectorAll("#page-scorecard .sckpi").forEach(c=>c.onclick=()=>openDrill(c.dataset.drill));
+  document.querySelectorAll("#page-kpis .sckpi").forEach(c=>c.onclick=()=>openDrill(c.dataset.drill));
+}
+
+// ---------- KPIs tab: the backend's steering KPIs by half year ----------
+// The arithmetic (pace line, checkpoints, fleet path) is in kpi_halfyear.js and shared
+// with a Node check; this block only draws what it returns.
+const KPI_GROUP_ORDER=["fleet","warehouse","cost","process","suppliers"];
+// The five warehouse KPIs the role names, in the order of the phrase the backend uses for
+// its warehouse group ("availability, capital tied up, cover, aging, write-down risk"),
+// matched to the ids in /api/v1/kpis by the names the backend gives them. Nothing added,
+// nothing renamed; a missing id is reported, not filled.
+const KPI_FIVE=[
+  {id:"safety_stock_coverage_pct", word:"availability"},
+  {id:"stock_value_eur",           word:"capital tied up"},
+  {id:"weeks_of_cover",            word:"cover"},
+  {id:"aging_stock_pct",           word:"aging"},
+  {id:"dead_stock_value_eur",      word:"write-down risk"},
+];
+// The ordering side of the same response: delivery reliability and forecast quality.
+const KPI_ORDERING=["on_time_delivery_pct","inbound_overdue_pct","forecast_mape_pct"];
+// The device milestones: devices at customers by date. Owned targets, the same two the
+// backend seeds into its capacity plan (services/capacity_plan.py). Used here only while
+// a deployment does not serve /capacity-plan; the served plan wins the moment it exists,
+// because a person may have edited the milestones there.
+const FLEET_MILESTONES=[{date:"2026-12-31",fleet:500000},{date:"2027-12-31",fleet:1000000}];
+const KPI_STATUS={
+  met:{label:"met",cls:"good",hint:"already at or better than the one-year target"},
+  ahead:{label:"ahead",cls:"good",hint:"better than the pace line today"},
+  on_line:{label:"on the line",cls:"neut",hint:"within 1 % of the one-year distance from the pace line today"},
+  behind:{label:"behind",cls:"bad",hint:"worse than the pace line today"},
+  not_measurable:{label:"not measurable",cls:"neut",hint:"no value today; the reason is on the row"},
+  no_target:{label:"no target",cls:"warn",hint:"measured, but no target set"},
+  open:{label:"open",cls:"neut",hint:"nothing to judge yet"},
+};
+// A value in the KPI's own unit. A gap between two percentages is in percentage points.
+function kfmt(v,unit,opt){
+  if(v==null) return "—";
+  const n=Number(v), o=opt||{};
+  const dec=(x,d)=>x.toLocaleString("en-US",{maximumFractionDigits:d});
+  switch(unit){
+    case "pct":   return dec(n,1)+(o.gap?" pp":" %");
+    case "eur":   return Math.abs(n)>=1e6 ? "€"+(n/1e6).toLocaleString("en-US",{minimumFractionDigits:1,maximumFractionDigits:1})+"M" : EUR(n);
+    case "days":  return dec(n,1)+" d";
+    case "weeks": return dec(n,1)+" wk";
+    case "hours": return dec(n,1)+" h";
+    case "turns": return dec(n,2)+" ×";
+    case "ratio": return dec(n,2);
+    default:      return dec(n,1);   // counts: one decimal at most, so a column reads evenly
+  }
+}
+const kdate=(iso)=>{ if(!iso) return "—"; const s=String(iso).slice(0,10); return s.slice(8,10)+"."+s.slice(5,7)+"."+s.slice(0,4); };
+const PH_TITLE="placeholder target: the backend seeded it 10/20/30 % better than the first measurement and a person has not set it yet; every checkpoint derived from it carries the mark";
+function kpill(k,a){
+  const s=KPI_STATUS[a.status]||KPI_STATUS.open;
+  const txt=(a.status==="ahead"||a.status==="behind") ? `${s.label} by ${kfmt(a.gap,k.unit,{gap:true})}` : s.label;
+  const backend=k.status?` · backend status: ${k.status}${k.progress_pct!=null?` (${k.progress_pct} % of the one-year distance)`:""}`:"";
+  return `<span class="pill ${s.cls}" title="${esc(s.hint+backend)}">${esc(txt)}</span>`;
+}
+function kcell(k,a,c,nowKey){
+  const now=c.key===nowKey;
+  let v, n="";
+  if(c.value==null){ v=`<div class="hv dim">—</div>`; n=c.reason||""; }
+  else {
+    const txt=kfmt(c.value,k.unit);
+    v=`<div class="hv">${a.placeholder?`<span class="ph" title="${esc(PH_TITLE)}">${txt}</span>`:txt}</div>`;
+    if(now && k.current!=null){
+      const met = a.direction==="lower" ? k.current<=c.value : k.current>=c.value;
+      n = met ? "checkpoint already met" : `${kfmt(Math.abs(c.value-k.current),k.unit,{gap:true})} to go by ${c.short.slice(0,6)}`;
+    }
+  }
+  return `<div class="hy${now?" now":""}"><div class="hk">${c.key}${now?" · now":""}</div>${v}${n?`<div class="hn">${esc(n)}</div>`:""}</div>`;
+}
+function kcard(k,a,word,nowKey,two){
+  const edge={good:"e-good",neut:"e-neut",bad:"e-bad",warn:"e-warn"}[(KPI_STATUS[a.status]||KPI_STATUS.open).cls];
+  const cur = k.current==null
+    ? `<div class="value na">not measurable</div><div class="note">${esc(k.reason||"no measurement")}</div>`
+    : `<div class="value">${kfmt(k.current,k.unit)}</div><div class="note">measured ${kdate(k.as_of)} · ${k.direction==="lower"?"lower is better":"higher is better"}</div>`;
+  return `<div class="card kcard" title="${esc(k.definition||"")}"><span class="edge ${edge}"></span>
+    <div class="label">${esc(k.name)}${word?`<span class="kword">${esc(word)}</span>`:""}</div>
+    ${cur}
+    <div class="kstat">${kpill(k,a)}</div>
+    <div class="hy4${two?" two":""}">${a.checkpoints.map(c=>kcell(k,a,c,nowKey)).join("")}</div>
+  </div>`;
+}
+function kmissing(id,word){
+  return `<div class="card kcard"><span class="edge e-neut"></span><div class="label">${esc(id)}${word?`<span class="kword">${esc(word)}</span>`:""}</div>
+    <div class="value na">not served</div><div class="note">the API's KPI list has no entry with this id this refresh</div></div>`;
+}
+
+// The device goal: today's measured fleet, the owned milestones, the path between them
+// at the half-year ends, and the pace the path needs next to the pace measured.
+function renderFleetGoal(nowKey){
+  const host=document.getElementById("kpiFleet"); if(!host) return;
+  const F=KPIHalfYear.fleetPath({plan:RAW.plan, summary:RAW.fleet, milestones:FLEET_MILESTONES});
+  destroy("kpiFleetChart");
+  const eyebrow=`<div class="label" style="font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Devices at customers · the goal the rest serve</div>`;
+  if(F.source==="none"){
+    host.innerHTML=`<div class="card kfleet">${eyebrow}<div class="kf-now na">no fleet to place against the goal</div><div class="kf-basis">${esc(F.reason||"")}</div></div>`;
+    return;
+  }
+  const goals=F.milestones.map(m=>`<div><b>${NUM(m.fleet)}</b> by ${kdate(m.date)}${m.placeholder?` <span class="ph" title="placeholder milestone">placeholder</span>`:""}</div>`).join("")
+    || `<div style="color:#94a3b8">no milestone ahead of today</div>`;
+  const owned = F.milestones.length && F.milestones.every(m=>!m.placeholder) ? "owned targets, not placeholders" : "";
+  const cells=F.checkpoints.map(c=>{
+    const now=c.key===nowKey;
+    const v = c.value==null ? `<div class="hv dim">—</div>` : `<div class="hv">${NUM(c.value)}</div>`;
+    const n = c.value==null ? (c.reason||"") : (c.kind==="milestone"?"owned milestone":c.kind==="placeholder"?"placeholder milestone":"on the path (derived)");
+    return `<div class="hy${now?" now":""}"><div class="hk">${c.key}${now?" · now":""}</div>${v}<div class="hn">${esc(n)}</div></div>`;
+  }).join("");
+  let pace="";
+  if(F.next){
+    pace += `<span><b>${NUM(Math.abs(F.next.toGo))}</b> ${F.next.toGo>=0?"to go":"above the milestone"} by ${kdate(F.next.date)} · <b>${F.next.days}</b> days</span>`;
+    if(F.next.perMonth!=null) pace += `<span>the path needs <b>${NUM(Math.round(F.next.perMonth))}</b> net a month (derived)</span>`;
+  }
+  if(F.measured12m) pace += `<span>net growth, last 12 months (measured): <b>${(F.measured12m.added>=0?"+":"")+NUM(F.measured12m.added)}</b>, about <b>${NUM(Math.round(F.measured12m.perMonth))}</b> a month</span>`;
+  const basis = F.source==="served"
+    ? "Path and milestones from the backend's capacity plan (/capacity-plan), interpolated month by month; the milestones are edited there."
+    : "Path derived in this cockpit: a straight line from today's measured rented fleet (/fleet/summary) to each milestone, the same interpolation the backend's capacity plan uses. This API does not serve /capacity-plan yet; the served plan replaces this line the moment it does.";
+  host.innerHTML=`<div class="card kfleet">
+    <div class="kf-head">
+      <div>${eyebrow}<div class="kf-now">${NUM(F.fleetNow)}</div><div class="note" style="font-size:11.5px;color:var(--muted)">measured ${kdate(F.asOf)} · rented fleet, first and second rentals</div></div>
+      <div class="kf-goal">${goals}<div class="kf-owned">${esc(owned)}</div></div>
+    </div>
+    <div class="hy4" style="margin-top:14px">${cells}</div>
+    <div class="kf-pace">${pace}</div>
+    <div class="chart-box" style="height:210px;margin-top:12px"><canvas id="kpiFleetChart"></canvas></div>
+    <div class="kf-basis">${basis}</div>
+  </div>`;
+  if(!F.path.length) return;
+  const msSet=new Set(F.milestones.map(m=>m.date));
+  charts.kpiFleetChart=new Chart(document.getElementById("kpiFleetChart"),{type:"line",
+    data:{labels:F.path.map(p=>p.date),datasets:[
+      {label:F.source==="served"?"path (capacity plan)":"path (derived)",data:F.path.map(p=>p.fleet),borderColor:C.blue,
+       borderDash:F.source==="served"?[]:[6,4],borderWidth:2.2,tension:0,pointRadius:F.path.map(p=>msSet.has(p.date)?5:0),pointBackgroundColor:C.blue},
+      {label:"measured today",data:F.path.map((p,i)=>i===0?p.fleet:null),borderColor:C.green,backgroundColor:C.green,pointRadius:6,pointStyle:"rectRot",showLine:false}]},
+    options:{maintainAspectRatio:false,plugins:{legend:{position:"top",labels:{usePointStyle:true,boxWidth:8}},
+      tooltip:{callbacks:{label:c=>c.dataset.label+": "+NUM(c.raw)}}},
+      scales:{x:{grid:{display:false},ticks:{maxTicksLimit:8,callback:(v,i)=>F.path[i]?F.path[i].date.slice(0,7):""}},
+        y:{beginAtZero:true,grid:{color:"#f1f5f9"},ticks:{callback:v=>v>=1e6?(v/1e6)+"M":(v/1e3)+"k"}}}}});   // from zero, so the slope is not flattered
+}
+
+function kpiHowText(k){
+  const first = k ? KPIHalfYear.firstMeasured(k) : null;
+  return `<b>Today</b> is the backend's measurement (once a day, /api/v1/kpis). A KPI the data cannot measure says why and is never zero-filled.<br>
+    <b>Half-year checkpoints are derived here</b>, because the backend's targets are yearly and no half-year target exists in the data: a straight line from the first measurement${first?` (${kdate(first.as_of)})`:""} to the one-year target, on to year two and year three, read off on 30.06. and 31.12. A half-year that ended before the first measurement shows a dash.<br>
+    <span class="ph">Dashed</span> marks a <b>placeholder target</b>: the backend seeded it 10/20/30 % better than the first value until a person sets the real one (SCM Master, KPIs tab). The mark carries through to every checkpoint derived from it.<br>
+    <b>How far off</b> compares today's value with the line's value today, in the KPI's own unit and good direction (for half of them lower is better). Within 1 % of the one-year distance counts as on the line; met means already at the one-year target. The backend's own status judges the whole one-year distance regardless of date, so it can say behind where this tab says on the line; it sits in each pill's tooltip.<br>
+    <b>The device goal</b> is different: its milestones are owned, not placeholders, and the path between them is a straight line from today's measured fleet, month by month.`;
+}
+
+function renderKPIs(){
+  const rows=RAW.kpis||[];
+  const asOf = rows.length ? rows[0].as_of : ((RAW.fleet&&RAW.fleet.as_of) || new Date().toISOString().slice(0,10));
+  const nowP = KPIHalfYear.periodOf(asOf); const nowKey = nowP ? nowP.key : null;
+  renderFleetGoal(nowKey);
+  const five=document.getElementById("kpiFive"), ord=document.getElementById("kpiOrder"), all=document.getElementById("kpiAll"), sub=document.getElementById("kpiAllSub");
+  if(!rows.length){
+    const msg=`<div class="card" style="grid-column:1/-1;color:#94a3b8;font-size:13px">No KPIs served this refresh: /api/v1/kpis returned nothing. The backend measures its KPIs once a day; on an empty database there is nothing to measure yet.</div>`;
+    five.innerHTML=msg; ord.innerHTML=msg;
+    all.innerHTML=`<div style="padding:14px 20px;color:#94a3b8;font-size:13px">Nothing to list.</div>`; sub.textContent="";
+  } else {
+    const byId={}; rows.forEach(k=>byId[k.id]=k);
+    const A={}; rows.forEach(k=>A[k.id]=KPIHalfYear.assess(k,k.as_of));
+    five.innerHTML=KPI_FIVE.map(f=>byId[f.id]?kcard(byId[f.id],A[f.id],f.word,nowKey,true):kmissing(f.id,f.word)).join("");
+    ord.innerHTML=KPI_ORDERING.map(id=>byId[id]?kcard(byId[id],A[id],null,nowKey,false):kmissing(id,null)).join("");
+    const placeholders=rows.filter(k=>k.placeholder).length, nm=rows.filter(k=>k.current==null).length;
+    sub.textContent=`· ${rows.length} KPIs, measured ${kdate(asOf)} · ${placeholders} with placeholder targets · ${nm} not measurable`;
+    const head=`<thead><tr><th>KPI</th><th class="num">Today</th>${KPIHalfYear.HALF_YEARS.map(h=>`<th class="num${h.key===nowKey?" now":""}" title="the line's value on ${h.short}; a dash means the half-year ended before the first measurement">${h.key}${h.key===nowKey?" · now":""}</th>`).join("")}<th>How far off</th></tr></thead>`;
+    const groups=[...new Set(rows.map(k=>k.group))].sort((a,b)=>{const ia=KPI_GROUP_ORDER.indexOf(a), ib=KPI_GROUP_ORDER.indexOf(b); return (ia<0?99:ia)-(ib<0?99:ib);});
+    const body=groups.map(g=>{
+      const gr=rows.filter(k=>k.group===g);
+      return `<tr class="grp"><td colspan="7">${esc(gr[0].group_label||g)}<span>${gr.length}</span></td></tr>`+gr.map(k=>{
+        const a=A[k.id];
+        const today = k.current==null ? `<span class="kr">n/a</span>` : kfmt(k.current,k.unit);
+        const cells=a.checkpoints.map(c=>{
+          const now=c.key===nowKey;
+          if(c.value==null) return `<td class="num${now?" now":""}" title="${esc(c.reason||"")}"><span class="kr">—</span></td>`;
+          const v=kfmt(c.value,k.unit);
+          return `<td class="num${now?" now":""}">${a.placeholder?`<span class="ph" title="${esc(PH_TITLE)}">${v}</span>`:v}</td>`;
+        }).join("");
+        const far = k.current==null ? `<span class="kr">${esc(k.reason||"no measurement")}</span>` : kpill(k,a);
+        return `<tr><td><div class="kn">${esc(k.name)}</div><div class="kd">${k.direction==="lower"?"lower is better":"higher is better"} · ${esc(k.source||"")}</div></td><td class="num">${today}</td>${cells}<td>${far}</td></tr>`;
+      }).join("");
+    }).join("");
+    all.innerHTML=`<div style="overflow-x:auto"><table class="kpi-tbl">${head}<tbody>${body}</tbody></table></div>`;
+  }
+  document.getElementById("kpiHow").innerHTML=kpiHowText(rows[0]||null);
+  // The older cockpit-computed scorecard sits below; its failure must not take the KPIs down.
+  try{ renderScorecard(); }catch(e){ console.warn("cockpit scorecard failed:", e); }
 }
 
 // ---------- drill-down ----------
@@ -1206,11 +1461,14 @@ const DRILL={
 };
 function openDrill(key){
   const def=DRILL[key]; if(!def) return;
-  const d=def();
+  // On an empty database the card shows a dash; its drill must say so, not throw.
+  let d, body;
+  try{ d=def(); body=d.body(); }
+  catch(e){ d={title:key,value:"—",sub:"no data behind this card yet",formula:""}; body="<p style='color:#94a3b8'>Nothing to drill into: the read this card is computed from is empty.</p>"; }
   document.getElementById("dwTitle").textContent=d.title;
   document.getElementById("dwValue").textContent=d.value;
   document.getElementById("dwSub").textContent=d.sub;
-  document.getElementById("dwBody").innerHTML=(d.formula?`<div class="formula">${d.formula}</div>`:"")+d.body();
+  document.getElementById("dwBody").innerHTML=(d.formula?`<div class="formula">${d.formula}</div>`:"")+body;
   document.getElementById("drawer").classList.add("open");
   document.getElementById("drawerBg").classList.add("open");
 }
@@ -1480,10 +1738,11 @@ async function autoDrill(id){
 }
 function autoCloseDrill(){ document.getElementById("autoDrillBg").classList.remove("open"); document.getElementById("autoDrill").classList.remove("open"); }
 function renderAll(){
-  const fn={tower:renderTower,overview:renderOverview,scorecard:renderScorecard,spend:renderSpend,
+  const fn={tower:renderTower,overview:renderOverview,kpis:renderKPIs,spend:renderSpend,
             inventory:renderInventory,forecast:renderForecast,shouldcost:renderShouldCost,tco:renderTCO,
             orders:renderOrders,autonomy:renderAutonomy}[CURRENT];
   if(!fn) return;
+  if(!RAW && CURRENT!=="tower") return;   // a tab opened before the first load renders when the data lands
   const note=document.getElementById("renderErr"); if(note) note.style.display="none";
   // One tab's render error must not blank the whole board — log it and show a note.
   try{ fn(); }
@@ -1670,6 +1929,12 @@ document.addEventListener("click", async (e)=>{
 
 // Control Tower is the landing tab — apply its full-bleed dark theme on load.
 document.body.classList.add("tower-active");
+// Deep link: ?tab=kpis (or #kpis) opens that tab on load. The headless render check uses it.
+(function(){
+  const want=(new URLSearchParams(location.search).get("tab")||location.hash.slice(1)||"").toLowerCase();
+  const b=want?document.querySelector(`nav.tabs button[data-tab="${CSS.escape(want)}"]`):null;
+  if(b) b.click();
+})();
 loadData();
 setInterval(loadData, 60000); // auto-refresh every 60s — the board updates itself
 </script>

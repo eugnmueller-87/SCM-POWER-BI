@@ -50,6 +50,36 @@ const INSIGHTS_TTL_MS = (process.env.INSIGHTS_TTL_SECONDS ? +process.env.INSIGHT
 let cache = { generated_at: null, data: null, error: null };
 // Last successfully-fetched insights + when, so we only re-call the LLM when stale.
 let insightsCache = { at: 0, value: [] };
+// Last good KPI list. The backend measures its 32 KPIs once a day and serves the day's
+// snapshot, so the read is cheap when warm (about 50 ms) but the first read of a day
+// takes the measurement (10 s against the demo fleet). A read that times out keeps the
+// last good list rather than blanking the KPIs tab.
+let kpisCache = [];
+// The day each KPI was first measured, by id. The list endpoint cuts each history at the
+// last 60 snapshots, so after two months it no longer says when a KPI was first measured,
+// and that day anchors the year marks on the KPIs tab. The history endpoint is uncapped:
+// ask it once per KPI whose served history may be cut, and keep the answer (a first
+// measurement never changes).
+const firstMeasured = {};
+
+async function withFirstMeasured(token, rows) {
+  const out = [];
+  for (const k of rows) {
+    const served = (k.history || []).filter(h => h && h.value != null);
+    let first = served.length ? served[0] : null;
+    if ((k.history || []).length >= 60) {
+      if (!firstMeasured[k.id]) {
+        const all = await safe(`kpis/${k.id}/history`,
+          getJSON(token, `/api/v1/kpis/${encodeURIComponent(k.id)}/history?days=3650`), null);
+        const pts = (all || []).filter(h => h && h.value != null);
+        if (pts.length) firstMeasured[k.id] = pts[0];
+      }
+      if (firstMeasured[k.id]) first = firstMeasured[k.id];
+    }
+    out.push({ ...k, first_measured: first });
+  }
+  return out;
+}
 
 async function login() {
   const body = new URLSearchParams({ grant_type: "password", username: USER, password: PASS });
@@ -133,6 +163,18 @@ async function refresh() {
     const capacityFlow = await safe("capacity-flow",
       getJSON(token, "/api/v1/planning/capacity-flow"), null);
 
+    // KPIs tab: the backend's steering KPIs (value, yearly targets, status, daily history).
+    // Only a real list advances the cache; see kpisCache above.
+    const kpisFresh = await safe("kpis", getJSON(token, "/api/v1/kpis"), null);
+    if (Array.isArray(kpisFresh) && kpisFresh.length) kpisCache = kpisFresh;
+    const kpis = await withFirstMeasured(token, kpisCache);
+    // The fleet the KPIs serve: the owner's milestones and the month-by-month path to
+    // them. /capacity-plan is in the backend source but not on every deployment yet (the
+    // demo answered 404 on 24.09.2026); until it is served the page derives the same
+    // straight-line path from /fleet/summary and says so on screen.
+    const capacityPlan = await safe("capacity-plan", getJSON(token, "/api/v1/capacity-plan"), null);
+    const fleetSummary = await safe("fleet/summary", getJSON(token, "/api/v1/fleet/summary"), null);
+
     // Per-year spend, so the Spend/Sourcing scorecards can slice by year (backend
     // supports ?year=). Fetched upfront per available year and cached, so a year
     // click reslices client-side with no per-click server round-trip. Small data.
@@ -172,12 +214,14 @@ async function refresh() {
         tco_by_class: tcoByClass, tco_portfolio: tcoPortfolio,
         storage_headroom: storageHeadroom, capacity_flow: capacityFlow,
         spend_years: spendYears, spend_by_year: spendByYear,
+        kpis, capacity_plan: capacityPlan, fleet_summary: fleetSummary,
       }
     };
     const insightsAgeMin = Math.round((Date.now() - insightsCache.at) / 60000);
     console.log(`[refresh] ok @ ${cache.generated_at} (${forecast.length} forecast rows, `
       + `${shouldCostBySupplier.length} should-cost rows, ${tcoByClass.length} tco classes, `
-      + `${insights.length} insights age ${insightsAgeMin}m)`);
+      + `${insights.length} insights age ${insightsAgeMin}m, ${kpis.length} kpis, `
+      + `capacity plan ${capacityPlan ? "served" : "not served"}, fleet summary ${fleetSummary ? "served" : "not served"})`);
   } catch (e) {
     cache.error = String(e.message || e);
     console.error("[refresh] FAILED:", cache.error);

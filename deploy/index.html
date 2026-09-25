@@ -24,7 +24,7 @@
   .bar-top{display:flex;align-items:center;justify-content:space-between}
   header.bar h1{margin:0;font-size:23px;font-weight:700;letter-spacing:.2px}
   header.bar .sub{font-size:12px;opacity:.82;margin-top:3px}
-  .live{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;background:rgba(255,255,255,.12);padding:8px 14px;border-radius:999px}
+  .live{font:inherit;border:0;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;background:rgba(255,255,255,.12);padding:8px 14px;border-radius:999px}
   .dot{width:9px;height:9px;border-radius:50%;background:#34d399;animation:pulse 2s infinite}
   @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(52,211,153,.6)}70%{box-shadow:0 0 0 10px rgba(52,211,153,0)}100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}
   nav.tabs{display:flex;gap:4px;margin-top:16px}
@@ -105,6 +105,41 @@
   .yearsel button.on{background:#1f3a8a;border-color:#1f3a8a;color:#fff}
   .formula b{color:#0f172a}
   .barlabel{font-size:12px}
+
+  /* ===================== Warehouse compartments (Overview) ===================== */
+  .wh-wrap{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+  .wh-ring{position:relative;width:236px;height:236px;flex:0 0 236px}
+  .wh-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none;padding:0 46px}
+  .wh-center .big{font-size:26px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+  .wh-center .sm{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.3}
+  .wh-center .ov{font-size:11px;color:#b91c1c;font-weight:700;margin-top:4px}
+  .wh-legend{flex:1;min-width:250px;font-size:12px}
+  .wh-stage{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:8px 0 2px}
+  .wh-legend .wh-stage:first-child{margin-top:0}
+  .wh-li{display:flex;align-items:center;gap:8px;padding:2px 0;white-space:nowrap}
+  .wh-li .sw{width:10px;height:10px;border-radius:2px;flex:0 0 10px}
+  .wh-li .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;color:#334155}
+  .wh-li .v{font-variant-numeric:tabular-nums;color:#0f172a;font-weight:600;min-width:52px;text-align:right}
+  .wh-li .m{color:var(--muted);font-variant-numeric:tabular-nums;min-width:118px;text-align:right}
+  .wh-li .ov{color:#b91c1c;font-weight:700}
+  .wh-beyond{margin-top:14px;padding:8px 10px;border-radius:8px;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;font-size:12.5px;line-height:1.45}
+  .wh-beyond.ok{background:#f0fdf4;border-color:#bbf7d0;color:#15803d}
+  .wh-keys{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:#64748b;margin:0 0 12px}
+  .wh-keys i{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:4px}
+  .wh-note{font-size:11.5px;color:#475569;background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:0 0 12px;line-height:1.45}
+  .wh-row{margin:0 0 13px}
+  .wh-row .top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;font-size:12.5px;margin-bottom:5px}
+  .wh-row .top b{color:#0f172a}
+  .wh-row .top .st{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-left:6px;font-weight:600}
+  .wh-track{position:relative;display:flex;height:18px;border-radius:5px;background:#f8fafc;border:1px solid #e2e8f0}
+  .wh-seg{height:100%}
+  .wh-noplace{background:repeating-linear-gradient(135deg,#f59e0b 0 4px,#ef4444 4px 8px)}
+  .wh-tick{position:absolute;top:-4px;bottom:-4px;width:2px;background:#0f172a;transform:translateX(-1px)}
+  .wh-tick::after{content:"cap";position:absolute;bottom:-13px;left:-9px;font-size:9px;color:#0f172a;font-weight:700}
+  .wh-row.marked .wh-track+.wh-sub{margin-top:15px}
+  .wh-sub{font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.4}
+  .wh-selbar{height:6px;margin-top:5px;background:#f1f5f9;border-radius:3px;overflow:hidden}
+  .wh-selbar div{height:100%;background:#0f172a}
 
   /* ===================== KPIs tab ===================== */
   .scsub{font-weight:400;text-transform:none;letter-spacing:0;color:#94a3b8}
@@ -264,6 +299,16 @@
   .btn-auto{font:inherit;font-size:13px;font-weight:600;color:#fff;background:var(--blue);border:none;border-radius:9px;padding:10px 18px;cursor:pointer;transition:.15s}
   .btn-auto:hover{filter:brightness(1.08)}
   .btn-auto:disabled{opacity:.6;cursor:default}
+  .auto-lead{font-size:12.5px;color:#334155;line-height:1.55;margin:0 0 12px}
+  .auto-timing{font-size:11.5px;color:var(--muted);align-self:center}
+  .auto-adv{margin-top:12px;font-size:12px;color:var(--muted)}
+  .auto-adv summary{cursor:pointer;font-weight:600;font-size:11.5px;color:#475569;list-style:none;display:inline-flex;align-items:center;gap:6px}
+  .auto-adv summary::-webkit-details-marker{display:none}
+  .auto-adv summary::before{content:"▸";font-size:10px}
+  .auto-adv[open] summary::before{content:"▾"}
+  .auto-adv .auto-intake{margin-top:10px}
+  .auto-advnote{font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:8px;max-width:560px}
+  .auto-point{margin-top:12px;font-size:11.5px;color:#475569;line-height:1.5;padding:8px 10px;background:#f8fafc;border:1px solid var(--line);border-radius:8px}
   .auto-gate{margin-top:18px;border-top:1px solid var(--line);padding-top:16px;display:flex;flex-direction:column;gap:10px}
   .gate-check{display:flex;align-items:center;gap:10px;font-size:13px}
   .gate-check .gate-dot{width:11px;height:11px;border-radius:50%;background:#cbd5e1;flex:none;transition:.3s}
@@ -313,7 +358,7 @@
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="autonomyOpen" class="autobtn" title="Decision loop + audit trail">⚙ Autonomy</button>
-      <div class="live"><span class="dot"></span> Live data · <span id="genDate"></span></div>
+      <button id="liveRefresh" class="live" title="Read the API again now, about twenty seconds. Use it after changing something in the console (extra capacity on a compartment, a delivery, a batch of returns) so the board shows it without waiting for the next five-minute tick."><span class="dot"></span> Live data · <span id="genDate"></span></button>
     </div>
   </div>
   <nav class="tabs">
@@ -370,6 +415,27 @@
         <div class="chart-box tall"><canvas id="lineChart"></canvas></div>
       </div>
       <div class="card"><h3>Supplier concentration <span style="font-weight:400;text-transform:none;font-size:11px">(click to filter)</span></h3><div class="chart-box tall"><canvas id="donut"></canvas></div></div>
+    </div>
+    <!-- Warehouse compartments: the whole warehouse's capacity by purpose (the ring), and
+         each compartment against its own capacity, what is on its way in and when it lands
+         (the bars). Capacity belongs to a compartment, never to a supplier or a product:
+         a filter changes the occupancy the bars show, not a capacity. Hidden when the
+         backend serves no compartments (an empty database, an older deployment). -->
+    <div class="grid row2" id="whRow" style="display:none">
+      <div class="card">
+        <h3 style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">Warehouse capacity by purpose
+          <span id="whRingSub" style="font-weight:400;text-transform:none;font-size:11px;color:#94a3b8"></span></h3>
+        <div class="wh-wrap">
+          <div class="wh-ring"><canvas id="whDonut"></canvas><div class="wh-center" id="whCenter"></div></div>
+          <div class="wh-legend" id="whLegend"></div>
+        </div>
+        <div id="whBeyond"></div>
+      </div>
+      <div class="card">
+        <h3 style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">Each compartment: in it, on the way, free
+          <span id="whBarsSub" style="font-weight:400;text-transform:none;font-size:11px;color:#94a3b8"></span></h3>
+        <div id="whBars"></div>
+      </div>
     </div>
     <div class="grid row2">
       <div class="card"><h3>Spend by category <span style="font-weight:400;text-transform:none;font-size:11px">(click to filter)</span></h3><div class="chart-box"><canvas id="catBar"></canvas></div></div>
@@ -581,17 +647,29 @@
     <div class="grid auto-grid">
       <!-- Intake + gate -->
       <div class="card">
-        <h3>Intake — run a purchasing decision</h3>
+        <h3>Intake — run the weekly gate</h3>
+        <!-- One button. The run is the weekly cycle over the whole catalogue: the request
+             carries no product, so there is no product field (one used to stand here and
+             was shown as if the run had answered about it). The per-model question has its
+             own screen in the console, the Ordering mask. period_days is a look-back in
+             app/agent/purchasing.py (since = today minus period_days, for the lifecycle
+             replacements; and the demand period of the stock position), not a horizon. -->
+        <div class="auto-lead">Runs the gate over the whole catalogue as a dry run; nothing is placed.
+          <b>Not instant:</b> the model is asked once per proposed line, so a run takes a while. The button counts the seconds while it runs.</div>
         <div class="auto-intake">
-          <label>Requisition / product
-            <input id="autoProduct" list="autoProductList" placeholder="pick or type a SKU…" autocomplete="off">
-            <datalist id="autoProductList"></datalist>
-          </label>
-          <label>Horizon (days)
-            <input id="autoDays" type="number" min="1" max="90" value="7">
-          </label>
-          <button id="autoRun" class="btn-auto">▶ Run gate</button>
+          <button id="autoRun" class="btn-auto">▶ Run the weekly gate (dry run)</button>
+          <span id="autoTiming" class="auto-timing"></span>
         </div>
+        <details class="auto-adv">
+          <summary>Adjust the look-back (default 7 days, the weekly cycle)</summary>
+          <div class="auto-intake">
+            <label>Look-back (days)
+              <input id="autoDays" type="number" min="1" max="90" value="7">
+            </label>
+          </div>
+          <div class="auto-advnote">How far back the run looks for what changed: devices decommissioned in that window become replacement demand, and the same number of days is the demand period of the stock position the run nets against. It is not a forecast horizon; the reorder floor and the forecast shortfall do not depend on it.</div>
+        </details>
+        <div class="auto-point">For one model, manufacturer or class, how much is needed and why: the console's <b>Purchasing › Ordering mask</b>. This gate is a cycle over everything, not a per-product question.</div>
         <div id="autoGate" class="auto-gate" style="display:none">
           <div class="gate-check" id="gateCap"><span class="gate-dot"></span><span class="gate-lab">Capacity OK?</span><span class="gate-val">—</span></div>
           <div class="gate-check" id="gatePrice"><span class="gate-dot"></span><span class="gate-lab">Price in band?</span><span class="gate-val">—</span></div>
@@ -673,7 +751,7 @@ let D = null, RAW = null, KPI = null;
 let SPEND_YEAR = null;   // selected spend year, or null = all-time
 const mapCats = (a)=>arr(a).map(x=>({k:x.category, units:+x.units, spend:num(x.spend)}));
 const mapSups = (a)=>arr(a).map(x=>({k:x.supplier_name, units:+x.units, spend:num(x.spend)}));
-const mapProds = (a)=>arr(a).map(x=>({k:fixTxt(x.product_name), cat:x.category, units:+x.units, spend:num(x.spend)}));
+const mapProds = (a)=>arr(a).map(x=>({k:fixTxt(x.product_name), id:x.product_id, cat:x.category, units:+x.units, spend:num(x.spend)}));
 
 // The active spend dataset: a chosen year (from cached spend_by_year) or all-time.
 function spendData(){
@@ -695,6 +773,11 @@ function buildModel(src){
     inv: arr(D.inventory).map(x=>({name:fixTxt(x.name), cat:x.category, on_hand:+x.on_hand, safety:+x.safety_stock, burn:num(x.daily_burn), lead:+x.lead_time_days, on_order:+x.on_order, eta:x.next_eta, price:num(x.unit_price)})),
     headroom: D.storage_headroom || null,
     capFlow: D.capacity_flow || null,
+    // Warehouse compartments (Overview): the list, each one's contents and inbound, and
+    // which supplier each model was bought from (off the purchase orders). All optional.
+    wh: D.warehouse_compartments || null,
+    whContents: D.warehouse_contents || {},
+    supOfProd: D.product_suppliers_from_orders || {},
     fc: arr(D.forecast).map(x=>({date:x.as_of_date, pred:num(x.predicted_demand), act:num(x.actual_demand), ape:num(x.ape), cat:x.category, prod:fixTxt(x.name), err:num(x.abs_error)})),
     ins: arr(D.insights),
     ruleIns: arr(D.rule_insights),
@@ -783,7 +866,7 @@ function setFilter(type,value){
 }
 function renderFilterBar(){
   const fb=document.getElementById("filterbar");
-  if(!FILTER){ fb.innerHTML='<span class="hint">💡 Click a category or product to filter the whole board; click a supplier to highlight it in the concentration view.</span>'; return; }
+  if(!FILTER){ fb.innerHTML='<span class="hint">💡 Click a category or product to filter the whole board; click a supplier to highlight it in the concentration view. The warehouse bars then show what the selection occupies in each compartment.</span>'; return; }
   // Category/product genuinely reslice the board; supplier can't (the data has no
   // supplier→product link), so we say plainly that it only highlights — no false "filter".
   const verb = FILTER.type==="supplier" ? "Highlighting supplier" : "Filter";
@@ -822,6 +905,213 @@ function renderCapFlow(){
     </div>`;
 }
 
+// ---------- warehouse compartments (Overview) ----------
+// Capacity belongs to a compartment, not to a supplier or a product. The ring is the
+// whole warehouse's capacity: what stands in each compartment (in the order of the
+// cycle, grouped by the stage the backend gives it), what is on its way in and has a
+// place, and what is free after that. A compartment holding more than its capacity
+// cannot be in a ring; its overflow is written in red next to it, under the ring, and
+// past the capacity mark on its bar. A filter changes the occupancy the bars show,
+// never a capacity.
+const WH_STAGE = {
+  "first life":  {label:"First life",   col:["#2563eb"]},
+  "return chain":{label:"Return chain", col:["#5b21b6","#7c3aed","#8b5cf6","#a78bfa","#c4b5fd"]},
+  "second life": {label:"Second life",  col:["#0891b2"]},
+  "exit":        {label:"Exit",         col:["#059669"]},
+  "reserve":     {label:"Reserve",      col:["#64748b"]},
+};
+const WH_INBOUND="#f59e0b", WH_FREE="#e2e8f0", WH_OVER="#ef4444";
+const whEsc = s => String(s==null?"":s).replace(/[&<>"]/g, ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]));
+const whPct = (n,d) => d>0 ? Math.round(100*n/d)+"%" : "n/a";
+
+// One row per compartment, in the backend's chain order. Inbound is null when the
+// contents read was not served, and the screen says so instead of showing zero.
+function whRows(){
+  const wh=RAW.wh;
+  if(!wh || !Array.isArray(wh.compartments) || !wh.compartments.length) return [];
+  const seen={};
+  return wh.compartments.map(c=>{
+    const st=WH_STAGE[c.stage]||{label:c.stage||"other",col:["#94a3b8"]};
+    const i=seen[c.stage]||0; seen[c.stage]=i+1;
+    const col=st.col[Math.min(i,st.col.length-1)];
+    const ct=(RAW.whContents||{})[c.code]||null;
+    const cap=Math.max(0,+c.capacity||0), on=Math.max(0,+c.on_hand||0);
+    const inb=ct && ct.inbound ? Math.max(0,+ct.inbound.units||0) : null;
+    const inRing=Math.min(on,cap), overNow=Math.max(0,on-cap), room=Math.max(0,cap-on);
+    const inbFits=inb==null?0:Math.min(inb,room), inbNoPlace=inb==null?0:Math.max(0,inb-room);
+    const freeNow=room, freeAfter=Math.max(0,cap-on-(inb||0));
+    return {c, ct, stage:st.label, col, cap, on, inb, inRing, overNow, inbFits, inbNoPlace, freeNow, freeAfter};
+  });
+}
+
+// What the active filter selects inside a compartment: units in it and on the way.
+// Category and product come straight from the contents (by class, by model). A
+// supplier is the supplier on the purchase orders for a model; a model bought from
+// more than one supplier is left out and counted in the note.
+function whSelection(){
+  if(!FILTER) return null;
+  const sel={label:FILTER.value, ids:null, family:null, note:null, blocked:null, ambiguous:0};
+  if(FILTER.type==="category"){ sel.family=FILTER.value; }
+  else if(FILTER.type==="product"){
+    const p=(RAW.prods||[]).find(x=>x.k===FILTER.value);
+    sel.ids=new Set(p && p.id ? [p.id] : []);
+    sel.name=FILTER.value;
+  } else if(FILTER.type==="supplier"){
+    const map=RAW.supOfProd||{};
+    if(!Object.keys(map).length){ sel.blocked=`Supplier occupancy cannot be shown: no purchase order links a model to ${FILTER.value}.`; return sel; }
+    sel.ids=new Set();
+    for(const [pid,sups] of Object.entries(map)){
+      if(!sups.includes(FILTER.value)) continue;
+      if(sups.length===1) sel.ids.add(pid); else sel.ambiguous++;
+    }
+    sel.note="Supplier read off the purchase orders for each model."
+      +(sel.ambiguous?` ${sel.ambiguous} model${sel.ambiguous>1?"s":""} bought from more than one supplier ${sel.ambiguous>1?"are":"is"} left out.`:"");
+  }
+  return sel;
+}
+function whSelUnits(sel, r){
+  const ct=r.ct; if(!ct) return {inIt:null, onWay:null};
+  const famOf={}; (ct.by_model||[]).forEach(m=>{ famOf[m.product_id]=m.family; });
+  const pick=(m)=>{
+    if(sel.family) return (m.family||famOf[m.product_id])===sel.family;
+    if(sel.ids && sel.ids.size) return sel.ids.has(m.product_id);
+    if(sel.name) return fixTxt(m.name||"")===sel.name;
+    return false;
+  };
+  let inIt=0;
+  if(sel.family){ (ct.by_class||[]).forEach(b=>{ if(b.key===sel.family) inIt+=+b.units||0; }); }
+  else { (ct.by_model||[]).forEach(m=>{ if(pick(m)) inIt+=+m.units||0; }); }
+  let onWay=0; ((ct.inbound&&ct.inbound.by_model)||[]).forEach(m=>{ if(pick(m)) onWay+=+m.units||0; });
+  return {inIt, onWay};
+}
+
+function renderWarehouse(){
+  const row=document.getElementById("whRow"); if(!row) return;
+  const rows=whRows();
+  const totCap=rows.reduce((s,r)=>s+r.cap,0);
+  if(!rows.length || totCap<=0){ row.style.display="none"; destroy("whDonut"); return; }
+  row.style.display="";
+  const wh=RAW.wh;
+  const measured=`measured ${whEsc(D.generated_at||"")}`+(wh.as_of?` · dataset as of ${whEsc(wh.as_of)}`:"");
+  const totOn=rows.reduce((s,r)=>s+r.on,0), totInRing=rows.reduce((s,r)=>s+r.inRing,0);
+  const totOver=rows.reduce((s,r)=>s+r.overNow,0), totFreeNow=rows.reduce((s,r)=>s+r.freeNow,0);
+  const totInb=rows.reduce((s,r)=>s+(r.inb||0),0), totInbFits=rows.reduce((s,r)=>s+r.inbFits,0);
+  const totNoPlace=rows.reduce((s,r)=>s+r.inbNoPlace,0), totFreeAfter=rows.reduce((s,r)=>s+r.freeAfter,0);
+  const unmeasured=rows.filter(r=>r.inb==null);
+  document.getElementById("whRingSub").textContent=`the whole warehouse, ${NUM(totCap)} places · ${measured}`;
+
+  // The ring: one slice per compartment (what stands in it, up to its capacity), then
+  // inbound with a place, then free after inbound. The slices add up to the capacity.
+  destroy("whDonut");
+  const labels=rows.map(r=>r.c.name), data=rows.map(r=>r.inRing), colors=rows.map(r=>r.col);
+  labels.push("On the way, has a place"); data.push(totInbFits); colors.push(WH_INBOUND);
+  labels.push("Free after inbound"); data.push(totFreeAfter); colors.push(WH_FREE);
+  charts.whDonut=new Chart(document.getElementById("whDonut"),{type:"doughnut",
+    data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:2,borderColor:"#fff"}]},
+    options:{maintainAspectRatio:false,cutout:"66%",animation:false,
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{label:c=>`${c.label}: ${NUM(c.raw)} places (${PCT(c.raw/totCap)} of all)`}}}}});
+  document.getElementById("whCenter").innerHTML=
+    `<div class="big">${NUM(totFreeAfter)}</div><div class="sm">places free after inbound<br>of ${NUM(totCap)}</div>`
+    +(totOver>0?`<div class="ov">${NUM(totOver)} over</div>`:"");
+
+  // The legend: the compartments grouped under the backend's stage, in the order of
+  // the cycle; on the way and free last. Each line: what stands in it, its share of
+  // all places, how full it is, and in red what does not fit.
+  const groups=[]; rows.forEach(r=>{ let g=groups.find(x=>x.stage===r.stage); if(!g){ g={stage:r.stage,rows:[]}; groups.push(g); } g.rows.push(r); });
+  const li=(col,name,v,m,extra,title)=>`<div class="wh-li"${title?` title="${whEsc(title)}"`:""}><span class="sw" style="background:${col}"></span><span class="nm">${whEsc(name)}</span><span class="v">${v}</span><span class="m">${m}</span>${extra||""}</div>`;
+  let leg="";
+  groups.forEach(g=>{
+    leg+=`<div class="wh-stage">${whEsc(g.stage)}</div>`;
+    g.rows.forEach(r=>{
+      leg+=li(r.col, r.c.name, NUM(r.on), `${PCT(r.inRing/totCap)} of all · ${whPct(r.on,r.cap)} full`,
+        r.overNow>0?`<span class="ov">+${NUM(r.overNow)} over</span>`:"", r.c.holds);
+    });
+  });
+  leg+=`<div class="wh-stage">On the way · ${NUM(totInb)} ordered, not yet arrived</div>`;
+  leg+=li(WH_INBOUND, "Has a place", NUM(totInbFits), `${PCT(totInbFits/totCap)} of all`,
+    totNoPlace>0?`<span class="ov">+${NUM(totNoPlace)} no place</span>`:"", unmeasured.length?`Inbound not measured for ${unmeasured.map(r=>r.c.name).join(", ")}`:"open order lines destined for a compartment, ordered minus received");
+  leg+=`<div class="wh-stage">Free</div>`;
+  leg+=li(WH_FREE, "Free after inbound", NUM(totFreeAfter), `${PCT(totFreeAfter/totCap)} of all · ${NUM(totFreeNow)} free now`, "", "free now = capacity minus what stands in it, per compartment; after inbound = minus what is on its way and has a place");
+  document.getElementById("whLegend").innerHTML=leg;
+
+  // Beyond the ring: what a ring cannot show, in one red line, or the all-clear.
+  const overList=rows.filter(r=>r.overNow>0).map(r=>`${whEsc(r.c.name)} +${NUM(r.overNow)}`).join(", ");
+  const noPlaceList=rows.filter(r=>r.inbNoPlace>0).map(r=>`${NUM(r.inbNoPlace)} into ${whEsc(r.c.name)}`).join(", ");
+  let beyond="";
+  if(totOver>0) beyond+=`<b>${NUM(totOver)} devices stand over their compartment's capacity now</b> (${overList}).`;
+  if(totNoPlace>0) beyond+=(beyond?" ":"")+`<b>${NUM(totNoPlace)} devices on the way have no place when they land</b> (${noPlaceList}).`;
+  if(unmeasured.length) beyond+=(beyond?" ":"")+`Inbound not measured for ${unmeasured.map(r=>whEsc(r.c.name)).join(", ")}.`;
+  // The strip at the top of this tab pools the warehouse and reports capacity minus
+  // everything committed. This ring does not pool it, because a place in Returns intake
+  // cannot hold a new device: it counts free places per compartment, and the inbound
+  // that has nowhere to go takes none of them. The two numbers differ for that reason
+  // and the screen says so, rather than leaving whoever is reading it to wonder which
+  // one is wrong.
+  const pooled=Math.max(0, totCap-totOn-totInb);
+  if(totNoPlace>0 && pooled!==totFreeAfter){
+    beyond+=(beyond?" ":"")+`The strip above pools the warehouse and gets ${NUM(pooled)} free; `
+      +`per compartment it is ${NUM(totFreeAfter)}, because the ${NUM(totNoPlace)} with no place take none.`;
+  }
+  document.getElementById("whBeyond").innerHTML = beyond
+    ? `<div class="wh-beyond">Not in the ring: ${beyond}</div>`
+    : `<div class="wh-beyond ok">Every compartment is within its capacity, and everything on the way has a place.</div>`;
+
+  // The bars: each compartment against its own capacity. The right edge is the
+  // capacity unless something is beyond it; then a black mark is the capacity and
+  // what stands past it is red (over now) or striped (on the way, no place).
+  const sel=whSelection();
+  document.getElementById("whBarsSub").textContent=`in the order of the cycle · ${measured}`;
+  let html=`<div class="wh-keys"><span><i style="background:#334155"></i>in it</span><span><i style="background:${WH_INBOUND}"></i>on the way, has a place</span><span><i class="wh-noplace"></i>on the way, no place</span><span><i style="background:${WH_OVER}"></i>over capacity now</span><span><i style="background:${WH_FREE};border:1px solid #cbd5e1"></i>free after inbound</span></div>`;
+  if(sel){
+    html+=`<div class="wh-note"><b>Filter ${whEsc(sel.label)}:</b> `
+      +(sel.blocked ? whEsc(sel.blocked)
+        : `the thin bar shows how much of each compartment these devices occupy. The capacity stays the compartment's; a product or a supplier has none.${sel.note?" "+whEsc(sel.note):""}`)
+      +`</div>`;
+  }
+  rows.forEach(r=>{
+    const scale=Math.max(r.cap, r.on+(r.inb||0), 1);
+    const w=n=>(100*n/scale).toFixed(2)+"%";
+    const beyondCap=r.cap<scale;
+    let segs=`<div class="wh-seg" title="In it: ${NUM(r.on)}" style="width:${w(r.inRing)};background:${r.col};border-radius:4px 0 0 4px"></div>`;
+    if(r.overNow>0) segs+=`<div class="wh-seg" title="Over capacity now: ${NUM(r.overNow)}" style="width:${w(r.overNow)};background:${WH_OVER}"></div>`;
+    if(r.inbFits>0) segs+=`<div class="wh-seg" title="On the way, has a place: ${NUM(r.inbFits)}" style="width:${w(r.inbFits)};background:${WH_INBOUND}"></div>`;
+    if(r.inbNoPlace>0) segs+=`<div class="wh-seg wh-noplace" title="On the way, no place when it lands: ${NUM(r.inbNoPlace)}" style="width:${w(r.inbNoPlace)}"></div>`;
+    if(r.freeAfter>0) segs+=`<div class="wh-seg" title="Free after inbound: ${NUM(r.freeAfter)}" style="width:${w(r.freeAfter)};background:${WH_FREE}"></div>`;
+    const tick=beyondCap?`<div class="wh-tick" style="left:${w(r.cap)}" title="Capacity: ${NUM(r.cap)} places"></div>`:"";
+    let pill;
+    if(r.overNow>0) pill=`<span class="pill bad">${whPct(r.on,r.cap)} full · ${NUM(r.overNow)} over</span>`;
+    else if(r.inbNoPlace>0) pill=`<span class="pill warn">${whPct(r.on,r.cap)} full · ${whPct(r.on+r.inb,r.cap)} when inbound lands</span>`;
+    else pill=`<span class="pill ${r.on/Math.max(r.cap,1)>=0.9?"warn":"neut"}">${whPct(r.on,r.cap)} full</span>`;
+    let sub=`${NUM(r.on)} in it · ${NUM(r.cap)} places · ${NUM(r.freeNow)} free now`;
+    if(r.inb==null) sub+=` · inbound not measured`;
+    else if(r.inb>0){
+      const ib=r.ct.inbound;
+      sub+=` · <b style="color:#b45309">${NUM(r.inb)} on the way</b>`;
+      if(ib.next_eta) sub+=`, lands ${whEsc(ib.next_eta)}${ib.last_eta&&ib.last_eta!==ib.next_eta?` to ${whEsc(ib.last_eta)}`:""}`;
+      if(ib.late_units>0) sub+=` · <b style="color:#b91c1c">${NUM(ib.late_units)} already late</b>`;
+      if(r.inbNoPlace>0) sub+=` · <b style="color:#b91c1c">no place for ${NUM(r.inbNoPlace)}</b>`;
+      else sub+=` · ${NUM(r.freeAfter)} free after`;
+    }
+    let selHtml="";
+    if(sel && !sel.blocked){
+      const u=whSelUnits(sel,r);
+      if(u.inIt==null) selHtml=`<div class="wh-sub">${whEsc(sel.label)}: contents not measured</div>`;
+      else {
+        selHtml=`<div class="wh-selbar" title="${whEsc(sel.label)}: ${NUM(u.inIt)} of ${NUM(r.on)} in it"><div style="width:${w(u.inIt)}"></div></div>`
+          +`<div class="wh-sub">${whEsc(sel.label)}: <b>${NUM(u.inIt)}</b> in it (${whPct(u.inIt,r.on)} of contents, ${whPct(u.inIt,r.cap)} of capacity)`
+          +(r.inb==null?"":` · ${NUM(u.onWay)} on the way`)+`</div>`;
+      }
+    }
+    html+=`<div class="wh-row${beyondCap?" marked":""}" title="${whEsc(r.c.holds||"")}">
+      <div class="top"><span><b>${whEsc(r.c.name)}</b><span class="st">${whEsc(r.stage)}</span></span>${pill}</div>
+      <div class="wh-track">${segs}${tick}</div>
+      <div class="wh-sub">${sub}</div>${selHtml}
+    </div>`;
+  });
+  document.getElementById("whBars").innerHTML=html;
+}
+
 function ovYearSelRender(){
   const el=document.getElementById("ovYearSel"); if(!el) return;
   const years=(RAW.spendYears||[]).slice().sort();
@@ -833,6 +1123,7 @@ function ovYearSelRender(){
 function renderOverview(){
   ovYearSelRender();
   renderCapFlow();
+  try{ renderWarehouse(); }catch(e){ console.warn("renderWarehouse failed:",e); }
   const {prods,fc}=applyFilter();
   const sd=spendData();                                  // year-aware spend dataset
   const sups=sd.sups;
@@ -1683,16 +1974,10 @@ async function renderOrders(){
    audit table + drill-in read the new proxy branches (/api/decisions, /api/decision);
    the gate runs /api/purchasing-run (dry-run by default, server-enforced). All fetches
    are best-effort — a failure degrades the panel, never the cockpit. */
-const AUTO = { loaded:false, rows:[], tier:"", products:[] };
+const AUTO = { loaded:false, rows:[], tier:"" };
 function _ae(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 
 function renderAutonomy(){
-  // Populate the product picker from the live inventory model (read-only use of RAW).
-  const dl=document.getElementById("autoProductList");
-  if(dl && RAW && RAW.inv){
-    AUTO.products = RAW.inv.map(x=>({name:x.name, cat:x.cat}));
-    dl.innerHTML = AUTO.products.map(p=>`<option value="${_ae(p.name)}">${_ae(p.cat||"")}</option>`).join("");
-  }
   // Lazy-fetch the audit trail the first time the tab is opened.
   if(!AUTO.loaded){ AUTO.loaded=true; autoLoadDecisions(); }
   else { autoRenderTable(); }
@@ -1730,12 +2015,27 @@ function autoRenderTable(){
   tbody.querySelectorAll("tr[data-id]").forEach(tr=>tr.onclick=()=>autoDrill(tr.dataset.id));
 }
 
-// Run the gate for the intake: POST /api/purchasing-run, then resolve the three checks.
+// Run the gate: POST /api/purchasing-run (dry run, server-enforced), then resolve the
+// three checks on the first decision. The run is the weekly cycle over the whole
+// catalogue, so there is no product input: the request never carried one, and a typed
+// product used to be shown as if the run had answered about it. The one number it
+// takes, period_days, is a look-back (how far back the run looks for what changed),
+// kept out of the primary path and named for what it does.
+const AUTO_RUN_LABEL="▶ Run the weekly gate (dry run)";
 async function autoRunGate(){
   const btn=document.getElementById("autoRun");
   const gate=document.getElementById("autoGate");
+  const timing=document.getElementById("autoTiming");
   const days=Math.max(1, Math.min(90, +document.getElementById("autoDays").value||7));
-  if(btn){ btn.disabled=true; btn.textContent="… running"; }
+  // The model is asked once per proposed line, so a run takes a while: the button
+  // counts the seconds while it runs, and the measured time stays on screen after.
+  const t0=Date.now();
+  const tick=()=>{ if(btn) btn.textContent=`… running ${Math.round((Date.now()-t0)/1000)} s`; };
+  if(btn) btn.disabled=true;
+  tick(); const timer=setInterval(tick,1000);
+  const done=()=>{ clearInterval(timer); const s=Math.round((Date.now()-t0)/1000);
+    if(btn){ btn.disabled=false; btn.textContent=AUTO_RUN_LABEL; }
+    if(timing) timing.textContent=`last run took ${s} s · look-back ${days} d`; };
   if(gate) gate.style.display="flex";
   setGate("gateCap",null,"checking…"); setGate("gatePrice",null,"checking…"); setGate("gateConf",null,"checking…");
   const verdict=document.getElementById("gateVerdict"); if(verdict){ verdict.className="gate-verdict"; verdict.textContent="…"; }
@@ -1754,17 +2054,26 @@ async function autoRunGate(){
     result = r.ok ? await r.json() : null;
   }catch(e){ result=null; }
 
-  if(!result || !result.decisions || !result.decisions.length){
-    setGate("gatePrice",null,"no decision"); setGate("gateConf",null,"no decision");
-    if(verdict){ verdict.className="gate-verdict"; verdict.textContent="No actionable decision for this horizon"; }
-    document.getElementById("gateNote").textContent="The engine returned no buy for the chosen period — nothing breached a reorder/forecast/lifecycle trigger.";
-    if(btn){ btn.disabled=false; btn.textContent="▶ Run gate"; }
-    autoLoadDecisions();   // the run still logged its (empty/!) decisions server-side
+  // A run that did not answer is not "no decision": say which it was.
+  if(!result || result.error){
+    setGate("gatePrice",null,"no run"); setGate("gateConf",null,"no run");
+    if(verdict){ verdict.className="gate-verdict"; verdict.textContent="The run did not answer"; }
+    document.getElementById("gateNote").textContent = (result && result.status===403)
+      ? "The API refused the run: the gate requires the PROCUREMENT role and the cockpit's service account does not have it. Nothing was decided, nothing was placed."
+      : "The API did not answer the run. Nothing was decided, nothing was placed.";
+    done();
     return;
   }
-  // Pick the decision matching the typed product if possible, else the first.
-  const typed=(document.getElementById("autoProduct").value||"").trim().toLowerCase();
-  const d = result.decisions.find(x=>(x.product_id||"").toLowerCase().includes(typed) || typed==="") || result.decisions[0];
+  if(!result.decisions || !result.decisions.length){
+    setGate("gatePrice",null,"no decision"); setGate("gateConf",null,"no decision");
+    if(verdict){ verdict.className="gate-verdict"; verdict.textContent=`No buy in the last ${days} days`; }
+    document.getElementById("gateNote").textContent=`The engine proposed no buy for a look-back of ${days} days: nothing breached a reorder, forecast or lifecycle trigger in that window.`;
+    done();
+    autoLoadDecisions();   // the run still logged its (empty) decisions server-side
+    return;
+  }
+  // The three checks resolve on the first decision; the audit trail below has them all.
+  const d = result.decisions[0];
 
   // Check 2 — price in band, via the should-cost gap proxy.
   let priceOk=null, priceTxt="n/a";
@@ -1784,8 +2093,9 @@ async function autoRunGate(){
   if(verdict){ verdict.className="gate-verdict "+(d.tier||""); verdict.textContent=
     d.tier==="act"?"AUTO-PLACE (act)":d.tier==="propose"?"PROPOSE → human approval":"ESCALATE → blocked"; }
   document.getElementById("gateNote").textContent =
-    `${_ae(d.rationale||"")}${result.dry_run?" · dry-run — nothing placed":""}`;
-  if(btn){ btn.disabled=false; btn.textContent="▶ Run gate"; }
+    `${d.rationale||""}${result.dry_run?" · dry run, nothing placed":""}`
+    +` · first of ${result.decisions.length} decision${result.decisions.length>1?"s":""} in this run; the audit trail below has them all`;
+  done();
   autoLoadDecisions();   // refresh the audit table with the just-logged decision
 }
 function setGate(id,ok,txt){
@@ -1989,6 +2299,36 @@ async function loadData(){
   if(!src || src.error){ showError("API returned: "+(src&&src.error||"empty")); return; }
   renderFromSource(src);
 }
+// Force a re-read of the API. The board refreshes itself every five minutes, which is
+// fine for watching and useless for demonstrating: inject capacity on a compartment in
+// the console, come back here, and the ring should show it now, not eventually.
+document.addEventListener("click", async (e)=>{
+  const btn = e.target && e.target.closest && e.target.closest("#liveRefresh");
+  if(!btn || btn.disabled) return;
+  const stamp=document.getElementById("genDate"), was=stamp.textContent;
+  // It takes about twenty seconds: the proxy calls the API roughly a dozen times. A
+  // count is the difference between "working" and "frozen" to whoever is watching.
+  btn.disabled=true;
+  const t0=Date.now();
+  stamp.textContent="reading the API… 0s";
+  const tick=setInterval(()=>{ stamp.textContent=`reading the API… ${Math.round((Date.now()-t0)/1000)}s`; }, 1000);
+  try{
+    const r=await fetch("/api/refresh",{method:"POST"});
+    const j=await r.json().catch(()=>({ok:false,error:"the refresh did not answer"}));
+    // A refresh that fails is not a render error, so it does not raise the red banner
+    // that says one happened. The board keeps showing the last good read and the stamp
+    // says why this one did not land.
+    if(!j.ok) failed(j.error||"unknown");
+    else await loadData();
+  }catch(err){
+    failed(err&&err.message||err);
+  }finally{ clearInterval(tick); btn.disabled=false; }
+  function failed(why){
+    stamp.textContent=`${was} · refresh failed (${String(why).slice(0,80)})`;
+    btn.title=`The last refresh failed: ${why}. The board is still showing the read from ${was}.`;
+  }
+});
+
 // On-demand AI commentary — narrates OVER the deterministic findings (sent as
 // structured input, not raw data), so every number stays code-computed. One LLM
 // call per click; nothing happens automatically.
@@ -2018,6 +2358,13 @@ document.body.classList.add("tower-active");
   const want=(new URLSearchParams(location.search).get("tab")||location.hash.slice(1)||"").toLowerCase();
   const b=want?document.querySelector(`nav.tabs button[data-tab="${CSS.escape(want)}"]`):null;
   if(b) b.click();
+  else if(want==="autonomy") openAutonomy();   // the hidden tab, opened from the header chip
+  // ?filter=supplier:Apple (or category:…, product:…) opens the board with that filter
+  // set, the same way a click would. The headless render check uses it for the
+  // warehouse bars with a selection active.
+  const f=new URLSearchParams(location.search).get("filter")||"";
+  const m=f.match(/^(category|supplier|product):(.+)$/);
+  if(m) FILTER={type:m[1], value:decodeURIComponent(m[2])};
 })();
 loadData();
 setInterval(loadData, 60000); // auto-refresh every 60s — the board updates itself

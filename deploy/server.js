@@ -81,25 +81,108 @@ async function withFirstMeasured(token, rows) {
   return out;
 }
 
-async function login() {
-  const body = new URLSearchParams({ grant_type: "password", username: USER, password: PASS });
-  const r = await fetch(`${API}/api/v1/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body
-  });
-  if (!r.ok) throw new Error(`login ${r.status}`);
-  const j = await r.json();
-  return j.access_token;
+// The warehouse block on the Overview tab: the nine compartments of the device cycle,
+// each with its own capacity. The list is one grouped read. A compartment's inbound
+// (the open order lines destined for it, with their ETAs) lives only in its contents
+// read, and whether space is filling or draining is what the owner asked to see, so
+// all nine contents are read on every refresh, in parallel, each behind safe() and the
+// fetch timeout. Measured against the demo fleet on 25.09.2026: 0.2 s for the list,
+// 0.16 to 0.39 s per contents read, 12 to 17 KB each; every breakdown is a grouped
+// query on the backend and nothing walks the asset table (unlike TCO, above). Only
+// the fields the page draws are kept, so /api/data does not grow by 120 KB.
+function trimContents(c) {
+  if (!c || typeof c !== "object") return null;
+  const inb = c.inbound || {};
+  return {
+    code: c.code, as_of: c.as_of, on_hand: c.on_hand, capacity: c.capacity, free: c.free,
+    overflow: c.overflow, undated_units: c.undated_units,
+    by_class: (c.by_class || []).map(b => ({ key: b.key, label: b.label, units: b.units, share: b.share })),
+    by_model: (c.by_model || []).map(m => ({ product_id: m.product_id, name: m.name, family: m.family, units: m.units, share: m.share })),
+    inbound: {
+      units: inb.units ?? 0, late_units: inb.late_units ?? 0, late_lines: inb.late_lines ?? 0,
+      lines: (inb.lines || []).length, next_eta: inb.next_eta ?? null, last_eta: inb.last_eta ?? null,
+      committed: inb.committed ?? null, committed_share: inb.committed_share ?? null,
+      reason: inb.reason ?? null, basis: inb.basis ?? null,
+      by_model: (inb.by_model || []).map(m => ({ product_id: m.product_id, name: m.name, units: m.units, late_units: m.late_units, next_eta: m.next_eta })),
+    },
+  };
 }
+
+async function warehouseContents(token, list) {
+  const codes = ((list && list.compartments) || []).map(c => c.code).filter(Boolean);
+  if (!codes.length) return {};
+  const reads = await Promise.all(codes.map(code =>
+    safe(`warehouse/${code}/contents`, getJSON(token, `/api/v1/warehouse/compartments/${encodeURIComponent(code)}/contents`), null)));
+  const out = {};
+  codes.forEach((code, i) => { const t = trimContents(reads[i]); if (t) out[code] = t; });
+  return out;
+}
+
+// Which supplier a model was bought from, read off the purchase orders (the order
+// carries the supplier, its lines the model). The compartments count devices by model,
+// not by supplier, so this is the only honest way to say how much of a compartment a
+// supplier's devices occupy. A model bought from more than one supplier is listed
+// under each, and the page leaves such a model out and says so.
+function suppliersByProduct(orders, bySupplier) {
+  const name = {};
+  for (const s of bySupplier || []) name[s.supplier_id] = s.supplier_name;
+  const out = {};
+  for (const o of orders || []) {
+    const sup = name[o.supplier_id] || null;
+    if (!sup) continue;
+    for (const it of o.items || []) {
+      if (!it.product_id) continue;
+      (out[it.product_id] = out[it.product_id] || []);
+      if (!out[it.product_id].includes(sup)) out[it.product_id].push(sup);
+    }
+  }
+  return out;
+}
+
+// The token is cached. Every refresh and every on-demand route used to log in again,
+// and the API rate-limits login to 10 attempts per IP per 5 minutes (LOGIN_RATE_LIMIT /
+// LOGIN_RATE_WINDOW_SECONDS): clicking through Orders, Autonomy, Movements and
+// Simulation inside one window, with the background refresh also logging in, reaches ten
+// without trying. A token is good for 8 hours, so holding one for 30 minutes is well
+// inside its life and takes the cockpit from dozens of logins an hour to two. Concurrent
+// callers share the in-flight promise, so a burst of routes is one login, not six.
+const TOKEN_TTL_MS = 30 * 60 * 1000;
+let tokenCache = { value: null, until: 0, inFlight: null };
+
+async function login() {
+  const now = Date.now();
+  if (tokenCache.value && now < tokenCache.until) return tokenCache.value;
+  if (tokenCache.inFlight) return tokenCache.inFlight;
+  tokenCache.inFlight = (async () => {
+    const body = new URLSearchParams({ grant_type: "password", username: USER, password: PASS });
+    const r = await fetch(`${API}/api/v1/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
+    });
+    if (!r.ok) throw new Error(`login ${r.status}`);
+    const j = await r.json();
+    tokenCache = { value: j.access_token, until: Date.now() + TOKEN_TTL_MS, inFlight: null };
+    return j.access_token;
+  })().catch(e => { tokenCache.inFlight = null; throw e; });
+  return tokenCache.inFlight;
+}
+
+// A cached token that the API no longer accepts (restarted backend, rotated password,
+// changed secret) must not be handed out for the rest of its TTL. Anything that sees a
+// 401 drops it, and the next call logs in again.
+function forgetToken() { tokenCache = { value: null, until: 0, inFlight: null }; }
 
 async function getJSON(token, p) {
   const r = await fetch(`${API}${p}`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+  if (r.status === 401) forgetToken();
   if (!r.ok) throw new Error(`${p} → ${r.status}`);
   return r.json();
 }
 async function getCSV(token, p) {
   const r = await fetch(`${API}${p}`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+  if (r.status === 401) forgetToken();
   if (!r.ok) throw new Error(`${p} → ${r.status}`);
   const text = await r.text();
   const lines = text.trim().split(/\r?\n/);
@@ -115,6 +198,14 @@ async function getCSV(token, p) {
 async function safe(label, p, fallback) {
   try { return await p; }
   catch (e) { console.warn(`[refresh] non-critical '${label}' failed: ${e.message || e} — using fallback`); return fallback; }
+}
+
+// A forced refresh shares whatever run is already going, so a row of clicks (or a click
+// during the scheduled tick) is one pass over the API, not five.
+let refreshInFlight = null;
+function refreshOnce() {
+  if (!refreshInFlight) refreshInFlight = refresh().finally(() => { refreshInFlight = null; });
+  return refreshInFlight;
 }
 
 async function refresh() {
@@ -162,6 +253,20 @@ async function refresh() {
     // The one capacity-vs-flow metric: committed/free %, in/out flow, coverage.
     const capacityFlow = await safe("capacity-flow",
       getJSON(token, "/api/v1/planning/capacity-flow"), null);
+    // Warehouse compartments (Overview): the list, then the nine contents in parallel
+    // for what is on its way into each, and the purchase orders for which supplier a
+    // model came from. See trimContents above for the cost and why all nine are read.
+    // A deployment without these endpoints (or an empty database) yields null and the
+    // block hides itself.
+    const whT0 = Date.now();
+    const warehouseCompartments = await safe("warehouse/compartments",
+      getJSON(token, "/api/v1/warehouse/compartments"), null);
+    const warehouseContentsByCode = await warehouseContents(token, warehouseCompartments);
+    const ordersForSuppliers = warehouseCompartments
+      ? await safe("purchase-orders", getJSON(token, "/api/v1/purchase-orders?limit=2000"), [])
+      : [];
+    const productSuppliersFromOrders = suppliersByProduct(ordersForSuppliers, bySup);
+    const whMs = Date.now() - whT0;
 
     // KPIs tab: the backend's steering KPIs (value, yearly targets, status, daily history).
     // Only a real list advances the cache; see kpisCache above.
@@ -215,13 +320,19 @@ async function refresh() {
         storage_headroom: storageHeadroom, capacity_flow: capacityFlow,
         spend_years: spendYears, spend_by_year: spendByYear,
         kpis, capacity_plan: capacityPlan, fleet_summary: fleetSummary,
+        warehouse_compartments: warehouseCompartments,
+        warehouse_contents: warehouseContentsByCode,
+        product_suppliers_from_orders: productSuppliersFromOrders,
       }
     };
     const insightsAgeMin = Math.round((Date.now() - insightsCache.at) / 60000);
+    const whN = warehouseCompartments && warehouseCompartments.compartments ? warehouseCompartments.compartments.length : 0;
     console.log(`[refresh] ok @ ${cache.generated_at} (${forecast.length} forecast rows, `
       + `${shouldCostBySupplier.length} should-cost rows, ${tcoByClass.length} tco classes, `
       + `${insights.length} insights age ${insightsAgeMin}m, ${kpis.length} kpis, `
-      + `capacity plan ${capacityPlan ? "served" : "not served"}, fleet summary ${fleetSummary ? "served" : "not served"})`);
+      + `capacity plan ${capacityPlan ? "served" : "not served"}, fleet summary ${fleetSummary ? "served" : "not served"}, `
+      + `warehouse ${whN} compartments / ${Object.keys(warehouseContentsByCode).length} contents / `
+      + `${Object.keys(productSuppliersFromOrders).length} models with a supplier in ${whMs} ms)`);
   } catch (e) {
     cache.error = String(e.message || e);
     console.error("[refresh] FAILED:", cache.error);
@@ -310,6 +421,25 @@ const server = http.createServer(async (req, res) => {
 
   // Run the decision gate (POST). dry_run defaults TRUE; real placing only when
   // the server-side ALLOW_LIVE_PLACE flag is set — a client can never force it.
+  // Re-read the API now instead of waiting for the next scheduled tick. The reason it
+  // exists: a capacity or a stock change made in the console (extra places on a
+  // compartment, a delivery, a batch of returns) is invisible here for up to five
+  // minutes otherwise, and "live tracking" that lags five minutes behind the thing it
+  // tracks is not live. Read-only — it only makes this process fetch again.
+  if (url === "/api/refresh" && req.method === "POST") {
+    let body;
+    try {
+      await refreshOnce();
+      body = cache.error ? { ok: false, error: cache.error }
+                         : { ok: true, generated_at: cache.generated_at };
+    } catch (e) {
+      body = { ok: false, error: String(e && e.message || e) };
+    }
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    res.end(JSON.stringify(body));
+    return;
+  }
+
   if (url === "/api/purchasing-run" && req.method === "POST") {
     let body = "";
     req.on("data", (c) => { body += c; if (body.length > 16 * 1024) req.destroy(); });
@@ -326,7 +456,10 @@ const server = http.createServer(async (req, res) => {
           method: "POST",
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
           body: JSON.stringify(payload),
-        }).then(r => r.ok ? r.json() : Promise.reject(new Error(`purchasing-run ${r.status}`)))
+        }).then(async r => r.ok ? r.json()
+          // A refusal is an answer the page must show as such (the gate needs the
+          // PROCUREMENT role; a viewer account gets 403), not "no decision".
+          : ({ error: `purchasing-run ${r.status}`, status: r.status, detail: (await r.text().catch(() => "")).slice(0, 300), dry_run }))
           : Promise.reject(new Error("no token")),
         null);
       res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
@@ -398,6 +531,6 @@ const server = http.createServer(async (req, res) => {
 });
 
 refresh().then(() => {
-  setInterval(refresh, REFRESH_MS);
+  setInterval(refreshOnce, REFRESH_MS);
   server.listen(PORT, () => console.log(`SCM dashboard on :${PORT} (refresh every ${REFRESH_MS / 1000}s)`));
 });

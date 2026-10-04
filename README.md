@@ -71,23 +71,25 @@ map, and a live-demo hand-off. Hosted on **GitHub Pages** (renders in any browse
 
 The cockpit **opens** on a real-time-strategy-style **3D logistics control tower** — a Babylon.js
 WebGL scene that renders the supply chain as a living warehouse floor: inbound trucks at receiving,
-forklift agents ferrying crates, a stacked warehouse, datacenter racks lighting up as assets deploy,
-and an end-of-life lane to disposal.
+forklift agents ferrying crates, a stacked warehouse, customer racks lit in proportion to the
+rented share, and an exit lane for devices sold or recycled after their return.
 
-> **It is state-accurate, not a toy animation.** Every count, capacity %, crate stack, lit rack and
-> event-log line is read from the **same live `/api/v1` model** the rest of the cockpit uses, and
-> re-syncs on each refresh. Only the forklift/truck *motion between those states* is illustrative —
-> timed off the real `daily_in` / `daily_out` flow rates. **No number is fabricated.**
+> **The numbers are live, the motion is illustrated.** Every tile, the capacity %, the crate stack
+> and the number of lit racks are read from the **same live `/api/v1` model** the rest of the
+> cockpit uses, and re-sync on each refresh. The forklift and truck *motion between those states*
+> is illustrative, timed off the real `daily_in` / `daily_out` flow rates, and so are the
+> requisition lines it narrates (PR ids, confidence values): those event-stream lines carry a
+> **SIM** mark. Lines without it are live findings.
 
 | In the scene | Driven by (live data) |
 |---|---|
 | Warehouse fill + **number of crates** | `committed / capacity` — the box count is **in proportion to the warehouse's max capacity** |
 | Inbound trucks (arriving POs) | `inventory[].on_order` + `next_eta` — real open purchase orders, by SKU |
-| Datacenter racks lit | `Σ tco_by_class[].assets` — the deployed fleet |
+| Customer racks lit | `rented / devices under management` from `/fleet/summary`: the rented share, pinned at each sync (300,000 of 400,000 lights 10 to 11 of 14) |
 | **Over-order guard** refusing an inbound | the real fail-closed guard (`committed ≥ capacity` → refuse), the same HTTP-422 invariant the API enforces |
 | In/out flow, weeks of cover, depletion | `capacity_flow.daily_in` / `daily_out` / `days_to_depletion` |
 | AI requisition gate (auto-PO vs escalate) | the same **0.85 confidence floor** the SCM Master agent enforces — *LLM advises, code decides* |
-| Event stream (right panel) | the live deterministic **rule-insights** findings (concentration/HHI, low-cover SKUs, should-cost gap, TCO inversion…) |
+| Event stream | the live deterministic **rule-insights** findings (concentration/HHI, low-cover SKUs, should-cost gap, TCO inversion…); simulated motion lines are marked **SIM** |
 
 **Render (Tier-2):** Babylon.js 6.49 with physically-based materials, image-based lighting, soft
 PCF shadows, ACES tone-mapping, a glow layer, restrained bloom and SSAO — with an in-scene **FX**
@@ -97,7 +99,8 @@ active, so the data tabs are never taxed. Source: [`deploy/tower.js`](deploy/tow
 ![SCM Master 3D Control Tower](https://raw.githubusercontent.com/eugnmueller-87/SCM-POWER-BI/main/clip/tower.gif)
 
 > The 3D Control Tower running live — trucks arriving with real POs, forklifts moving the
-> committed stock, racks lit to the deployed fleet. For the full-quality clip,
+> committed stock, racks lit to the rented share (clip recorded before the fleet tiles of
+> 04.10.2026). For the full-quality clip,
 > ▶︎ **[open `clip/tower.mp4`](https://github.com/eugnmueller-87/SCM-POWER-BI/blob/main/clip/tower.mp4)**.
 
 ## 📦 Orders & delivery performance
@@ -432,7 +435,7 @@ SCM-POWER-BI/
 - [x] Live API connection guide (`dashboard/live_api_connection.md`) — verified against the deployed backend
 - [x] **`.pbix` built in Power BI Desktop** — wired to the live API, forecast-accuracy measures + visuals live
 - [x] **Live web cockpit deployed** — [hosted on Railway](https://scm-power-bi-production.up.railway.app), auto-refreshing, with drill-downs + reorder alerts + forecast diagnostics
-- [x] **3D Control Tower home screen** — Babylon.js WebGL (PBR · IBL · SSAO · bloom), wired live to `/api/v1` (state-accurate; crates ∝ warehouse capacity, racks = deployed fleet, real POs + over-order guard); engine only mounts on its tab
+- [x] **3D Control Tower home screen** — Babylon.js WebGL (PBR · IBL · SSAO · bloom), wired live to `/api/v1` (numbers live, motion illustrated; crates ∝ warehouse capacity, racks = rented share, real POs + over-order guard, simulated log lines marked SIM); engine only mounts on its tab
 - [x] **Orders tab** — inbound pipeline (delivered vs incoming, current year), per-PO line-item contents, "covers gap" per order, and **delivery performance** (promised vs actual ETA, slip, accuracy %)
 - [x] **Autonomy panel** — the agent's decision loop (intake → live gate → tier) + a persistent append-only audit trail with provenance drill-down; fail-closed, dry-run by default
 - [x] **Forecast metrics matched to the demand profile** — WMAPE + bias lead the headline; MAPE demoted to labelled detail (it's inflated by intermittent near-zero actuals); accuracy-by-category uses WMAPE

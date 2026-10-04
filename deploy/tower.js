@@ -6,13 +6,16 @@
    premium look (no grain / chromatic-aberration smear).
 
    STATE-ACCURATE, motion illustrative. Every count, capacity %, crate
-   stack, datacenter rack and event-log line is read from the live
-   /api/data model (RAW) and re-syncs on each 60s refresh. The forklift/
+   stack and lit rack is read from the live /api/data model (RAW) and
+   re-syncs on each 60s refresh; the racks light up in proportion to the
+   rented share of the devices under management, and the motion between
+   two refreshes keeps them within one rack of that share. The forklift/
    truck MOTION between those states is animated for life, timed off the
-   REAL daily_in / daily_out rates — not a fabricated event stream, and
-   no number is invented. The warehouse renders `committed` crates out of
-   `capacity` slots, so the box count is in proportion to the warehouse's
-   maximum capacity.
+   REAL daily_in / daily_out rates. The event lines that motion writes
+   are illustration too: their purchase-request ids and confidence values
+   are generated, not read, and every such line carries a "sim" mark.
+   The warehouse renders `committed` crates out of `capacity` slots, so
+   the box count is in proportion to the warehouse's maximum capacity.
 
    Public API (window.SCMTower):
      mount(container)  – build engine/scene into a DOM node, start loop
@@ -38,12 +41,15 @@ var R = {
 };
 
 var CRATE_HEX = { recv: '#3ddc84', store: '#f5a524', pack: '#4aa3ff', dc: '#2dd4bf', dead: '#ff5d5d' };
+// Die Zonen tragen die Namen des Mietkreislaufs: die Racks stehen fuer die Kunden,
+// der rote Platz fuer den Abgang (Verkauf oder Verwertung). Die Schluessel bleiben,
+// damit die Bewegung unveraendert laeuft; nur die Schrift in der Szene wechselt.
 var Z = {
   RECEIVE:   { x: -17, hex: '#3ddc84', name: 'RECEIVING' },
   WAREHOUSE: { x: -2,  hex: '#f5a524', name: 'WAREHOUSE' },
   PACKING:   { x: 11,  hex: '#4aa3ff', name: 'PACKING' },
-  DATACTR:   { x: 24,  hex: '#2dd4bf', name: 'DATACENTER' },
-  DISPOSAL:  { x: 33,  hex: '#ff5d5d', name: 'DISPOSAL' },
+  DATACTR:   { x: 24,  hex: '#2dd4bf', name: 'CUSTOMERS' },
+  DISPOSAL:  { x: 33,  hex: '#ff5d5d', name: 'EXIT' },
 };
 var NDC = 14;
 
@@ -52,13 +58,18 @@ var SIM = {
   tick: 0, playing: true, speed: 1, t: 0, tickAcc: 0,
   capacity: 0, committed: 0, onHand: 0, inbound: 0, freeToOrder: 0,
   committedPct: 0, dailyIn: 0, dailyOut: 0, daysToDepletion: 0,
-  deployed: 0,
-  // Die Flotte, aus /api/v1/fleet/summary. deployed heisst hier weiter so,
-  // weil die Rack-Beleuchtung daran haengt, traegt aber jetzt die vermieteten
-  // Geraete statt einer Summe ueber eine abgeschaltete TCO-Tabelle.
-  fleet: { underMgmt: 0, everReceived: 0, rented: 0, warehouse: 0, left: 0,
-           storage: 0, processing: 0, repair: 0, ready: 0, rest: 0,
-           recycled: 0, returnsDue30: 0, served: false },
+  // capServed: kam ein Kapazitaetsfluss an? Ohne ihn ist jede Null hier geraten.
+  capServed: false,
+  // Wie viele Racks der Mietanteil leuchten laesst (rebuildRacks). Die Bewegung
+  // zwischen zwei Refreshes haelt sich daran; null heisst: kein Anteil bekannt,
+  // dann bleiben die Racks in Ruhe.
+  rackTarget: null,
+  // Die Flotte, aus /api/v1/fleet/summary. Die Rack-Beleuchtung haengt am
+  // Verhaeltnis rented zu underMgmt (rebuildRacks).
+  fleet: { underMgmt: 0, everReceived: 0, rented: 0, warehouse: 0,
+           storage: 0, processing: 0, repair: 0, waiting: 0, rest: 0,
+           gone: 0, sold: 0, recycled: 0, disposed: 0, decommissioned: 0, other: 0,
+           returnsDue30: 0, served: false },
   inboundQueue: [],
   truckTimer: 2.5, reqTimer: 3, decomTimer: 9,
   fxOn: true,
@@ -349,12 +360,17 @@ function toggleFX() {
 function sync(RAW) {
   if (!RAW) return;
   R.data = RAW;
+  // Ohne Kapazitaetsfluss sagen die Kapazitaetskacheln n/a; die Nullen unten
+  // halten nur die Bewegung am Laufen und erscheinen nirgends als Messwert.
+  SIM.capServed = !!RAW.capFlow;
   var cf = RAW.capFlow || {};
   SIM.capacity = +cf.capacity || 0;
   SIM.committed = +cf.committed || 0;
   SIM.onHand = +cf.on_hand || 0;
   SIM.inbound = +cf.inbound || 0;
-  SIM.freeToOrder = +cf.free_to_order || 0;
+  // free_to_order null heisst im Backend: keine Lagergrenze definiert, also keine
+  // Obergrenze (planning.py). Das ist "no limit", keine Null.
+  SIM.freeToOrder = cf.free_to_order == null ? null : (+cf.free_to_order || 0);
   SIM.committedPct = +cf.committed_pct || (SIM.capacity ? SIM.committed / SIM.capacity : 0);
   SIM.dailyIn = +cf.daily_in || 0;
   SIM.dailyOut = +cf.daily_out || 0;
@@ -365,6 +381,7 @@ function sync(RAW) {
   // zeigen, die wie eine Messung aussieht.
   var fs = RAW.fleet || null;
   var by = (fs && fs.by_status) || {};
+  var total = +(fs && fs.total) || 0;
   var rented = +(fs && fs.rented) || 0;
   var warehouse = +(fs && fs.warehouse) || 0;
   // Die vier Gruppen decken jeden Lagerzustand ab, den das Backend kennt
@@ -373,28 +390,37 @@ function sync(RAW) {
   var storage = (+by.IN_STORAGE || 0) + (+by.RECEIVED || 0);
   var processing = (+by.RETURNED || 0) + (+by.MDM_RELEASE || 0) + (+by.WIPE_GRADING || 0) + (+by.REFURB || 0);
   var repair = +by.REPAIR || 0;
-  var ready = (+by.READY_SECOND || 0) + (+by.SELLABLE || 0) + (+by.SWAP_BUFFER || 0);
+  // Wartender Bestand, nicht "bereit": Zweitmiete, Verkauf und Tauschreserve
+  // warten auf einen Kunden, einen Kaeufer oder einen Defekt.
+  var waiting = (+by.READY_SECOND || 0) + (+by.SELLABLE || 0) + (+by.SWAP_BUFFER || 0);
+  // Was nicht mehr unter Verwaltung steht, Zustand fuer Zustand aus by_status und
+  // seit Beginn, nicht als Rest gerechnet: ein Rest fasst auch Geraete in Zustaenden,
+  // die hier keine Kachel haben (DEPLOYED, MAINTENANCE im Rechenzentrums-Fall).
+  var sold = +by.SOLD || 0, recycled = +by.RECYCLED || 0;
+  var disposed = +by.DISPOSED || 0, decommissioned = +by.DECOMMISSIONED || 0;
+  var gone = sold + recycled + disposed + decommissioned;
+  // Weder beim Kunden noch im Lager noch abgegangen: ausgewiesen statt verschluckt.
+  var other = Math.max(0, total - rented - warehouse - gone);
   SIM.fleet = {
     served: !!fs,
-    // Unter Verwaltung heisst beim Kunden plus im Lager. /fleet/summary.total
-    // zaehlt auch verkaufte und verwertete Geraete mit; die sind keine Flotte
-    // mehr und stehen deshalb getrennt.
-    underMgmt: rented + warehouse,
-    everReceived: +(fs && fs.total) || 0,
-    left: Math.max(0, (+(fs && fs.total) || 0) - rented - warehouse),
+    // Unter Verwaltung heisst: alles, was nicht abgegangen ist. Beim Kunden, im
+    // Lager und, falls es das gibt, in einem Zustand ohne eigene Kachel. So ist es
+    // dieselbe Zahl wie "active" in /fleet/breakdown auf dem Inventory-Reiter.
+    // /fleet/summary.total zaehlt auch Verkauftes und Verwertetes mit; das steht
+    // getrennt.
+    underMgmt: rented + warehouse + other,
+    everReceived: total,
     rented: rented,
     warehouse: warehouse,
     storage: storage,
     processing: processing,
     repair: repair,
-    ready: ready,
-    rest: Math.max(0, warehouse - storage - processing - repair - ready),
-    recycled: +(fs && fs.recycled_12m) || 0,
+    waiting: waiting,
+    rest: Math.max(0, warehouse - storage - processing - repair - waiting),
+    gone: gone, sold: sold, recycled: recycled, disposed: disposed, decommissioned: decommissioned,
+    other: other,
     returnsDue30: +(fs && fs.returns_due_30d) || 0
   };
-  // Die Racks leuchten nach dem, was beim Kunden ist. Vorher summierte das die
-  // Spalte assets der TCO-Tabelle, die abgeschaltet ist: immer 0, immer dunkel.
-  SIM.deployed = SIM.fleet.rented;
 
   SIM.inboundQueue = (RAW.inv || []).filter(function (x) { return x.on_order > 0; })
     .map(function (x) { return { sku: x.name, units: x.on_order, eta: x.eta }; });
@@ -417,26 +443,49 @@ function rebuildWarehouseStack() {
     if (c) { c.metadata.state = 'store'; R.wareStack.push(c); }
   }
 }
+// Die Racks leuchten im Anteil der Vermieteten an allem unter Verwaltung:
+// 300.000 von 400.000 sind 11 von 14. Vorher teilte ddiv() die Mietzahl durch
+// sich selbst, und ab 351 Geraeten leuchteten immer alle 14, ob 75 % oder 100 %.
+// Das Ziel bleibt in SIM.rackTarget stehen; Vermieten und Rueckholen in der
+// Bewegung halten sich daran, sonst wanderte die Zahl zwischen zwei Refreshes weg.
+// Ohne Flottensumme gibt es keinen Anteil: dann ist kein Rack "aus" (das hiesse
+// 0 % vermietet), alle stehen mit grauer Lampe still, und die Legende sagt warum.
 function rebuildRacks() {
-  var div = ddiv();
-  var lit = Math.max(0, Math.min(R.rackSlots.length, Math.round(SIM.deployed / div)));
+  var f = SIM.fleet, slots = R.rackSlots.length;
+  SIM.rackTarget = f.served && f.underMgmt
+    ? Math.max(0, Math.min(slots, Math.round(slots * f.rented / f.underMgmt)))
+    : null;
+  var lit = SIM.rackTarget || 0, idle = SIM.rackTarget == null ? '#56657a' : '#22303f';
   for (var i = 0; i < R.rackSlots.length; i++) {
     var on = i < lit, r = R.rackSlots[i];
     r.active = on; r.age = on ? r.age : 0;
     r.mesh.material.emissiveColor = on ? B.Color3.FromHexString('#0e3a34') : B.Color3.Black();
     r.mesh.material.emissiveIntensity = on ? 0.7 : 0;
-    r.led.material.emissiveColor = B.Color3.FromHexString(on ? '#2dd4bf' : '#22303f');
+    r.led.material.emissiveColor = B.Color3.FromHexString(on ? '#2dd4bf' : idle);
   }
 }
-function ddiv() { return Math.max(1, Math.ceil(SIM.deployed / R.rackSlots.length)); }
+// Racks, die leuchten; mit pending auch die, zu denen ein Geraet gerade unterwegs ist.
+// Eines, das gerade geraeumt wird ('pulling'), zaehlt nie mit.
+function racksLit(pending) {
+  var k = 0;
+  for (var i = 0; i < R.rackSlots.length; i++) {
+    var a = R.rackSlots[i].active;
+    if (a === true || (pending && a === 'pending')) k++;
+  }
+  return k;
+}
 
 // =====================================================================
 // HUD (DOM overlay built inside the container, scoped .tw- classes)
 // =====================================================================
-// Zwei neue Bausteine fuer die Kacheln: eine breite Kachel fuer die Gesamtzahl
-// und eine Unterzeile, die sagt, woraus sie sich zusammensetzt.
+// Bausteine fuer die Kacheln: eine breite Kachel fuer die Gesamtzahl, eine
+// Unterzeile, die sagt, woraus sie sich zusammensetzt, und ein kleinerer Wert,
+// wenn statt einer Zahl ein Wort dasteht (tw-word, etwa "no limit").
 var HUD_CSS = '.tw-wide{grid-column:1/-1}'
-  + '.tw-big{font-size:30px;line-height:1.05;letter-spacing:-0.5px}'
+  // Drei Klassen, nicht eine: sonst gewinnt .tw-stat .tw-val (22px) ueber die
+  // Spezifitaet, und die Gesamtzahl ist so gross wie jede andere Kachel.
+  + '.tw-stat .tw-val.tw-big{font-size:30px;line-height:1.05;letter-spacing:-0.5px}'
+  + '.tw-stat .tw-val.tw-word{font-size:16px;line-height:1.4}'
   + '.tw-sub2{font-size:10px;color:#8b98a8;margin-top:2px;line-height:1.3}';
 function injectHudCss() {
   if (document.getElementById('tw-hud-css')) return;
@@ -452,42 +501,67 @@ function buildHUD() {
   h.className = 'tower-hud';
   h.innerHTML =
     '<div class="tw-panel tw-glow" id="tw-title">' +
-      '<div class="tw-kicker">SCM-MASTER · LIVE OPS<span class="tw-badge">BABYLON · PBR</span></div>' +
+      '<div class="tw-kicker">SCM-MASTER · LIVE OPS<span class="tw-badge">BABYLON.JS</span></div>' +
       '<h1>Logistics Control Tower</h1>' +
-      '<div class="tw-sub">State is real, from <code>/api/v1</code>; forklift motion illustrates the pipeline. PBR · bloom · SSAO.</div>' +
-      '<div class="tw-clock"><span class="tw-pulse"></span> AS OF <b id="tw-asof">—</b></div>' +
+      // Was gelesen ist und was gespielt: die Zahlen live, die Bewegung und die
+      // Ereigniszeilen mit "sim" nicht. Dieselben Worte wie im Kopf des Ereignisstroms.
+      '<div class="tw-sub">Counts are read live from <code>/api/v1</code>; the motion and the event lines marked sim are simulated.</div>' +
+      '<div class="tw-clock"><span class="tw-pulse"></span> AS OF <b id="tw-asof">n/a</b></div>' +
     '</div>' +
+    // Bis der erste Abruf da ist, steht ueberall n/a: eine Null vor dem Laden
+    // saehe aus wie eine Messung.
     '<div class="tw-panel" id="tw-stats">' +
-      // Erste Reihe: die Flotte. Gesamt zuerst, dann wo sie steht. Drei Viertel
-      // davon sind beim Kunden, und genau das fehlte auf diesem Schirm.
-      '<div class="tw-stat tw-wide"><div class="tw-lab">Fleet total</div><div class="tw-val tw-big" id="tw-total" style="color:#e9eef5">0</div><div class="tw-sub2" id="tw-total-sub">devices under management</div></div>' +
-      '<div class="tw-stat"><div class="tw-lab">Rented (at customers)</div><div class="tw-val" id="tw-dep" style="color:#2dd4bf">0</div></div>' +
-      '<div class="tw-stat"><div class="tw-lab">In warehouse</div><div class="tw-val" id="tw-wh" style="color:#f5a524">0</div><div class="tw-sub2" id="tw-wh-sub"></div></div>' +
-      '<div class="tw-stat"><div class="tw-lab">Inbound (on order)</div><div class="tw-val" id="tw-tr" style="color:#4aa3ff">0</div></div>' +
-      // Zweite Reihe: was im Lager gerade passiert, in der Reihenfolge des Wegs.
-      '<div class="tw-stat"><div class="tw-lab">In storage</div><div class="tw-val" id="tw-stor" style="color:#f5a524">0</div><div class="tw-sub2">new stock, before first rental</div></div>' +
-      '<div class="tw-stat"><div class="tw-lab">In processing</div><div class="tw-val" id="tw-proc" style="color:#4aa3ff">0</div><div class="tw-sub2">returns, MDM hold, wipe, refurb</div></div>' +
-      '<div class="tw-stat"><div class="tw-lab">In repair</div><div class="tw-val" id="tw-rep" style="color:#f5a524">0</div></div>' +
-      '<div class="tw-stat"><div class="tw-lab">Ready to go out</div><div class="tw-val" id="tw-ready" style="color:#3ddc84">0</div><div class="tw-sub2">second life, resale, swap buffer</div></div>' +
-      '<div class="tw-stat"><div class="tw-lab">Recycled (12m)</div><div class="tw-val" id="tw-rec" style="color:#ff5d5d">0</div></div>' +
-      '<div class="tw-stat"><div class="tw-lab">Committed units</div><div class="tw-val" id="tw-recv" style="color:#f5a524">0</div><div class="tw-sub2">warehouse plus on order</div></div>' +
-      '<div class="tw-stat"><div class="tw-lab">Free to order</div><div class="tw-val" id="tw-free" style="color:#3ddc84">0</div></div>' +
+      // Zuerst die Plaetze: die Kapazitaet mit dem Waechter, gleich darunter die zwei
+      // Zahlen, auf die sich der Waechter bezieht. Wird die Szene kurz und das Panel
+      // scrollt, fallen unten Flottenreihen weg, nie diese.
       '<div class="tw-cap tw-stat" id="tw-capbox">' +
-        '<div class="tw-row"><span class="tw-lab">Warehouse capacity</span><span class="tw-val" id="tw-cap" style="font-size:14px">0%</span></div>' +
+        '<div class="tw-row"><span class="tw-lab">Warehouse capacity committed</span><span class="tw-val" id="tw-cap" style="font-size:14px">n/a</span></div>' +
         '<div class="tw-bartrack"><div class="tw-barfill" id="tw-capbar"></div></div>' +
-        '<div class="tw-guard" id="tw-guard">over-order guard: armed</div>' +
+        // Sagt, was die Prozentzahl ist: Bestand plus Bestellt gegen die ganze Kapazitaet.
+        // Ohne das teilt jemand 100.000 durch 130.635 und zweifelt an den 98 %.
+        '<div class="tw-sub2" id="tw-cap-sub">stock plus on order, of all capacity</div>' +
+        '<div class="tw-guard" id="tw-guard">over-order guard: waiting for the first read</div>' +
       '</div>' +
+      // tw-opt: Unterzeilen, die nur ihr Label erklaeren; auf kurzen Schirmen fallen
+      // sie weg (index.html), und das (i) unten rechts zeigt denselben Text beim
+      // Darueberfahren. Nur das (i) nimmt dafuer den Zeiger, nicht die Kachel.
+      '<div class="tw-stat" title="warehouse plus on order"><div class="tw-lab">Committed units</div><span class="tw-i" title="warehouse plus on order">i</span><div class="tw-val" id="tw-recv" style="color:#f5a524">n/a</div><div class="tw-sub2 tw-opt">warehouse plus on order</div></div>' +
+      '<div class="tw-stat"><div class="tw-lab">Free to order</div><div class="tw-val" id="tw-free" style="color:#3ddc84">n/a</div></div>' +
+      // Dann was unter Verwaltung steht und wo. "Flotte" heisst auf dem KPI-Reiter nur
+      // das Vermietete (gegen das Ziel), deshalb steht das Wort hier nirgends.
+      '<div class="tw-stat tw-wide"><div class="tw-lab">Devices under management</div><div class="tw-val tw-big" id="tw-total" style="color:#e9eef5">n/a</div><div class="tw-sub2" id="tw-total-sub">rented plus in the warehouse</div></div>' +
+      '<div class="tw-stat"><div class="tw-lab">Rented (at customers)</div><div class="tw-val" id="tw-dep" style="color:#2dd4bf">n/a</div></div>' +
+      '<div class="tw-stat"><div class="tw-lab">In warehouse</div><div class="tw-val" id="tw-wh" style="color:#f5a524">n/a</div><div class="tw-sub2" id="tw-wh-sub"></div></div>' +
+      // Die naechsten vier sind die Teile des Lagers, in der Reihenfolge des Wegs,
+      // und addieren sich zur Lagerkachel; deren Unterzeile prueft das. Gesamt und
+      // Lager rechnen in ihrer Unterzeile und tragen deshalb nie tw-opt.
+      '<div class="tw-stat" title="new stock, before first rental"><div class="tw-lab">In storage</div><span class="tw-i" title="new stock, before first rental">i</span><div class="tw-val" id="tw-stor" style="color:#f5a524">n/a</div><div class="tw-sub2 tw-opt">new stock, before first rental</div></div>' +
+      '<div class="tw-stat" title="returns, device-management (MDM) hold, wipe, refurb"><div class="tw-lab">In processing</div><span class="tw-i" title="returns, device-management (MDM) hold, wipe, refurb">i</span><div class="tw-val" id="tw-proc" style="color:#f5a524">n/a</div><div class="tw-sub2 tw-opt">returns, device-management (MDM) hold, wipe, refurb</div></div>' +
+      '<div class="tw-stat"><div class="tw-lab">In repair</div><div class="tw-val" id="tw-rep" style="color:#f5a524">n/a</div></div>' +
+      // Das Label sagt selbst, worauf der Bestand wartet: Zweitmiete und Tauschreserve
+      // auf einen Mieter, Verkaufsware auf einen Kaeufer. Einzeilig, wie die Nachbarn.
+      '<div class="tw-stat" title="second life, resale, swap buffer"><div class="tw-lab">For rent or sale</div><span class="tw-i" title="second life, resale, swap buffer">i</span><div class="tw-val" id="tw-wait" style="color:#f5a524">n/a</div><div class="tw-sub2 tw-opt">second life, resale, swap buffer</div></div>' +
+      // Zuletzt die Stroeme: was ankommt und was nicht mehr unter Verwaltung steht. Die
+      // Farben folgen der Legende: gruen kommt an, amber steht im Lager, tuerkis ist
+      // beim Kunden, rot geht.
+      '<div class="tw-stat"><div class="tw-lab">Inbound (on order)</div><div class="tw-val" id="tw-tr" style="color:#3ddc84">n/a</div></div>' +
+      '<div class="tw-stat"><div class="tw-lab">No longer under management</div><div class="tw-val" id="tw-gone" style="color:#ff5d5d">n/a</div><div class="tw-sub2" id="tw-gone-sub"></div></div>' +
     '</div>' +
+    // Die Legende beschreibt, was die Farben in der Szene zeigen, nicht eine
+    // Statusliste, die die Szene gar nicht malt.
     '<div class="tw-panel" id="tw-legend">' +
-      '<div class="tw-h">Lifecycle state</div>' +
-      '<div class="tw-item"><span class="tw-dot" style="background:#3ddc84;color:#3ddc84"></span>Inbound, on order</div>' +
-      '<div class="tw-item"><span class="tw-dot" style="background:#f5a524;color:#f5a524"></span>In storage, before first rental</div>' +
-      '<div class="tw-item"><span class="tw-dot" style="background:#4aa3ff;color:#4aa3ff"></span>In processing, back from a customer</div>' +
-      '<div class="tw-item"><span class="tw-dot" style="background:#2dd4bf;color:#2dd4bf"></span>Rented, at a customer</div>' +
-      '<div class="tw-item"><span class="tw-dot" style="background:#ff5d5d;color:#ff5d5d"></span>Sold or recycled</div>' +
+      '<div class="tw-h">What the scene shows</div>' +
+      '<div class="tw-item"><span class="tw-dot" style="background:#3ddc84;color:#3ddc84"></span>Arriving, on order</div>' +
+      '<div class="tw-item"><span class="tw-dot" style="background:#f5a524;color:#f5a524"></span>Warehouse stack: capacity committed</div>' +
+      '<div class="tw-item"><span class="tw-dot" style="background:#4aa3ff;color:#4aa3ff"></span>Packed for a customer</div>' +
+      // Vor dem ersten Abruf sind alle Racks dunkel; "lit racks" stuende dann neben 0 %.
+      '<div class="tw-item"><span class="tw-dot" style="background:#2dd4bf;color:#2dd4bf"></span><span id="tw-leg-rent">Rented share: waiting for the first read</span></div>' +
+      // Ein gemietetes Geraet geht im Lebenszyklus nur zurueck ins Lager (RENTED ->
+      // RETURNED); verkauft oder verwertet wird es erst danach.
+      '<div class="tw-item"><span class="tw-dot" style="background:#ff5d5d;color:#ff5d5d"></span>Leaving: sold or recycled, after return</div>' +
     '</div>' +
     '<div class="tw-panel" id="tw-log">' +
-      '<div class="tw-h"><span>Event stream</span><span style="color:#586478">live findings</span></div>' +
+      '<div class="tw-h"><span>Event stream</span><span style="color:#586478">findings live · sim = simulated</span></div>' +
       '<div id="tw-logfeed"></div>' +
     '</div>' +
     '<div class="tw-panel" id="tw-controls">' +
@@ -505,6 +579,10 @@ function buildHUD() {
   R.container.appendChild(h);
   R.hud = h;
   R.tagLayer = h.querySelector('#tw-tags');
+  // Scrollt das Panel, wandert der Hinweis "mehr darunter" mit; die Schrift laedt
+  // spaeter und aendert die Hoehen, deshalb danach noch einmal messen.
+  byid('tw-stats').addEventListener('scroll', updateStatsOverflow, { passive: true });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(updateStatsOverflow);
 
   byid('tw-play').onclick = function () { SIM.playing = !SIM.playing; byid('tw-play').textContent = SIM.playing ? '⏸ Pause' : '▶ Play'; };
   function spd(s, id) { SIM.speed = s; ['tw-1', 'tw-2', 'tw-4'].forEach(function (b) { byid(b).classList.remove('on'); }); byid(id).classList.add('on'); }
@@ -524,9 +602,26 @@ function buildHUD() {
 }
 function byid(id) { return R.hud ? R.hud.querySelector('#' + id) : null; }
 
+// Warum ein Block fehlt. Der Server unterscheidet (server.js, keepLastGood): ein 404
+// heisst, dieser Stand bedient den Endpunkt nicht; alles andere (Zeitueberschreitung,
+// 5xx) heisst, er antwortet gerade nicht. Ohne Angabe, etwa im Offline-Schnappschuss,
+// bleibt der Satz allgemein, statt eine Ursache zu behaupten.
+function missingWhy(st, path, what) {
+  var s = st && st.state;
+  if (s === 'not_served') return path + ' not served by this deployment';
+  if (s === 'unavailable') return what + ' unavailable right now';
+  return 'no ' + what + ' in this read';
+}
+// Kommt ein Block aus dem letzten guten Abruf, steht dessen Uhrzeit dabei.
+function staleNote(st) {
+  return st && st.state === 'last_good' ? ' (as read at ' + (st.at || 'an earlier refresh') + ')' : '';
+}
+
 function updateHUD() {
   if (!R.hud) return;
-  var asof = (R.data && R.data.capFlow && R.data.capFlow.as_of) || '—';
+  var d = R.data || {};
+  // Ohne Kapazitaetsfluss traegt die Flottensumme ihr eigenes Datum.
+  var asof = (d.capFlow && d.capFlow.as_of) || (d.fleet && d.fleet.as_of) || 'n/a';
   byid('tw-asof').textContent = asof;
   var f = SIM.fleet;
   // Eine Flotte von 400.000 ohne Tausendertrennung liest sich nicht.
@@ -535,49 +630,122 @@ function updateHUD() {
   // die Kachel das, statt eine Messung vorzutaeuschen.
   function q(v) { return f.served ? n(v) : 'n/a'; }
   byid('tw-total').textContent = q(f.underMgmt);
+  // Der Abstand zur Gesamtsumme der Datenbank steht hier und nirgends sonst; deshalb
+  // faellt diese Unterzeile auch auf kurzen Schirmen nie weg. Die Teile addieren sich
+  // zur grossen Zahl, auch der Rest ohne eigene Kachel.
   byid('tw-total-sub').textContent = f.served
-    ? n(f.rented) + ' rented, ' + n(f.warehouse) + ' in the warehouse'
-      + (f.left ? '; ' + n(f.left) + ' sold or recycled are not counted here' : '')
-    : '/fleet/summary not served by this deployment';
+    ? n(f.rented) + ' rented + ' + n(f.warehouse) + ' in the warehouse'
+      + (f.other ? ' + ' + n(f.other) + ' in a status with no tile here' : '')
+      + (f.gone ? ', without the ' + n(f.gone) + ' that left' : '')
+      + staleNote(d.fleetStatus)
+    : missingWhy(d.fleetStatus, '/fleet/summary', 'fleet summary');
+  // Ohne Anteil stehen die Racks grau still (rebuildRacks); die Legende sagt das,
+  // statt dunkle Racks als "0 % vermietet" lesen zu lassen.
+  byid('tw-leg-rent').textContent = !f.served ? 'Rented share: unknown, no fleet read'
+    : !f.underMgmt ? 'Rented share: no devices yet' : 'Rented share: lit racks';
   byid('tw-dep').textContent = q(f.rented);
   byid('tw-wh').textContent = q(f.warehouse);
   // Die vier Lagerkacheln sollen sich zum Lager addieren. Tun sie es nicht,
   // sagt die Unterzeile, wie viel fehlt, statt den Rest zu verschlucken.
   byid('tw-wh-sub').textContent = f.served
-    ? (f.rest ? n(f.rest) + ' in no compartment below' : 'storage, processing, repair and ready add up to this')
+    ? (f.rest ? n(f.rest) + ' in none of the next four' : 'the next four add up to this')
     : '';
   byid('tw-stor').textContent = q(f.storage);
   byid('tw-proc').textContent = q(f.processing);
   byid('tw-rep').textContent = q(f.repair);
-  byid('tw-ready').textContent = q(f.ready);
-  byid('tw-rec').textContent = q(f.recycled);
-  byid('tw-recv').textContent = n(SIM.committed);
-  byid('tw-tr').textContent = n(SIM.inbound);
-  byid('tw-free').textContent = n(SIM.freeToOrder);
-  var p = Math.round(SIM.committedPct * 100);
-  byid('tw-cap').textContent = p + '%';
-  byid('tw-capbar').style.width = Math.min(100, p) + '%';
-  var box = byid('tw-capbox');
-  if (p >= 85) { box.classList.add('full'); byid('tw-guard').textContent = 'over-order guard: ENGAGED'; }
-  else { box.classList.remove('full'); byid('tw-guard').textContent = 'over-order guard: armed · ' + SIM.freeToOrder + ' free'; }
+  byid('tw-wait').textContent = q(f.waiting);
+  byid('tw-gone').textContent = q(f.gone);
+  // Die Aufteilung kommt aus by_status; es steht nur da, was es gibt.
+  var split = [[f.sold, 'sold'], [f.recycled, 'recycled'], [f.disposed, 'disposed'], [f.decommissioned, 'decommissioned']]
+    .filter(function (x) { return x[0]; })
+    .map(function (x) { return n(x[0]) + ' ' + x[1]; });
+  // Ein Zustand, kein Zeitraum: alles, was je abging. Deshalb kein "12m" und kein
+  // "all time" mehr, das Label sagt es.
+  byid('tw-gone-sub').textContent = f.served ? (split.length ? split.join(', ') : 'none so far') : '';
+
+  updateCapBox(d, n);
+  updateStatsOverflow();
+}
+
+// Die Kapazitaet. Ohne Kapazitaetsfluss sagen alle ihre Kacheln n/a.
+// free_to_order null heisst im Backend "keine Lagergrenze definiert" (planning.py,
+// storage_headroom): dann gibt es keinen Prozentwert und keinen Waechter.
+function updateCapBox(d, n) {
+  var c = SIM.capServed, box = byid('tw-capbox'), guard = byid('tw-guard'), sub = byid('tw-cap-sub');
+  var free = SIM.freeToOrder, kept = staleNote(d.capFlowStatus);
+  byid('tw-recv').textContent = c ? n(SIM.committed) : 'n/a';
+  byid('tw-tr').textContent = c ? n(SIM.inbound) : 'n/a';
+  byid('tw-free').textContent = !c ? 'n/a' : (free == null ? 'no limit' : n(free));
+  // Ein Wort statt einer Zahl steht kleiner, sonst bricht "no limit" in der halben Kachel um.
+  byid('tw-free').classList.toggle('tw-word', c && free == null);
+  // Ohne Kapazitaet kein Prozentwert. Der Wert sagt dann n/a und die Unterzeile warum,
+  // statt "no limit" als Wert neben "committed" zu schreiben.
+  var p = c && SIM.capacity ? Math.round(SIM.committedPct * 100) : null;
+  byid('tw-cap').textContent = p == null ? 'n/a' : p + '%';
+  byid('tw-capbar').style.width = p == null ? '0%' : Math.min(100, p) + '%';
+  box.classList.toggle('full', p != null && p >= 85);
+  if (!c) {
+    sub.textContent = missingWhy(d.capFlowStatus, '/planning/capacity-flow', 'capacity flow');
+    guard.textContent = 'over-order guard: no capacity read';
+    return;
+  }
+  // Die Prozentzahl ist Bestand plus Bestellt gegen die ganze Kapazitaet, nicht der
+  // Bestand allein; die Basis steht deshalb direkt darunter. Die Zeile bleibt einzeilig
+  // (das Panel soll auf 1366x768 ohne Scrollen auskommen); das Wort "units" traegt die
+  // Kachel Committed units direkt darunter.
+  sub.textContent = free == null
+    ? 'no capacity limit defined; ' + n(SIM.committed) + ' committed, stock plus on order' + kept
+    : n(SIM.committed) + ' of ' + n(SIM.capacity) + ': stock plus on order' + kept;
+  // Was der Waechter im Backend tut (planning.py, check_order_capacity und
+  // assert_order_fits): eine Bestellung, die nicht in den freien Platz passt, wird
+  // abgewiesen. Die 85 % markieren "kritisch" (services/kpis.py), sie schalten nichts.
+  var g = free == null ? 'off, no capacity limit'
+    : free > 0 ? 'orders over ' + n(free) + ' refused'
+    : 'full, every order refused';
+  guard.textContent = (p != null && p >= 85 ? 'critical (85%+): ' : 'over-order guard: ') + g;
+}
+
+// Das Panel nimmt den Zeiger nur, wenn es etwas zu scrollen gibt (tw-over); sonst
+// gehoeren Ziehen und Mausrad ueber ihm der Szene. tw-more: es steht noch etwas
+// darunter, der untere Rand blendet aus (index.html).
+function updateStatsOverflow() {
+  var el = byid('tw-stats'); if (!el) return;
+  var over = el.scrollHeight > el.clientHeight + 1;
+  el.classList.toggle('tw-over', over);
+  el.classList.toggle('tw-more', over && el.scrollTop + el.clientHeight < el.scrollHeight - 2);
 }
 
 var SEV_CLS = { action: 'bad', watch: 'warn', good: 'ok', info: 'dc' };
 function seedLog(RAW) {
   var feed = byid('tw-logfeed'); if (!feed) return;
   feed.innerHTML = '';
-  logLine('control tower online · fleet ' + (SIM.fleet.underMgmt || 0).toLocaleString('en-US')
-    + ' · ' + (SIM.fleet.rented || 0).toLocaleString('en-US') + ' rented · '
-    + SIM.committed.toLocaleString('en-US') + '/' + SIM.capacity.toLocaleString('en-US')
-    + ' warehouse slots committed', 'dc');
+  var f = SIM.fleet;
+  function n(v) { return (v || 0).toLocaleString('en-US'); }
+  // "Flotte" heisst auf dem KPI-Reiter das Vermietete; hier zaehlt alles unter
+  // Verwaltung, und so steht es auch da.
+  logLine('control tower online · '
+    + (f.served ? n(f.underMgmt) + ' under management · ' + n(f.rented) + ' rented' : 'no fleet summary')
+    + ' · ' + (!SIM.capServed ? 'no capacity read'
+      : SIM.capacity ? n(SIM.committed) + ' of ' + n(SIM.capacity) + ' units of warehouse capacity committed'
+      : 'no capacity limit defined'), 'dc');
+  // Ein Block aus dem letzten guten Abruf sagt das hier, mit der Uhrzeit des Abrufs.
+  [[RAW.fleetStatus, 'fleet summary'], [RAW.capFlowStatus, 'capacity flow']].forEach(function (x) {
+    if (x[0] && x[0].state === 'last_good') {
+      logLine(x[1] + ': the latest read failed, showing the one from ' + (x[0].at || 'an earlier refresh'), 'warn');
+    }
+  });
   (RAW.ruleIns || []).slice(0, 6).forEach(function (r) {
     logLine(decode(r.title), SEV_CLS[r.severity] || 'ai');
   });
 }
-function logLine(msg, cls) {
+// sim: die Zeile schreibt die Bewegung, sie ist kein Befund. Sie traegt das sichtbar,
+// Zeile fuer Zeile, statt nur im Kopf des Ereignisstroms.
+function logLine(msg, cls, sim) {
   var feed = byid('tw-logfeed'); if (!feed) return;
-  var el = document.createElement('div'); el.className = 'tw-lg ' + (cls || '');
-  el.innerHTML = '<span class="tw-t">' + String(SIM.tick).padStart(4, '0') + '</span><span class="tw-m">' + msg + '</span>';
+  var el = document.createElement('div'); el.className = 'tw-lg ' + (cls || '') + (sim ? ' sim' : '');
+  el.innerHTML = '<span class="tw-t">' + String(SIM.tick).padStart(4, '0') + '</span>'
+    + (sim ? '<span class="tw-s">sim</span>' : '')
+    + '<span class="tw-m">' + msg + '</span>';
   feed.appendChild(el);
   while (feed.children.length > 11) feed.removeChild(feed.firstChild);
 }
@@ -668,15 +836,21 @@ function truckTick(dt) {
     var free = null; for (var i = 0; i < R.trucks.length; i++) { if (R.trucks[i].metadata.state === 'idle') { free = R.trucks[i]; break; } }
     if (free && SIM.inboundQueue.length) {
       var po = SIM.inboundQueue.shift(); SIM.inboundQueue.push(po);
-      if (SIM.committed >= SIM.capacity) {
-        worldTag(new B.Vector3(Z.RECEIVE.x, 4.6, 4), 'CAP ' + Math.round(SIM.committedPct * 100) + '% · INBOUND REFUSED', 'refuse');
-        logLine('over-order guard: PO refused @ ' + Math.round(SIM.committedPct * 100) + '% capacity', 'bad');
+      // Ohne Platzgrenze (oder ohne Kapazitaetsfluss) weist auch das Backend nichts
+      // ab; vorher meldete die Szene dann jede Lieferung als "refused @ 0%".
+      // Voll heisst im Backend: kein freier Platz, jede neue Bestellung wird abgewiesen.
+      if (SIM.capacity > 0 && SIM.committed >= SIM.capacity) {
+        worldTag(new B.Vector3(Z.RECEIVE.x, 4.6, 4), 'WAREHOUSE FULL · NEW ORDERS REFUSED', 'refuse');
+        logLine('over-order guard: warehouse full at ' + Math.round(SIM.committedPct * 100) + '%, new orders refused', 'bad', true);
         SIM.truckTimer = 4;
       } else {
         var u = free.metadata; u.state = 'arriving'; u.t = 0; u.po = reqId(); u.sku = po.sku;
         u.payload = Math.max(1, Math.min(4, po.units));
         free.setEnabled(true); free.position.set(-46, 0, 6); free.rotation.y = Math.PI / 2;
-        logLine('PO inbound · ' + po.units + '× ' + po.sku + (po.eta ? ' (ETA ' + po.eta + ')' : ''), 'ok');
+        // Menge, Modell und Termin sind gelesen (offene Bestellungen); dass der Lkw
+        // jetzt ankommt, ist gespielt. Deshalb sim.
+        logLine('purchase order inbound · ' + (+po.units || 0).toLocaleString('en-US') + '× ' + po.sku
+          + (po.eta ? ' (due ' + po.eta + ')' : ''), 'ok', true);
         SIM.truckTimer = Math.max(3, 9 - SIM.dailyIn * 0.25);
       }
     } else { SIM.truckTimer = 2; }
@@ -710,21 +884,28 @@ function updateTruck(t, dt) {
 }
 
 // ---- requisition run through the AI confidence gate (same 0.85 floor as the agent)
+// Alles hier ist gespielt (sim): Nummer und Konfidenz kommen aus der Uhr der Szene.
+// Die Marke steht am Wareneingang, denn eine Bestellanforderung ist Einkauf; was
+// danach zum Kunden faehrt, ist ein Geraet aus dem Lager.
 function requisitionTick(dt) {
   SIM.reqTimer -= dt;
   if (SIM.reqTimer > 0) return;
   SIM.reqTimer = 3.5 + (SIM.t % 2.5);
   if (R.wareStack.length < 2) return;
+  // Nie mehr Racks als der Mietanteil (rebuildRacks), unterwegs mitgezaehlt; ohne
+  // Anteil gar keine.
+  if (SIM.rackTarget == null || racksLit(true) >= SIM.rackTarget) return;
   var freeRack = null; for (var i = 0; i < R.rackSlots.length; i++) { if (!R.rackSlots[i].active) { freeRack = R.rackSlots[i]; break; } }
   if (!freeRack) return;
   var conf = +(0.62 + ((SIM.t * 53) % 100) / 100 * 0.37).toFixed(2), pr = reqId();
+  var at = new B.Vector3(Z.RECEIVE.x, 4.9, -4);
   if (conf < 0.85) {
-    worldTag(new B.Vector3(Z.PACKING.x, 4.9, 4), 'PR-' + pr + ' conf ' + conf + ' < 0.85 · ESCALATE', 'refuse');
-    logLine('agent: PR-' + pr + ' conf ' + conf + ' < floor → human approval', 'ai');
+    worldTag(at, 'PR-' + pr + ' · confidence ' + conf + ' < 0.85 · to a human', 'refuse');
+    logLine('agent: purchase request PR-' + pr + ', confidence ' + conf + ' below 0.85, sent to a human', 'ai', true);
     return;
   }
-  worldTag(new B.Vector3(Z.PACKING.x, 4.9, 4), 'PR-' + pr + ' conf ' + conf + ' ≥ 0.85 · AUTO-PO', 'ai');
-  logLine('agent: PR-' + pr + ' auto-placed (conf ' + conf + ')', 'ai');
+  worldTag(at, 'PR-' + pr + ' · confidence ' + conf + ' ≥ 0.85 · ordered', 'ai');
+  logLine('agent: purchase request PR-' + pr + ' ordered automatically (confidence ' + conf + ')', 'ai', true);
   var c = R.wareStack.shift(); freeRack.active = 'pending';
   addJob({
     from: c.position.clone(), to: new B.Vector3(Z.PACKING.x, 1, 0), crate: c,
@@ -736,8 +917,8 @@ function requisitionTick(dt) {
           killCrate(c); freeRack.active = true; freeRack.age = 0;
           freeRack.mesh.material.emissiveColor = B.Color3.FromHexString('#0e3a34'); freeRack.mesh.material.emissiveIntensity = 0.7;
           freeRack.led.material.emissiveColor = B.Color3.FromHexString('#2dd4bf');
-          worldTag(new B.Vector3(freeRack.pos.x, 3.4, freeRack.pos.z), 'DEPLOYED', 'deploy');
-          logLine('asset deployed → rack online', 'dc');
+          worldTag(new B.Vector3(freeRack.pos.x, 3.4, freeRack.pos.z), 'RENTED OUT', 'deploy');
+          logLine('device rented out', 'dc', true);
           refillStack();
         }
       });
@@ -754,11 +935,18 @@ function refillStack() {
 }
 
 // ---- decommission: an aged rack is pulled to disposal (EOL lifecycle)
+// Im Mietkreislauf heisst das: ein Geraet kommt vom Kunden zurueck und geht danach
+// in Verkauf oder Verwertung. Die Szene kuerzt den Weg durchs Lager ab, die Worte
+// nicht: ein gemietetes Geraet kann nur zurueck (RENTED -> RETURNED, lifecycle.py).
 function decommissionTick(dt) {
   SIM.decomTimer -= dt;
   for (var i = 0; i < R.rackSlots.length; i++) { if (R.rackSlots[i].active === true) R.rackSlots[i].age += dt; }
   if (SIM.decomTimer > 0) return;
   SIM.decomTimer = 11 + (SIM.t % 8);
+  // Nur zurueckholen, wenn der Mietanteil wirklich leuchtet (ohne die, zu denen ein
+  // Geraet erst unterwegs ist): so pendelt die Zahl der hellen Racks zwischen Ziel und
+  // Ziel minus eins, statt wegzuwandern.
+  if (SIM.rackTarget == null || racksLit(false) < SIM.rackTarget) return;
   var old = null, oldest = 10;
   for (var k = 0; k < R.rackSlots.length; k++) {
     var r = R.rackSlots[k];
@@ -767,7 +955,7 @@ function decommissionTick(dt) {
   if (!old) return;
   old.active = 'pulling';
   var c = spawnCrate(new B.Vector3(old.pos.x, 1, old.pos.z), 'dead'); if (!c) { old.active = true; return; }
-  logLine('lifecycle: rack EOL → decommission', 'warn');
+  logLine('device back from a customer', 'warn', true);
   addJob({
     from: c.position.clone(), to: new B.Vector3(Z.DISPOSAL.x, 1, 0), crate: c,
     onDone: function () {
@@ -775,7 +963,7 @@ function decommissionTick(dt) {
       old.active = false; old.age = 0;
       old.mesh.material.emissiveColor = B.Color3.Black(); old.mesh.material.emissiveIntensity = 0;
       old.led.material.emissiveColor = B.Color3.FromHexString('#22303f');
-      logLine('asset disposed · provenance logged', 'bad');
+      logLine('sold or recycled after return', 'bad', true);
     }
   });
 }
@@ -810,7 +998,9 @@ function mount(container) {
   if (R.data) sync(R.data);
   R.scene.registerBeforeRender(frame);
   R.engine.runRenderLoop(function () { R.scene.render(); });
-  R._onResize = function () { if (R.engine) R.engine.resize(); };
+  // Ein anderes Fenster heisst eine andere Hoehe fuer das Kachelpanel: neu messen,
+  // ob es scrollt.
+  R._onResize = function () { if (R.engine) R.engine.resize(); updateStatsOverflow(); };
   window.addEventListener('resize', R._onResize);
   R.mounted = true;
 }

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>SCM Master — Executive Cockpit</title>
+<title>SCM Master: Executive Cockpit</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -27,6 +27,10 @@
   .live{font:inherit;border:0;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;background:rgba(255,255,255,.12);padding:8px 14px;border-radius:999px}
   .dot{width:9px;height:9px;border-radius:50%;background:#34d399;animation:pulse 2s infinite}
   @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(52,211,153,.6)}70%{box-shadow:0 0 0 10px rgba(52,211,153,0)}100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}
+  /* Ein Block aus einem frueheren Abruf: der Stempel gilt dann nicht fuer alles, und der
+     Punkt sagt das, bevor jemand die Zahlen liest (buildModel setzt .stale). */
+  .live.stale .dot{background:#fbbf24;animation:none;box-shadow:0 0 0 3px rgba(251,191,36,.28)}
+  .live .stale-note{font-weight:500;color:#fde68a}
   nav.tabs{display:flex;gap:4px;margin-top:16px}
   nav.tabs button{
     background:transparent;border:none;color:rgba(255,255,255,.7);font:inherit;font-size:14px;font-weight:600;
@@ -34,6 +38,20 @@
   }
   nav.tabs button:hover{color:#fff;background:rgba(255,255,255,.08)}
   nav.tabs button.active{color:#0f172a;background:var(--bg)}
+  /* Telefon: die neun Reiter scrollen in ihrer eigenen Leiste, statt die ganze Seite
+     seitlich verschiebbar zu machen, und die Knoepfe rechts brechen unter den Titel um.
+     Die Live-Pille bricht nicht in drei Zeilen: sie bleibt einzeilig und rutscht, wenn
+     der Platz neben Autonomy nicht reicht, in eine eigene Zeile. Der Satz zum frueheren
+     Abruf steht dann nur im Tooltip; der gelbe Punkt bleibt. */
+  @media(max-width:760px){
+    .bar-top{flex-wrap:wrap;gap:10px}
+    .bar-top>div:last-child{flex-wrap:wrap}
+    .live{white-space:nowrap}
+    .live .stale-note{display:none}
+    nav.tabs{overflow-x:auto;scrollbar-width:none}
+    nav.tabs::-webkit-scrollbar{display:none}
+    nav.tabs button{flex:none;white-space:nowrap}
+  }
   .filterbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;min-height:30px}
   .filterbar .tag{display:inline-flex;align-items:center;gap:8px;background:#dbeafe;color:#1e40af;font-size:13px;font-weight:600;padding:6px 12px;border-radius:999px}
   .filterbar .tag b{font-weight:700}
@@ -256,7 +274,7 @@
     border-radius:14px;overflow:hidden;background:#0a0e16;box-shadow:0 18px 60px rgba(0,0,0,.45)}
   #towerMount{position:absolute;inset:0}
   #towerMount canvas{display:block;width:100%;height:100%}
-  .tower-hint{position:absolute;bottom:64px;left:50%;transform:translateX(-50%);z-index:6;
+  .tower-hint{position:absolute;bottom:72px;left:50%;transform:translateX(-50%);z-index:6;
     font:10px/1 'JetBrains Mono',monospace;color:#7c8aa0;text-align:center;pointer-events:none;
     animation:twHintFade 1s ease-in 7s forwards}
   @keyframes twHintFade{to{opacity:0}}
@@ -282,8 +300,31 @@
 
   /* Eleven tiles since the fleet split (04.10.2026): wider so the sub-lines wrap less,
      and never taller than the scene, so nothing slides under the other panels. */
-  #tw-stats{top:16px;right:16px;padding:12px;display:grid;grid-template-columns:repeat(2,1fr);gap:8px;width:296px;max-height:calc(100% - 32px);overflow:hidden}
-  .tw-stat{padding:8px 10px;border-radius:7px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.05)}
+  /* Ist die Szene kuerzer als die Kacheln, scrollt das Panel, statt die letzten Reihen
+     wortlos abzuschneiden. Den Zeiger nimmt es nur dann (tw-over, gesetzt in tower.js):
+     passt alles, gehoeren Ziehen und Mausrad ueber ihm der Szene. Die Rinne fuer den
+     Balken ist immer reserviert: sonst macht der Balken die Kacheln schmaler, eine
+     Unterzeile bricht um, das Panel wird hoeher, und der Balken bleibt stehen, obwohl
+     ohne ihn alles passen wuerde. Der Balken ist hell genug, um gesehen zu werden. */
+  #tw-stats{top:16px;right:16px;padding:12px;display:grid;grid-template-columns:repeat(2,1fr);gap:8px;width:296px;
+    max-height:calc(100% - 32px);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;user-select:none;
+    scrollbar-gutter:stable;scrollbar-width:thin;scrollbar-color:#5b7090 transparent}
+  #tw-stats.tw-over{pointer-events:auto}
+  /* Steht noch etwas darunter, blendet der untere Rand aus: ein abgeschnittenes Panel
+     sieht so nie fertig aus, auch wo der Balken erst beim Scrollen erscheint. */
+  #tw-stats.tw-more{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 48px),transparent);
+    mask-image:linear-gradient(to bottom,#000 calc(100% - 48px),transparent)}
+  #tw-stats::-webkit-scrollbar{width:6px}
+  #tw-stats::-webkit-scrollbar-thumb{background:#5b7090;border-radius:3px}
+  #tw-stats::-webkit-scrollbar-track{background:transparent}
+  .tw-stat{position:relative;padding:8px 10px;border-radius:7px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.05)}
+  /* (i) unten rechts, neben dem Wert, wo es kein Label trifft: zeigt die Erklaerung beim
+     Darueberfahren, wo die Unterzeile auf kurzen Schirmen wegfaellt. Nur das Zeichen
+     nimmt den Zeiger, nicht die Kachel. */
+  .tw-i{display:none;position:absolute;bottom:7px;right:7px;width:12px;height:12px;border-radius:50%;
+    border:1px solid #4b5d75;color:#9fb0c6;font:italic 700 8px/10px 'JetBrains Mono',monospace;text-align:center;
+    pointer-events:auto;cursor:help}
+  .tw-i:hover{color:#fff;border-color:#9fb0c6}
   .tw-stat .tw-lab{font-size:8.5px;letter-spacing:.14em;color:#7c8aa0;text-transform:uppercase}
   .tw-stat .tw-val{font-size:22px;font-weight:700;line-height:1.05;margin-top:2px;font-variant-numeric:tabular-nums}
   /* The capacity box carries the over-order guard, the one alarm on this panel: it goes first. */
@@ -305,7 +346,14 @@
   #tw-log .tw-h{font-size:8.5px;letter-spacing:.16em;color:#7c8aa0;text-transform:uppercase;margin-bottom:7px;display:flex;justify-content:space-between}
   #tw-logfeed{display:flex;flex-direction:column-reverse;gap:3px;font-size:10.5px;line-height:1.35}
   .tw-lg{display:flex;gap:7px;opacity:0;animation:twSlide .35s forwards}
+  /* .warn und .bad sind auch die hellen Pillen der Datenreiter; ohne diese Zeile malen
+     sie gelbe und rote Balken hinter die Ereigniszeilen. */
+  .tower-hud .tw-lg{background:none}
   .tw-lg .tw-t{color:#586478;flex:none}
+  /* sim: eine Zeile, die die Bewegung schreibt, kein Befund. Markiert und gedaempft. */
+  .tw-lg .tw-s{flex:none;align-self:flex-start;margin-top:1px;padding:0 3px;border:1px solid #2f3d52;border-radius:3px;
+    color:#7c8aa0;font-size:8px;line-height:11px;letter-spacing:.08em;text-transform:uppercase}
+  .tw-lg.sim .tw-m{opacity:.72}
   .tw-lg .tw-m{color:#aab6c6}
   .tw-lg.ok .tw-m{color:#3ddc84}.tw-lg.dc .tw-m{color:#2dd4bf}.tw-lg.warn .tw-m{color:#f5a524}.tw-lg.bad .tw-m{color:#ff5d5d}.tw-lg.ai .tw-m{color:#4aa3ff}
   @keyframes twSlide{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
@@ -327,6 +375,68 @@
   .tw-tag.deploy{color:#c9fff5;background:rgba(20,70,64,.7);border-color:#2dd4bf}
   @keyframes twTagPop{from{opacity:0;transform:translate(-50%,-70%) scale(.8)}to{opacity:1}}
   @keyframes twTagFade{to{opacity:0;transform:translate(-50%,-130%)}}
+
+  /* Kurze Schirme: es fallen die Unterzeilen weg, die nur ihr Label erklaeren (tw-opt);
+     an ihrer Stelle steht das (i) mit demselben Text. Nie fallen die weg, die rechnen:
+     #tw-total-sub (was nicht mehr unter Verwaltung steht), #tw-wh-sub (gehen die
+     Lagerteile auf?) und die Unterzeilen der Kapazitaet. Die tragen kein tw-opt. */
+  @media (max-height:900px){
+    #tw-stats .tw-opt{display:none}
+    #tw-stats .tw-i{display:block}
+  }
+  /* Unter 800 px Hoehe etwas dichter, damit 1366x768 ohne Scrollen auskommt. */
+  @media (max-height:800px){
+    #tw-stats{gap:6px;padding:10px 12px}
+  }
+  /* Mittlere Breiten (Tablet quer, kleiner Laptop, 1280 bei 150 %): die zentrierte
+     Steuerleiste laege hier auf dem Ereignisstrom und bei kurzem Fenster unten auf den
+     Kacheln. Also stehen Titel, Legende, Ereignisse und Steuerung links in einer
+     Spalte im Fluss, wo nichts das andere verdecken kann; das Kachelpanel bleibt
+     rechts. Der Maus-Hinweis steht in der Luecke dazwischen. */
+  @media (min-width:761px) and (max-width:1339px){
+    .tower-hud{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:16px}
+    .tower-hud #tw-title,.tower-hud #tw-legend,.tower-hud #tw-log,.tower-hud #tw-controls{
+      position:relative;top:auto;right:auto;bottom:auto;left:auto;transform:none;flex:none}
+    .tower-hud #tw-legend{margin-top:auto}
+    .tower-hud #tw-controls{width:380px;flex-wrap:wrap}
+    .tower-hint{left:396px;right:312px;bottom:16px;transform:none}
+  }
+  /* Reicht die Hoehe der Spalte nicht, geht zuerst die Legende. */
+  @media (min-width:761px) and (max-width:1339px) and (max-height:760px){
+    .tower-hud #tw-legend{display:none}
+    .tower-hud #tw-log{margin-top:auto}
+  }
+  @media (min-width:761px) and (max-width:899px){
+    .tower-hint{display:none}
+  }
+  /* Telefon: die Szene als Band im Fluss statt als Hintergrund unter vier Panels. Oben
+     der Titel, dann die Szene mit ihrer Steuerung, dann alle Kacheln, zuletzt die
+     Ereignisse. Die Seite scrollt, kein Panel scrollt in sich. Die Panels nehmen den
+     Zeiger, damit ein Wisch auf ihnen die Seite bewegt und nicht die Szene dreht; nur
+     das Band selbst dreht die Szene. Das HUD loest sich dafuer auf (display:contents),
+     seine Panels stehen neben der Leinwand im selben Fluss. */
+  @media (max-width:760px){
+    .tower-stage{height:auto;min-height:0}
+    #towerMount{position:relative;inset:auto;display:flex;flex-direction:column;gap:8px;padding:12px}
+    #towerMount canvas{order:2;flex:none;height:240px!important;border-radius:10px;border:1px solid #223043}
+    .tower-hud{display:contents}
+    .tower-hud #tw-title,.tower-hud #tw-stats,.tower-hud #tw-log,.tower-hud #tw-controls{
+      position:relative;top:auto;right:auto;bottom:auto;left:auto;transform:none;
+      width:auto;max-width:none;max-height:none;flex:none;pointer-events:auto}
+    .tower-hud #tw-title{order:1;padding:10px 14px}
+    .tower-hud #tw-controls{order:3;flex-wrap:wrap;justify-content:center}
+    .tower-hud #tw-stats{order:4;overflow:visible}
+    /* Die neuesten Zeilen stehen oben; was unten abgeschnitten wird, ist das Aelteste. */
+    .tower-hud #tw-log{order:5;max-height:260px}
+    #tw-legend{display:none}
+    /* Hier ist Platz: die Erklaerzeilen stehen wieder unter den Kacheln, ohne (i). */
+    #tw-stats .tw-opt{display:block}
+    #tw-stats .tw-i{display:none}
+    /* Der Maus-Hinweis passt nicht zum Finger, und die schwebenden Szenen-Marken
+       fielen im schmalen Band auf die Szene selbst; dieselben Ereignisse stehen im
+       Ereignisstrom. */
+    .tower-hint,#tw-tags{display:none}
+  }
 
   /* ===================== AUTONOMY (hidden decision-loop tab) ===================== */
   .autobtn{font:inherit;font-size:12px;font-weight:600;color:rgba(255,255,255,.85);background:rgba(255,255,255,.1);
@@ -493,12 +603,12 @@
 <header class="bar">
   <div class="bar-top">
     <div>
-      <h1>SCM Master — Executive Cockpit</h1>
+      <h1>SCM Master: Executive Cockpit</h1>
       <div class="sub">Procurement &amp; supply-chain analytics · live API</div>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="autonomyOpen" class="autobtn" title="Decision loop + audit trail">⚙ Autonomy</button>
-      <button id="liveRefresh" class="live" title="Read the API again now, about twenty seconds. Use it after changing something in the console (extra capacity on a compartment, a delivery, a batch of returns) so the board shows it without waiting for the next five-minute tick."><span class="dot"></span> Live data · <span id="genDate"></span></button>
+      <button id="liveRefresh" class="live" title="Read the API again now, about twenty seconds. Use it after changing something in the console (extra capacity on a compartment, a delivery, a batch of returns) so the board shows it without waiting for the next five-minute tick."><span class="dot"></span> Live data · <span id="genDate"></span><span id="genStale" class="stale-note"></span></button>
     </div>
   </div>
   <nav class="tabs">
@@ -650,7 +760,7 @@
       <div class="card kpi"><div class="label">Inventory Value</div><div class="value" id="iValue">–</div><span class="pill neut">on-hand × price</span></div>
     </div>
     <div class="card" id="bdCard" style="display:none">
-      <h3>What the fleet is made of <span style="font-weight:400;text-transform:none;font-size:11px" id="bdSub"></span></h3>
+      <h3>Devices under management, by maker, class and model <span style="font-weight:400;text-transform:none;font-size:11px" id="bdSub"></span></h3>
       <div id="bdBody"></div>
     </div>
     <div class="card" id="capCard" style="display:none">
@@ -969,10 +1079,33 @@ function buildModel(src){
     // Was die Flotte ausmacht: Hersteller, Klasse, Modell. null auf einem Stand,
     // der den Endpunkt noch nicht bedient; die Karte blendet sich dann aus.
     breakdown: D.fleet_breakdown || null,
+    // Wie der Server die zwei Bloecke des Control Towers bekam: frisch, aus dem
+    // letzten guten Abruf, nicht bedient (404) oder gerade nicht erreichbar. Daran
+    // haengt, was eine n/a-Kachel als Grund nennt (tower.js, missingWhy).
+    fleetStatus: D.fleet_summary_status || null,
+    capFlowStatus: D.capacity_flow_status || null,
   };
   document.getElementById("genDate").textContent = D.generated_at;
   document.getElementById("genDate2").textContent = D.generated_at;
+  markKeptBlocks();
   KPI = computeKPI();
+}
+
+// Dient ein Block aus dem letzten guten Abruf (server.js, keepLastGood), gilt der Stempel
+// am Knopf nicht fuer alles: der Punkt wird gelb, daneben steht wie viele, und der
+// Tooltip sagt welche und von wann. Jede Stelle, die einen solchen Block zeigt, sagt es
+// zusaetzlich selbst (Control Tower, Overview, Autonomy, KPIs).
+const LIVE_TITLE = document.getElementById("liveRefresh").title;
+function keptNote(st){ return st && st.state==="last_good" ? (st.at||"an earlier refresh") : ""; }
+function markKeptBlocks(){
+  const kept=[[RAW.capFlowStatus,"capacity flow"],[RAW.fleetStatus,"fleet summary"]]
+    .filter(x=>keptNote(x[0])).map(x=>`${x[1]} from ${keptNote(x[0])}`);
+  const btn=document.getElementById("liveRefresh");
+  btn.classList.toggle("stale", kept.length>0);
+  document.getElementById("genStale").textContent = kept.length
+    ? ` · ${kept.length===1?"1 block":kept.length+" blocks"} from an earlier read` : "";
+  btn.title = LIVE_TITLE + (kept.length
+    ? `\n\nThe latest read of ${kept.join(" and ")} failed. Those numbers are the last good read and say so where they are shown.` : "");
 }
 
 // ---------- Supply-chain KPI engine (all derived from live data, none fabricated) ----------
@@ -1060,11 +1193,15 @@ function renderCapFlow(){
   const net=cf.net_flow_per_day;
   const cover=cf.weeks_of_cover!=null?`${cf.weeks_of_cover} weeks`:"—";
   const deplete=cf.days_to_depletion!=null?`${cf.days_to_depletion} days`:"—";
+  // Aus dem letzten guten Abruf: die Karte sagt es selbst, denn ueber ihr steht, die
+  // Kapazitaet sei live "now".
+  const kept=keptNote(RAW.capFlowStatus);
   document.getElementById("capFlow").innerHTML=`
     <div style="font-size:13px;color:#334155;margin:2px 0 12px">
       <b style="color:${committedPct>=90?'#dc2626':'#0f172a'}">${committedPct}% committed</b> of ${cap} max
       · <b>${free}</b> units free to order before inbound fills it.
     </div>
+    ${kept?`<div style="font-size:12px;color:#b45309;background:#fffbeb;border-left:3px solid #f59e0b;border-radius:0 6px 6px 0;padding:6px 10px;margin:-4px 0 12px">As read at ${esc(kept)}: the latest read of the capacity flow failed, so these are the last good numbers, not now.</div>`:""}
     <div style="display:flex;height:20px;border-radius:6px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:8px">
       <div title="On hand ${used}" style="width:${pct(used)}%;background:#1f3a8a"></div>
       <div title="Inbound (reserved) ${inb}" style="width:${pct(inb)}%;background:#f59e0b"></div>
@@ -1514,16 +1651,27 @@ function renderCapacity(){
 const BD_OPEN = new Set();
 const BD_LABEL = {
   RENTED:"at customers", IN_STORAGE:"new stock", RETURNED:"returns intake",
-  MDM_RELEASE:"MDM release", WIPE_GRADING:"wipe & grading", REPAIR:"repair",
+  MDM_RELEASE:"device-management (MDM) release", WIPE_GRADING:"wipe & grading", REPAIR:"repair",
   REFURB:"refurbishment", READY_SECOND:"second-life stock", SELLABLE:"sellable",
-  SWAP_BUFFER:"swap buffer", RECEIVED:"just received", SOLD:"sold", RECYCLED:"recycled"
+  SWAP_BUFFER:"swap buffer", RECEIVED:"just received", DEPLOYED:"in service", MAINTENANCE:"in maintenance",
+  SOLD:"sold", RECYCLED:"recycled", DISPOSED:"disposed", DECOMMISSIONED:"decommissioned"
 };
+// Was nicht mehr unter Verwaltung steht, steht in genau einem roten Chip, aufgeteilt.
+// Als eigene Chips daneben zaehlten dieselben Geraete doppelt, und die Zahl links waere
+// nicht mehr die Summe der Chips neben ihr. Dieselben Worte wie die Kachel im Control
+// Tower: "Flotte" heisst auf dem KPI-Reiter nur das Vermietete.
+const BD_GONE = ["SOLD","RECYCLED","DISPOSED","DECOMMISSIONED"];
 function bdPlural(n,one,many){ return n+" "+(n===1?one:many); }
 function bdNum(v){ return (v||0).toLocaleString("en-US"); }
-function bdChips(by){
-  const ks=Object.keys(by||{});
-  if(!ks.length) return '<span class="bd-none">no devices</span>';
-  return ks.map(k=>'<span class="bd-chip"><b>'+bdNum(by[k])+'</b> '+(BD_LABEL[k]||k.toLowerCase())+'</span>').join("");
+function bdChips(by,total,active){
+  by=by||{};
+  const live=Object.keys(by).filter(k=>!BD_GONE.includes(k));
+  const split=BD_GONE.filter(k=>by[k]).map(k=>bdNum(by[k])+" "+BD_LABEL[k]).join(", ");
+  const gone=total>active
+    ?'<span class="bd-chip bd-gone"><b>'+bdNum(total-active)+'</b> no longer under management'+(split?" ("+split+")":"")+'</span>'
+    :"";
+  if(!live.length && !gone) return '<span class="bd-none">no devices</span>';
+  return live.map(k=>'<span class="bd-chip"><b>'+bdNum(by[k])+'</b> '+(BD_LABEL[k]||k.toLowerCase())+'</span>').join("")+gone;
 }
 function bdRow(level, id, label, meta, total, active, share, by, openable){
   const open=BD_OPEN.has(id);
@@ -1534,16 +1682,13 @@ function bdRow(level, id, label, meta, total, active, share, by, openable){
       +'<span class="bd-n">'+bdNum(active)+'</span>'
       +(share!=null?'<span class="bd-bar"><i style="width:'+Math.max(1,Math.min(100,share))+'%"></i></span><span class="bd-pct">'+share.toFixed(1)+'%</span>':'<span class="bd-bar"></span><span class="bd-pct"></span>')
     +'</div>'
-    +'<div class="bd-chips">'+bdChips(by)+(total>active?'<span class="bd-chip bd-gone"><b>'+bdNum(total-active)+'</b> left the fleet</span>':'')+'</div>'
+    +'<div class="bd-chips">'+bdChips(by,total,active)+'</div>'
     +'</div>';
 }
 function renderBreakdown(){
   const card=document.getElementById("bdCard"); if(!card) return;
   const B=RAW.breakdown;
   if(!B || !(B.manufacturers||[]).length){ card.style.display="none"; return; }
-  card.style.display="";
-  document.getElementById("bdSub").textContent =
-    "\u00b7 "+bdNum(B.active)+" active of "+bdNum(B.total)+" ever received \u00b7 click a row to open it";
   let h="";
   for(const m of B.manufacturers){
     const mid="m:"+m.name;
@@ -1561,19 +1706,33 @@ function renderBreakdown(){
     }
   }
   const body=document.getElementById("bdBody");
+  document.getElementById("bdSub").textContent =
+    "\u00b7 "+bdNum(B.active)+" under management of "+bdNum(B.total)+" ever received \u00b7 click a row to open it";
   body.innerHTML=h;
   body.querySelectorAll("[data-bd]").forEach(el=>{
     el.addEventListener("click", ev=>{
       ev.stopPropagation();
       const id=el.getAttribute("data-bd");
       if(BD_OPEN.has(id)) BD_OPEN.delete(id); else BD_OPEN.add(id);
-      renderBreakdown();
+      renderBreakdownSafe();
     });
   });
+  // Erst sichtbar, wenn der Koerper steht. Wirft der Aufbau vorher, bleibt die Karte
+  // zu, statt mit Untertitel und leerem oder altem Inhalt dazustehen.
+  card.style.display="";
+}
+// Ein Fehler im Aufbau versteckt die Karte, statt sie halb zu zeigen; die Reiter
+// darum herum rendern weiter.
+function renderBreakdownSafe(){
+  try{ renderBreakdown(); }
+  catch(e){
+    console.warn("renderBreakdown failed:",e);
+    const card=document.getElementById("bdCard"); if(card) card.style.display="none";
+  }
 }
 
 function renderInventory(){
-  try{ renderBreakdown(); }catch(e){ console.warn("renderBreakdown failed:",e); }
+  renderBreakdownSafe();
   const inv=RAW.inv;
   const belowSafety=inv.filter(x=>x.on_hand<x.safety).length;
   const risk=inv.filter(x=>x.burn>0 && (x.on_hand/x.burn)<x.lead).length;
@@ -1947,6 +2106,11 @@ function renderFleetGoal(nowKey){
   const basis = F.source==="served"
     ? "Path and milestones from the backend's capacity plan (/capacity-plan), interpolated month by month; the milestones are edited there."
     : "Path derived in this cockpit: a straight line from today's measured rented fleet (/fleet/summary) to each milestone, the same interpolation the backend's capacity plan uses. This API does not serve /capacity-plan yet; the served plan replaces this line the moment it does.";
+  // Die Flottensumme aus dem letzten guten Abruf: hier steht nur ihr Tagesdatum, und ein
+  // Stand von heute frueh saehe frisch aus. Sagt es, wo sie in diese Karte eingeht.
+  const fsKept = keptNote(RAW.fleetStatus) && (F.source==="derived" || F.measured12m)
+    ? ` The fleet summary behind ${F.source==="derived"?"today's number":"the 12-month growth"} is the read from ${keptNote(RAW.fleetStatus)}; the latest read failed.`
+    : "";
   host.innerHTML=`<div class="card kfleet">
     <div class="kf-head">
       <div>${eyebrow}<div class="kf-now">${NUM(F.fleetNow)}</div><div class="note" style="font-size:11.5px;color:var(--muted)">measured ${kdate(F.asOf)} · rented fleet, first and second rentals</div></div>
@@ -1957,7 +2121,7 @@ function renderFleetGoal(nowKey){
     <div class="hyhint">Click a half-year to see how its number comes about.</div>
     <div class="kf-pace">${pace}</div>
     <div class="chart-box" style="height:210px;margin-top:12px"><canvas id="kpiFleetChart"></canvas></div>
-    <div class="kf-basis">${basis}</div>
+    <div class="kf-basis">${basis}${fsKept?`<span style="color:#b45309">${esc(fsKept)}</span>`:""}</div>
   </div>`;
   if(!F.path.length) return;
   const msSet=new Set(F.milestones.map(m=>m.date));
@@ -2395,10 +2559,16 @@ async function autoRunGate(){
   const verdict=document.getElementById("gateVerdict"); if(verdict){ verdict.className="gate-verdict"; verdict.textContent="…"; }
   document.getElementById("gateNote").textContent="";
 
-  // Check 1 — capacity, from the live capacity-flow already in the model.
-  const cf = RAW && RAW.capFlow;
-  const capOk = cf ? (cf.free_to_order > 0 && (cf.committed_pct||0) < 0.85) : null;
-  setGate("gateCap", capOk, cf ? `${Math.round((cf.committed_pct||0)*100)}% committed · ${cf.free_to_order} free` : "n/a");
+  // Check 1: capacity, from the capacity-flow already in the model. free_to_order null
+  // heisst im Backend "keine Lagergrenze definiert" (planning.py): dann gibt es nichts,
+  // woran die Pruefung bestehen oder scheitern koennte, wie im Control Tower. Kommt der
+  // Block aus dem letzten guten Abruf, sagt die Zeile von wann.
+  const cf = RAW && RAW.capFlow, capKept = RAW ? keptNote(RAW.capFlowStatus) : "";
+  const noLimit = !!cf && cf.free_to_order == null;
+  const capOk = !cf || noLimit ? null : (cf.free_to_order > 0 && (cf.committed_pct||0) < 0.85);
+  const capTxt = !cf ? "n/a" : noLimit ? "no capacity limit defined"
+    : `${cf.committed_pct==null?"no capacity defined":Math.round(cf.committed_pct*100)+"% committed"} · ${NUM(cf.free_to_order)} free`;
+  setGate("gateCap", capOk, capTxt + (cf && capKept ? ` (as read at ${capKept})` : ""));
 
   // Run the decision engine (dry-run by default; server forces it unless ALLOW_LIVE_PLACE).
   let result=null;
@@ -2983,10 +3153,14 @@ document.addEventListener("click", async (e)=>{
   const btn = e.target && e.target.closest && e.target.closest("#liveRefresh");
   if(!btn || btn.disabled) return;
   const stamp=document.getElementById("genDate"), was=stamp.textContent;
+  // Der Satz zum frueheren Abruf gehoert zum alten Stempel: waehrend des Lesens weg,
+  // bei einem Fehlschlag wieder da, nach Erfolg setzt ihn buildModel neu.
+  const staleEl=document.getElementById("genStale"), wasStale=staleEl.textContent;
   // It takes about twenty seconds: the proxy calls the API roughly a dozen times. A
   // count is the difference between "working" and "frozen" to whoever is watching.
   btn.disabled=true;
   const t0=Date.now();
+  staleEl.textContent="";
   stamp.textContent="reading the API… 0s";
   const tick=setInterval(()=>{ stamp.textContent=`reading the API… ${Math.round((Date.now()-t0)/1000)}s`; }, 1000);
   try{
@@ -3001,6 +3175,7 @@ document.addEventListener("click", async (e)=>{
     failed(err&&err.message||err);
   }finally{ clearInterval(tick); btn.disabled=false; }
   function failed(why){
+    staleEl.textContent=wasStale;
     stamp.textContent=`${was} · refresh failed (${String(why).slice(0,80)})`;
     btn.title=`The last refresh failed: ${why}. The board is still showing the read from ${was}.`;
   }

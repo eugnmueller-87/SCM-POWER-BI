@@ -185,7 +185,13 @@ function forgetToken() { tokenCache = { value: null, until: 0, inFlight: null };
 async function getJSON(token, p) {
   const r = await fetch(`${API}${p}`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   if (r.status === 401) forgetToken();
-  if (!r.ok) throw new Error(`${p} → ${r.status}`);
+  if (!r.ok) {
+    // Der Status reist am Fehler mit: keepLastGood unterscheidet daran "nicht bedient"
+    // (404) von "gerade nicht erreichbar" (alles andere).
+    const e = new Error(`${p} → ${r.status}`);
+    e.status = r.status;
+    throw e;
+  }
   return r.json();
 }
 async function getCSV(token, p) {
@@ -224,6 +230,53 @@ function parseCSV(text) {
 async function safe(label, p, fallback) {
   try { return await p; }
   catch (e) { console.warn(`[refresh] non-critical '${label}' failed: ${e.message || e} — using fallback`); return fallback; }
+}
+
+// Der letzte gute Stand der zwei Bloecke, auf denen der Control Tower steht: die
+// Flottensumme und der Kapazitaetsfluss. Wie kpisCache: scheitert ein Abruf einmal
+// (Zeitueberschreitung, 5xx), bleibt der letzte gute stehen, statt die Kacheln bis
+// zum naechsten Refresh auf n/a zu stellen, und das Log sagt, dass er dient. Ein 404
+// ist etwas anderes: dieser Stand bedient den Endpunkt nicht, und genau das soll die
+// Seite sagen. Der Status geht mit in /api/data, damit die Seite den Grund nennt,
+// statt ihn zu raten.
+// Wie alt ein letzter guter Stand hoechstens sein darf. Danach gilt der Block als
+// gerade nicht erreichbar, wie ohne fruehere Lesung: ein Stand von vor Stunden unter
+// dem Stempel des letzten Refresh waere schlimmer als n/a. 30 Minuten sind sechs
+// verpasste Refreshes im Fuenf-Minuten-Takt.
+const LAST_GOOD_MAX_MS = (process.env.LAST_GOOD_MAX_MINUTES ? +process.env.LAST_GOOD_MAX_MINUTES : 30) * 60 * 1000;
+const lastGood = {};
+function readStamp() { return new Date().toISOString().replace("T", " ").slice(0, 16) + " UTC"; }
+async function keepLastGood(label, p) {
+  try {
+    const value = await p;
+    if (!value) throw new Error("empty answer");
+    const at = readStamp();
+    lastGood[label] = { value, at, t: Date.now() };
+    return { value, status: { state: "fresh", at } };
+  } catch (e) {
+    const why = String((e && e.message) || e);
+    if (e && e.status === 404) {
+      console.warn(`[refresh] '${label}' not served by this deployment (${why})`);
+      return { value: null, status: { state: "not_served", error: why } };
+    }
+    const kept = lastGood[label];
+    if (kept && Date.now() - kept.t <= LAST_GOOD_MAX_MS) {
+      console.warn(`[refresh] '${label}' failed (${why}), serving the last good read from ${kept.at}`);
+      return { value: kept.value, status: { state: "last_good", at: kept.at, error: why } };
+    }
+    if (kept) {
+      console.warn(`[refresh] '${label}' failed (${why}), and the last good read from ${kept.at} is older than `
+        + `${LAST_GOOD_MAX_MS / 60000} minutes, so it is no longer served`);
+      return { value: null, status: { state: "unavailable", error: why, last_good_at: kept.at } };
+    }
+    console.warn(`[refresh] '${label}' failed (${why}), and there is no earlier good read to serve`);
+    return { value: null, status: { state: "unavailable", error: why } };
+  }
+}
+// Wie die Logzeile einen solchen Abruf nennt.
+function readWord(r) {
+  return { fresh: "served", last_good: `last good from ${r.status.at}`,
+           not_served: "not served", unavailable: "unavailable" }[r.status.state];
 }
 
 // A forced refresh shares whatever run is already going, so a row of clicks (or a click
@@ -285,8 +338,10 @@ async function refresh() {
     const storageHeadroom = await safe("storage-headroom",
       getJSON(token, "/api/v1/planning/storage-headroom"), null);
     // The one capacity-vs-flow metric: committed/free %, in/out flow, coverage.
-    const capacityFlow = await safe("capacity-flow",
-      getJSON(token, "/api/v1/planning/capacity-flow"), null);
+    // Kept last good, see keepLastGood above.
+    const capacityFlowRead = await keepLastGood("capacity-flow",
+      getJSON(token, "/api/v1/planning/capacity-flow"));
+    const capacityFlow = capacityFlowRead.value;
     // Warehouse compartments (Overview): the list, then the nine contents in parallel
     // for what is on its way into each, and the purchase orders for which supplier a
     // model came from. See trimContents above for the cost and why all nine are read.
@@ -312,10 +367,12 @@ async function refresh() {
     // demo answered 404 on 24.09.2026); until it is served the page derives the same
     // straight-line path from /fleet/summary and says so on screen.
     const capacityPlan = await safe("capacity-plan", getJSON(token, "/api/v1/capacity-plan"), null);
-    const fleetSummary = await safe("fleet/summary", getJSON(token, "/api/v1/fleet/summary"), null);
+    // Kept last good, see keepLastGood above: the Control Tower tiles stand on it.
+    const fleetSummaryRead = await keepLastGood("fleet/summary", getJSON(token, "/api/v1/fleet/summary"));
+    const fleetSummary = fleetSummaryRead.value;
     // What the fleet is MADE OF: manufacturer, class, model, each per status. One
     // call, the whole tree, so a drill-down costs no round trip. New endpoint
-    // (04.10.2026) — an older backend answers 404 and the block hides itself,
+    // (04.10.2026): an older backend answers 404 and the block hides itself,
     // which is why it goes through safe() like every other young read.
     const fleetBreakdown = await safe("fleet/breakdown",
       getJSON(token, "/api/v1/fleet/breakdown"), null);
@@ -358,8 +415,10 @@ async function refresh() {
         should_cost_savings: shouldCostSavings, should_cost_by_supplier: shouldCostBySupplier,
         tco_by_class: tcoByClass, tco_portfolio: tcoPortfolio, tco_devices: tcoDevices,
         storage_headroom: storageHeadroom, capacity_flow: capacityFlow,
+        capacity_flow_status: capacityFlowRead.status,
         spend_years: spendYears, spend_by_year: spendByYear,
         kpis, capacity_plan: capacityPlan, fleet_summary: fleetSummary,
+        fleet_summary_status: fleetSummaryRead.status,
         fleet_breakdown: fleetBreakdown,
         warehouse_compartments: warehouseCompartments,
         warehouse_contents: warehouseContentsByCode,
@@ -372,7 +431,8 @@ async function refresh() {
       + `${shouldCostBySupplier.length} should-cost rows, ${tcoByClass.length} tco classes, `
       + `device tco ${tcoDevices ? tcoDevices.scenario + " as of " + tcoDevices.as_of : "not served"}, `
       + `${insights.length} insights age ${insightsAgeMin}m, ${kpis.length} kpis, `
-      + `capacity plan ${capacityPlan ? "served" : "not served"}, fleet summary ${fleetSummary ? "served" : "not served"}, `
+      + `capacity plan ${capacityPlan ? "served" : "not served"}, capacity flow ${readWord(capacityFlowRead)}, `
+      + `fleet summary ${readWord(fleetSummaryRead)}, `
       + `fleet breakdown ${fleetBreakdown ? (fleetBreakdown.manufacturers || []).length + " makers" : "not served"}, `
       + `warehouse ${whN} compartments / ${Object.keys(warehouseContentsByCode).length} contents / `
       + `${Object.keys(productSuppliersFromOrders).length} models with a supplier in ${whMs} ms)`);

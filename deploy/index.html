@@ -597,6 +597,24 @@
   @media(max-width:520px){ #page-tco .kpis{grid-template-columns:1fr} #page-tco .kpi .value{font-size:30px} }
   @media(max-width:900px){ #tcoFind{margin-left:0;width:100%} #tcoFind input{flex:1;width:auto}
     .tl-head,.tl-row{grid-template-columns:minmax(120px,1.4fr) 76px 66px 46px} .tl-head span:nth-child(2),.tl-bar{display:none} .tl-why{grid-column:1/-1} }
+
+  /* Erklaerpanel, 04.10.2026: aus der Fliesstext-Kette benannte Felder. Jede
+     Tatsache traegt ihre Beschriftung, damit niemand raten muss, was eine
+     Zeitangabe und was eine Warnung ist. */
+  .kxh{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;font-size:12px;color:var(--muted);margin-top:14px}
+  .kf{flex:1 1 150px;min-width:0;background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+  .kfl{font-size:9.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#94a3b8;margin-bottom:3px}
+  .kfv{font-size:12px;line-height:1.4;color:#334155}
+  .kf-warn{background:#fffbeb;border-color:#fcd34d}
+  .kf-warn .kfl{color:#b45309}
+  .kf-warn .kfv{color:#78350f}
+  /* Die Warnung ist ein Punkt, keine Textfarbe: so schreit sie nicht lauter
+     als die Zahl, um die es geht. */
+  .kf-warn .kfl::before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:#d97706;margin-right:5px;vertical-align:middle}
+  .kxh .warn-t{color:inherit}
+  .kxhow .kxt{font-family:"JetBrains Mono",ui-monospace,"Consolas",monospace;font-size:11.5px;line-height:1.6;color:#334155;background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:10px 12px;max-width:none}
+  .kxlead{margin-top:14px;background:#f1f5f9;border-left:3px solid #1f3a8a;border-radius:0 8px 8px 0;padding:11px 14px}
+  @media(max-width:680px){ .kf{flex:1 1 100%} }
 </style>
 </head>
 <body>
@@ -2159,7 +2177,16 @@ function kexplainHtml(k,a,nowKey){
     : k.target_y1==null
       ? `<span class="warn-t">no targets yet: the backend seeds a placeholder from the first measurement once there is one, and it waits for an owner</span>`
       : `<span class="warn-t">placeholder targets, derived from the first measurement (10/20/30 % better), waiting for ${k.owner?esc(k.owner):"an owner"} to set the real ones</span>`;
-  const head=`<div class="kxh">${k.basis?`<span class="kbasis ${esc(k.basis)}" title="${esc(KPI_BASIS_HINT[k.basis]||"")}">${esc(k.basis)}</span>`:""}${when}<span>·</span>${target}<span>·</span>${kpill(k,a)}</div>`;
+  // Vier Tatsachen, jede benannt. Vorher standen sie als ein Fliesstext mit
+  // Mittelpunkten nebeneinander, und man musste raten, welche davon eine
+  // Warnung ist. Ein Feld mit leerem Inhalt faellt weg, statt leer dazustehen.
+  const fact=(l,v,cls)=>v?`<div class="kf${cls?" "+cls:""}"><div class="kfl">${l}</div><div class="kfv">${v}</div></div>`:"";
+  const head=`<div class="kxh">`
+    + fact("Basis", k.basis?`<span class="kbasis ${esc(k.basis)}" title="${esc(KPI_BASIS_HINT[k.basis]||"")}">${esc(k.basis)}</span>`:"")
+    + fact("Measured", when)
+    + fact("Targets", target, k.placeholder?"kf-warn":"")
+    + fact("Against the line", kpill(k,a))
+    + `</div>`;
   const cps=`<div class="hy4">${a.checkpoints.map(c=>kcell(k,a,c,nowKey)).join("")}</div><div class="hyx"></div><div class="kxcp">Click a half-year for how its number comes about. They are derived in this cockpit: a straight line from the first measurement to the yearly targets, read off on 30.06. and 31.12.</div>`;
   if(!k.calculation) return head+cps+`<div class="kx"><div><div class="kxt" style="color:#94a3b8">This API does not serve the explanation yet (basis, calculation, reads, caveats, why and needs on /api/v1/kpis): the deployed backend is older than this cockpit. The definition it does serve: ${esc(k.definition||"")}</div></div></div>`;
   // Not measurable: the reason and what would make it measurable, side by side.
@@ -2190,6 +2217,8 @@ function kexplainHtml(k,a,nowKey){
     }
   }
   const lead=`<div class="kxlead"><div class="kxl">Why it matters</div><div class="kxt">${esc(k.why||"")}</div></div>`;
+  // Festbreitenschrift auf getoentem Grund: der Rechenweg ist eine Formel und
+  // soll wie eine aussehen, nicht wie ein Absatz.
   const how=`<div class="kxhow"><div class="kxl">How it is calculated</div><div class="kxt">${esc(k.calculation||"")}</div></div>`;
   // A KPI that cannot be measured says so in front of the fold, never behind it.
   const unmeasurable = k.current==null ? needs : "";

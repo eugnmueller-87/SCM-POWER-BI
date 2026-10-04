@@ -192,13 +192,31 @@ async function getCSV(token, p) {
   const r = await fetch(`${API}${p}`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   if (r.status === 401) forgetToken();
   if (!r.ok) throw new Error(`${p} → ${r.status}`);
-  const text = await r.text();
-  const lines = text.trim().split(/\r?\n/);
-  const head = lines[0].split(",");
-  return lines.slice(1).map(line => {
-    const cells = line.split(",");
-    const o = {}; head.forEach((h, i) => o[h] = cells[i]); return o;
-  });
+  const [head, ...rows] = parseCSV(await r.text());
+  return rows.map(cells => { const o = {}; head.forEach((h, i) => o[h] = cells[i]); return o; });
+}
+
+// RFC 4180: a field in double quotes may hold commas, line breaks and "" for one quote.
+// Splitting on every comma broke "iPad Air (5th gen, M1) · 64 GB Wi-Fi" into two cells and
+// shifted every column after it by one: the forecast tab then read the daily usage rate
+// as the prediction and the prediction as the actual, and showed 9,620 % MAPE for a model
+// whose real error is 19 to 57 %, plus a category called 'M1) · 64 GB Wi-Fi"'.
+function parseCSV(text) {
+  const rows = []; let row = [], f = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; }
+      else f += c;
+    } else if (c === '"') q = true;
+    else if (c === ",") { row.push(f); f = ""; }
+    else if (c === "\n" || c === "\r") {
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      row.push(f); rows.push(row); row = []; f = "";
+    } else f += c;
+  }
+  if (f !== "" || row.length) { row.push(f); rows.push(row); }
+  return rows.filter(r => r.length > 1 || r[0] !== "");
 }
 
 // Best-effort fetch: returns `fallback` (and logs) instead of throwing, so one

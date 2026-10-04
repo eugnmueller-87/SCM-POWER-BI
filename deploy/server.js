@@ -538,6 +538,26 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Every KPI flat, as the backend serves it: today, the goal and where it comes from, the
+  // half-year steps, the plan's need, the public value with its source, owner, levers, the
+  // data counted. Passed through unchanged, so a spreadsheet gets the record the tab shows.
+  if (url === "/api/kpis/export.csv") {
+    const token = await login().catch(() => null);
+    try {
+      if (!token) throw new Error("no token");
+      const r = await fetch(`${API}/api/v1/kpis/export.csv`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+      if (r.status === 401) forgetToken();
+      if (!r.ok) throw new Error(`export → ${r.status}`);
+      res.writeHead(200, { "Content-Type": "text/csv; charset=utf-8", "Cache-Control": "no-store",
+                           "Content-Disposition": 'attachment; filename="kpis.csv"' });
+      res.end(await r.text());
+    } catch (e) {
+      res.writeHead(502, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end(`The KPI export is not available right now (${e.message || e}).`);
+    }
+    return;
+  }
+
   // Run the decision gate (POST). dry_run defaults TRUE; real placing only when
   // the server-side ALLOW_LIVE_PLACE flag is set — a client can never force it.
   // Re-read the API now instead of waiting for the next scheduled tick. The reason it

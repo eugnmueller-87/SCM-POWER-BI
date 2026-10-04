@@ -615,6 +615,52 @@
   .kxhow .kxt{font-family:"JetBrains Mono",ui-monospace,"Consolas",monospace;font-size:11.5px;line-height:1.6;color:#334155;background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:10px 12px;max-width:none}
   .kxlead{margin-top:14px;background:#f1f5f9;border-left:3px solid #1f3a8a;border-radius:0 8px 8px 0;padding:11px 14px}
   @media(max-width:680px){ .kf{flex:1 1 100%} }
+  /* KPIs tab, steering view: one card per KPI answers where it stands, where it has to get
+     and by when, where that goal comes from, who owns it, what moves it, which data it counts */
+  .kg-flow{display:flex;flex-wrap:wrap;gap:8px 22px;font-size:12.5px;color:#475569;margin:2px 2px 12px}
+  .kg-flow b{color:var(--ink);font-variant-numeric:tabular-nums}
+  .kg-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+  .kg-export{margin-left:auto;font-size:12.5px;font-weight:600;color:#1e3a8a;text-decoration:none;border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 14px}
+  .kg-export:hover{background:#eef2ff}
+  .kg-grp{font-size:11.5px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.5px;margin:18px 2px 8px;display:flex;gap:8px;align-items:baseline}
+  .kg-grp span{font-weight:400;text-transform:none;letter-spacing:0;color:#94a3b8}
+  .kg-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;grid-auto-flow:row dense}
+  .kg-card{position:relative;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px 12px 20px;box-shadow:var(--shadow);cursor:pointer;min-width:0;transition:box-shadow .12s}
+  .kg-card:hover{box-shadow:0 4px 10px rgba(15,23,42,.08),0 14px 30px rgba(15,23,42,.08)}
+  .kg-card .edge{position:absolute;left:0;top:0;bottom:0;width:5px;border-radius:14px 0 0 14px;background:#cbd5e1}
+  .kg-card.good .edge{background:var(--green)}.kg-card.bad .edge{background:var(--red)}
+  .kg-card.open{grid-column:1/-1}
+  .kg-top{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center}
+  .kg-name{font-weight:700;font-size:14px;color:var(--ink);margin-right:auto;min-width:0}
+  .kg-who{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .kg-b{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
+  .kg-b.plan{color:#6d28d9}.kg-b.industry{color:#0f766e}.kg-b.owner{color:#b45309;border-style:dashed}.kg-b.set{color:#1d4ed8}
+  .kg-nums{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}
+  .kg-n .v{font-size:21px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .kg-n .l{font-size:11px;color:var(--muted);margin-top:2px}
+  .kg-n.goal .v{color:#1e3a8a}.kg-n.ref .v{color:#0f766e}.kg-n.need .v{color:#6d28d9}.kg-n .v.na{color:#cbd5e1}
+  .kg-track{position:relative;height:30px;margin:10px 4px 2px}
+  .kg-track .rail{position:absolute;left:0;right:0;top:13px;height:5px;border-radius:3px;background:#eef2f7}
+  .kg-track .gap{position:absolute;top:13px;height:5px;border-radius:3px;background:#fee2e2}
+  .kg-track .gap.ok{background:#dcfce7}
+  .kg-mk{position:absolute;top:8px;width:14px;height:14px;margin-left:-7px;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 1px rgba(15,23,42,.15)}
+  .kg-mk.today{background:var(--ink)}.kg-mk.goal{background:#1e3a8a;border-radius:3px}.kg-mk.ref{background:#0f766e;transform:rotate(45deg);border-radius:2px}
+  .kg-mk.need{background:#6d28d9;border-radius:3px;width:10px;height:10px;top:10px;margin-left:-5px;border-width:2px}
+  .kg-steps{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .kg-step{font-size:11.5px;background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:3px 8px;color:#475569;white-space:nowrap}
+  .kg-step b{color:var(--ink);font-variant-numeric:tabular-nums;margin-left:4px}
+  .kg-why{font-size:12px;color:#94a3b8;margin-top:8px;line-height:1.45}
+  .kg-more{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 26px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line);cursor:default}
+  .kg-more h4{margin:0 0 5px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+  .kg-more p{margin:0 0 6px;font-size:12.5px;color:#334155;line-height:1.5;overflow-wrap:anywhere}
+  .kg-more a{color:#1d4ed8}
+  .kg-lever{display:flex;gap:8px;align-items:baseline;font-size:12.5px;color:#334155;padding:3px 0}
+  .kg-kind{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;border:1px solid #cbd5e1;color:#64748b;border-radius:999px;padding:0 7px;flex:none}
+  .kg-kind.missing{color:#b91c1c;border-color:currentColor}.kg-kind.contract{color:#1d4ed8;border-color:currentColor}
+  .kg-link{font:inherit;font-size:12px;font-weight:600;color:#1e3a8a;background:none;border:1px solid var(--line);border-radius:999px;padding:4px 12px;cursor:pointer}
+  .kg-empty{padding:14px 4px;color:#94a3b8;font-size:13px}
+  @media(max-width:1000px){ .kg-grid{grid-template-columns:minmax(0,1fr)} .kg-more{grid-template-columns:minmax(0,1fr)} }
+  @media(max-width:480px){ .kg-nums{grid-template-columns:repeat(2,minmax(0,1fr))} .kg-export{margin-left:0} }
 </style>
 </head>
 <body>
@@ -725,13 +771,28 @@
        labelled as such, or an owned target. The arithmetic lives in kpi_halfyear.js. -->
   <section class="page" id="page-kpis">
     <div id="kpiFleet"></div>
-    <div class="scsec" style="margin-top:22px">The five warehouse KPIs <span class="scsub">· availability, capital tied up, cover, aging, write-down risk · the role's standard measures, as the backend groups them</span></div>
+    <!-- Steering: every KPI with where it stands, its goal and where the goal comes from (the
+         fleet plan, a public value, or its owner), the half-year steps, who owns it, what moves
+         it and which data it counts. All of it is the backend's record (GET /api/v1/kpis, the
+         goal block from services/kpi_goals.py); this page types no number and no source. -->
+    <div class="scsec" style="margin-top:22px">Steering to the fleet plan: every KPI, its goal, who owns it <span class="scsub" id="kpiAllSub"></span></div>
+    <div class="kg-flow" id="kgFlow"></div>
+    <div class="kg-bar">
+      <div class="seg" id="kgFilter">
+        <button data-f="all" class="on">All</button>
+        <button data-f="behind">Behind the goal</button>
+        <button data-f="plan">Goal from the plan</button>
+        <button data-f="industry">From the industry</button>
+        <button data-f="owner">Owner sets it</button>
+      </div>
+      <a class="kg-export" href="/api/kpis/export.csv" title="every KPI as one row: today, goal and its origin, half-year steps, plan need, public value with source, owner, levers, data">Export CSV</a>
+    </div>
+    <div id="kpiAll"></div>
+    <div class="scsec" style="margin-top:26px">The five warehouse KPIs <span class="scsub">· availability, capital tied up, cover, aging, write-down risk · the role's standard measures, as the backend groups them</span></div>
     <div class="grid kfive" id="kpiFive"></div>
     <div class="scsec" style="margin-top:22px">Ordering: delivery reliability and forecast quality <span class="scsub">· the flow around the five, from the same response</span></div>
     <div class="grid sc6" id="kpiOrder"></div>
-    <div class="scsec" style="margin-top:22px">All KPIs by half year <span class="scsub" id="kpiAllSub"></span></div>
-    <div class="card" id="kpiAll" style="padding:6px 0 0"></div>
-    <div class="grid" style="margin-top:18px"><div class="card"><h3>How to read the KPIs</h3>
+    <div class="grid" style="margin-top:18px"><div class="card"><h3>How the goals are set</h3>
       <div style="font-size:13px;color:#475569;line-height:1.7" id="kpiHow"></div></div></div>
 
     <div class="scsec" style="margin-top:36px;padding-top:18px;border-top:1px solid var(--line)">Cockpit scorecard <span class="scsub">· computed in this cockpit from the inventory, spend and backtest reads, not the backend's KPI list · the steering numbers are above</span></div>
@@ -1974,7 +2035,7 @@ function renderScorecard(){
 // ---------- KPIs tab: the backend's steering KPIs by half year ----------
 // The arithmetic (pace line, checkpoints, fleet path) is in kpi_halfyear.js and shared
 // with a Node check; this block only draws what it returns.
-const KPI_GROUP_ORDER=["fleet","warehouse","cost","process","suppliers"];
+const KPI_GROUP_ORDER=["plan","fleet","warehouse","cost","process","suppliers"];
 // The five warehouse KPIs the role names, in the order of the phrase the backend uses for
 // its warehouse group ("availability, capital tied up, cover, aging, write-down risk"),
 // matched to the ids in /api/v1/kpis by the names the backend gives them. Nothing added,
@@ -2238,14 +2299,130 @@ function openKpiDrill(k,a,nowKey){
 }
 let _kpiOpenRow=null;   // the table row left open across the 60-second redraw
 
+// ---------- KPIs tab, steering view: the goal model's record per KPI ----------
+// Every number and every sentence with a number comes from GET /api/v1/kpis (the goal block,
+// SCM Master services/kpi_goals.py) or GET /api/v1/capacity-plan. The words that explain a
+// basis are this page's; the sources, owners and levers are the backend's.
+const KG = { filter:"all", open:null, wired:false };
+const KG_BASIS = { plan:"goal from the plan", industry:"goal from the industry", owner:"owner sets the goal", set:"set by its owner" };
+const KG_KIND = { contract:"contract", process:"process", code:"system", missing:"missing" };
+
+function kgStatus(k){
+  const g=k.goal||{};
+  if(k.current==null) return ["not measured","neut"];
+  if(g.goal==null) return ["no goal yet","neut"];
+  const ok=(a,b)=> k.direction==="lower" ? a<=b : a>=b;
+  if(ok(+k.current,+g.goal)) return ["meets the goal","good"];
+  const next=(g.steps||[])[0];
+  if(next && ok(+k.current,+next.value)) return ["on the path","good"];
+  return ["behind the goal","bad"];
+}
+function kgTrack(k){
+  // today, the goal, the public value and the plan's needs on one scale from zero
+  const g=k.goal||{}, pts=[];
+  if(k.current!=null) pts.push(["today",+k.current]);
+  if(g.goal!=null) pts.push(["goal",+g.goal]);
+  if(g.industry && g.industry.value!=null) pts.push(["ref",+g.industry.value]);
+  ((g.plan&&g.plan.milestones)||[]).forEach(m=>{ if(m.need!=null) pts.push(["need",+m.need]); });
+  if(pts.length<2) return "";
+  const hi=Math.max(...pts.map(p=>p[1]))*1.08||1, lo=Math.min(0,...pts.map(p=>p[1]));
+  const x=v=>((v-lo)/(hi-lo)*100).toFixed(2);
+  let gap="";
+  if(k.current!=null && g.goal!=null){
+    const a=+x(+k.current), b=+x(+g.goal), ok=kgStatus(k)[1]==="good";
+    gap=`<div class="gap${ok?" ok":""}" style="left:${Math.min(a,b)}%;width:${Math.abs(a-b)}%"></div>`;
+  }
+  const title={today:"today",goal:"the goal",ref:"the industry value",need:"the plan's need at a milestone"};
+  return `<div class="kg-track"><div class="rail"></div>${gap}${pts.map(([c,v])=>`<i class="kg-mk ${c}" style="left:${x(v)}%" title="${title[c]}: ${esc(kfmt(v,k.unit))}"></i>`).join("")}</div>`;
+}
+const linkify=s=>esc(s||"").replace(/(https?:\/\/[^\s)<,]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>');
+function kgCard(k, byId){
+  const g=k.goal||{}, st=kgStatus(k), sl=st[0], sc=st[1], u=k.unit;
+  const plan=g.plan, ms=(plan&&plan.milestones)||[], last=ms[ms.length-1];
+  const ind=g.industry;
+  const hasRef = ind && ind.value!=null;
+  const third = g.basis==="plan" && last
+    ? `<div class="kg-n need"><div class="v">${kfmt(last.need,u)}</div><div class="l">the plan allows by ${kdate(last.date)}</div></div>`
+    : `<div class="kg-n ref"><div class="v${hasRef?"":" na"}">${hasRef?kfmt(ind.value,u):"–"}</div><div class="l">${hasRef?"industry value":"no comparable public value"}</div></div>`;
+  const steps=(g.steps||[]).map(s=>`<span class="kg-step">${kdate(s.date)}<b>${kfmt(s.value,u)}</b></span>`).join("");
+  const open=KG.open===k.id;
+  let more="";
+  if(open){
+    const lev=(g.levers||[]).map(l=>`<div class="kg-lever"><span class="kg-kind ${esc(l.kind)}">${esc(KG_KIND[l.kind]||l.kind)}</span><span>${esc(l.text)}</span></div>`).join("")
+      || `<p>No lever named yet.</p>`;
+    const space = (g.basis==="plan" && ms.length)
+      ? `<p>Or keep today's speed and add space: ${ms.map(m=>`<b>${NUM(m.extra_places)}</b> places by ${kdate(m.date)}`).join(", ")}.${plan.capacity_placeholder?` The capacities behind this are still placeholders; ${esc(plan.capacity_owner||"the owner")} sets the real ones.`:""}</p>` : "";
+    const src = ind ? `<p>${esc(ind.text)}</p><p style="color:#64748b">${linkify(ind.source)} · match: ${esc(ind.match)}</p>` : `<p>No public value found for this KPI.</p>`;
+    const steer = (g.steered_by && byId[g.steered_by]) ? `<p>The plan sets this station's goal in days: <b>${esc(byId[g.steered_by].name)}</b>.</p>` : "";
+    more=`<div class="kg-more" data-stop="1">
+      <div><h4>What we do to get there</h4>${lev}${space}${steer}</div>
+      <div><h4>Industry reference</h4>${src}</div>
+      <div><h4>What is counted</h4><p>${esc(k.calculation||k.definition||"")}</p></div>
+      <div><h4>Which data</h4><p><code>${esc(k.reads||"")}</code></p><p>Plugged in: <code>GET /api/v1/kpis</code> · id <code>${esc(k.id)}</code> · one row in the CSV export.</p>
+        <button class="kg-link" data-explain="${esc(k.id)}">Full explanation</button></div>
+    </div>`;
+  }
+  const who = g.owner || k.owner || "open";
+  return `<div class="kg-card ${sc}${open?" open":""}" data-kid="${esc(k.id)}" tabindex="0" role="button" aria-expanded="${open}">
+    <div class="edge"></div>
+    <div class="kg-top"><div class="kg-name">${esc(k.name)}<div class="kg-who">Owner: ${esc(who)} · ${k.direction==="lower"?"lower is better":"higher is better"}</div></div>
+      <span class="kg-b ${esc(g.basis||"owner")}">${esc(KG_BASIS[g.basis]||"no goal")}</span><span class="pill ${sc}">${sl}</span></div>
+    <div class="kg-nums">
+      <div class="kg-n"><div class="v${k.current==null?" na":""}">${k.current==null?"–":kfmt(k.current,u)}</div><div class="l">${k.current==null?esc(k.reason||"not measured"):"today"}</div></div>
+      <div class="kg-n goal"><div class="v${g.goal==null?" na":""}">${g.goal==null?"–":kfmt(g.goal,u)}</div><div class="l">${g.goal==null?"no goal: the owner sets it":"goal by "+kdate(g.horizon)}</div></div>
+      ${third}
+    </div>
+    ${kgTrack(k)}
+    ${steps?`<div class="kg-steps">${steps}</div>`:""}
+    <div class="kg-why">${esc(k.why||"")}</div>
+    ${more}
+  </div>`;
+}
+function kgFlowLine(){
+  const P=RAW.plan, el=document.getElementById("kgFlow");
+  if(!el) return;
+  if(!P || P.scenario!=="daas" || !(P.milestones||[]).length){ el.innerHTML=""; return; }
+  const m=P.milestones, a=m[0], z=m[m.length-1];
+  el.innerHTML=`<span>The plan asks per month: <b>${NUM(a.placements_per_month)}</b> devices placed until ${kdate(a.date)}${m.length>1?`, <b>${NUM(z.placements_per_month)}</b> after`:""}</span>`
+    +`<span><b>${NUM(a.returns_per_month)}</b> returns to process${m.length>1?`, rising to <b>${NUM(z.returns_per_month)}</b>`:""}</span>`
+    +`<span>at today's speed <b>${a.compartments_short}</b> of ${(P.compartments||[]).length} compartments are too small</span>`;
+}
+function renderKpiSteering(rows, byId, A, nowKey){
+  const all=document.getElementById("kpiAll"), sub=document.getElementById("kpiAllSub");
+  kgFlowLine();
+  const count=b=>rows.filter(k=>(k.goal||{}).basis===b).length;
+  sub.textContent=`· ${rows.length} KPIs, measured ${kdate(rows[0].as_of)} · goal from the plan ${count("plan")}, from the industry ${count("industry")}, set by an owner ${count("set")}, open ${count("owner")} · click a card for levers, sources and data`;
+  if(!KG.wired){
+    KG.wired=true;
+    document.querySelectorAll("#kgFilter button").forEach(b=>b.onclick=()=>{ KG.filter=b.dataset.f; renderKPIs(); });
+  }
+  document.querySelectorAll("#kgFilter button").forEach(b=>b.classList.toggle("on", b.dataset.f===KG.filter));
+  const keep=k=>{ const g=k.goal||{};
+    if(KG.filter==="all") return true;
+    if(KG.filter==="behind") return kgStatus(k)[1]==="bad";
+    if(KG.filter==="owner") return g.basis==="owner" || !g.basis;
+    return g.basis===KG.filter; };
+  const shown=rows.filter(keep);
+  const groups=[...new Set(shown.map(k=>k.group))].sort((a,b)=>{const ia=KPI_GROUP_ORDER.indexOf(a), ib=KPI_GROUP_ORDER.indexOf(b); return (ia<0?99:ia)-(ib<0?99:ib);});
+  all.innerHTML = shown.length ? groups.map(gk=>{
+      const gr=shown.filter(k=>k.group===gk);
+      return `<div class="kg-grp">${esc(gr[0].group_label||gk)}<span>${gr.length}</span></div><div class="kg-grid">${gr.map(k=>kgCard(k,byId)).join("")}</div>`;
+    }).join("") : `<div class="kg-empty">No KPI in this view.</div>`;
+  all.querySelectorAll(".kg-card").forEach(c=>{
+    const toggle=()=>{ KG.open = KG.open===c.dataset.kid ? null : c.dataset.kid; renderKPIs(); };
+    c.onclick=e=>{ if(e.target.closest("[data-stop]")) return; toggle(); };
+    c.onkeydown=e=>{ if(e.target!==c) return; if(e.key==="Enter"||e.key===" "){ e.preventDefault(); toggle(); } };
+  });
+  all.querySelectorAll("[data-explain]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); const k=byId[b.dataset.explain]; if(k) openKpiDrill(k,A[k.id],nowKey); });
+}
+
 function kpiHowText(k){
-  const first = k ? KPIHalfYear.firstMeasured(k) : null;
-  return `<b>Today</b> is the backend's measurement (once a day, /api/v1/kpis). A KPI the data cannot measure says why and is never zero-filled.<br>
-    <b>Click a row or a card</b> for where its number comes from: how it is calculated, which tables it reads, what it excludes or assumes, why it matters and what the measurement needs, plus whether it is measured, derived or rests on a placeholder. Those words are served by the backend with the value, from the code that computes it; this cockpit writes none of them.<br>
-    <b>Half-year checkpoints are derived here</b>, because the backend's targets are yearly and no half-year target exists in the data: a straight line from the first measurement${first?` (${kdate(first.as_of)})`:""} to the one-year target, on to year two and year three, read off on 30.06. and 31.12. A half-year that ended before the first measurement shows a dash.<br>
-    <span class="ph">Dashed</span> marks a <b>placeholder target</b>: the backend seeded it 10/20/30 % better than the first value until a person sets the real one (SCM Master, KPIs tab). The mark carries through to every checkpoint derived from it.<br>
-    <b>How far off</b> compares today's value with the line's value today, in the KPI's own unit and good direction (for half of them lower is better). Within 1 % of the one-year distance counts as on the line; met means already at the one-year target. The backend's own status judges the whole one-year distance regardless of date, so it can say behind where this tab says on the line; it sits in each pill's tooltip.<br>
-    <b>The device goal</b> is different: its milestones are owned, not placeholders, and the path between them is a straight line from today's measured fleet, month by month.`;
+  return `<b>Today</b> is the backend's measurement, once a day (/api/v1/kpis). A KPI the data cannot measure says why and is never zero-filled.<br>
+    <b>Every goal says where it comes from.</b> <span class="kg-b plan">goal from the plan</span>: the fleet plan (the capacity plan's milestones) allows each station a maximum dwell at today's capacity; the four plan KPIs measure that dwell in days, and the other lever, more space, stands next to it. <span class="kg-b industry">goal from the industry</span>: a public value with its source and how well it matches; where today is already better, the goal is to hold it, otherwise a straight line from today to that value at the plan's horizon. <span class="kg-b owner">owner sets the goal</span>: neither the plan nor a comparable public value; the goal stays empty and names the role, instead of a made-up number. <span class="kg-b set">set by its owner</span>: a person set it through the API; nothing overwrites it.<br>
+    <b>The plan binds where it sets a number</b>; the industry value is then the reference.<br>
+    <b>Half-year steps</b> are the goal at each 30.06. and 31.12. up to the plan's last milestone, served by the backend. The five warehouse cards and the ordering cards on this tab read the same steps.<br>
+    <b>Behind the goal</b> means today misses both the goal and the next half-year step; <b>on the path</b> means it meets the next step.<br>
+    <b>Export CSV</b> gives the same record as one row per KPI for a spreadsheet, Power BI or a deck.`;
 }
 
 function renderKPIs(){
@@ -2263,39 +2440,8 @@ function renderKPIs(){
     const A={}; rows.forEach(k=>A[k.id]=KPIHalfYear.assess(k,k.as_of));
     five.innerHTML=KPI_FIVE.map(f=>byId[f.id]?kcard(byId[f.id],A[f.id],f.word,nowKey,true):kmissing(f.id,f.word)).join("");
     ord.innerHTML=KPI_ORDERING.map(id=>byId[id]?kcard(byId[id],A[id],null,nowKey,false):kmissing(id,null)).join("");
-    const placeholders=rows.filter(k=>k.placeholder).length, nm=rows.filter(k=>k.current==null).length;
-    sub.textContent=`· ${rows.length} KPIs, measured ${kdate(asOf)} · ${placeholders} with placeholder targets · ${nm} not measurable`;
-    const head=`<thead><tr><th>KPI</th><th class="num">Today</th>${KPIHalfYear.HALF_YEARS.map(h=>`<th class="num${h.key===nowKey?" now":""}" title="the line's value on ${h.short}; a dash means the half-year ended before the first measurement">${h.key}${h.key===nowKey?" · now":""}</th>`).join("")}<th>How far off</th></tr></thead>`;
-    const groups=[...new Set(rows.map(k=>k.group))].sort((a,b)=>{const ia=KPI_GROUP_ORDER.indexOf(a), ib=KPI_GROUP_ORDER.indexOf(b); return (ia<0?99:ia)-(ib<0?99:ib);});
-    const body=groups.map(g=>{
-      const gr=rows.filter(k=>k.group===g);
-      return `<tr class="grp"><td colspan="7">${esc(gr[0].group_label||g)}<span>${gr.length}</span></td></tr>`+gr.map(k=>{
-        const a=A[k.id];
-        const today = k.current==null ? `<span class="kr">n/a</span>` : kfmt(k.current,k.unit);
-        const cells=a.checkpoints.map(c=>{
-          const now=c.key===nowKey;
-          if(c.value==null) return `<td class="num${now?" now":""}" title="${esc(c.reason||"")}"><span class="kr">—</span></td>`;
-          const v=kfmt(c.value,k.unit);
-          return `<td class="num${now?" now":""}">${a.placeholder?`<span class="ph" title="${esc(PH_TITLE)}">${v}</span>`:v}</td>`;
-        }).join("");
-        const far = k.current==null ? `<span class="kr">${esc(k.reason||"no measurement")}</span>` : kpill(k,a);
-        // The Orders tab's pattern: the row, then a hidden drill row it toggles; one open at a time.
-        const open=_kpiOpenRow===k.id;
-        return `<tr class="krow${open?" open":""}" data-kid="${esc(k.id)}" title="click for where this number comes from"><td><div class="kn">${esc(k.name)}</div><div class="kd">${k.direction==="lower"?"lower is better":"higher is better"} · ${esc(k.source||"")}</div></td><td class="num">${today}</td>${cells}<td>${far}</td></tr>`
-          +`<tr class="kdrill" data-for="${esc(k.id)}" style="display:${open?"table-row":"none"}"><td colspan="7">${open?kexplainHtml(k,a,nowKey):""}</td></tr>`;
-      }).join("");
-    }).join("");
-    all.innerHTML=`<div style="overflow-x:auto"><table class="kpi-tbl">${head}<tbody>${body}</tbody></table></div>`;
-    // A row opens on click and closes on the next; the open row survives the 60-second redraw.
-    all.querySelectorAll("tr.krow").forEach(tr=>tr.onclick=()=>{
-      const id=tr.dataset.kid, k=byId[id]; if(!k) return;
-      const d=all.querySelector(`tr.kdrill[data-for="${CSS.escape(id)}"]`);
-      const showing=d && d.style.display!=="none";
-      all.querySelectorAll("tr.kdrill").forEach(x=>{ x.style.display="none"; x.firstElementChild.innerHTML=""; });
-      all.querySelectorAll("tr.krow").forEach(x=>x.classList.remove("open"));
-      _kpiOpenRow=showing?null:id;
-      if(!showing && d){ d.firstElementChild.innerHTML=kexplainHtml(k,A[id],nowKey); d.style.display="table-row"; tr.classList.add("open"); }
-    });
+    // The steering view replaces the half-year table: one card per KPI, the goal model's record.
+    renderKpiSteering(rows, byId, A, nowKey);
     // The five warehouse cards and the ordering cards open the same explanation in the drawer.
     document.querySelectorAll("#kpiFive .kcard[data-kid], #kpiOrder .kcard[data-kid]").forEach(c=>c.onclick=()=>{
       const k=byId[c.dataset.kid]; if(k) openKpiDrill(k,A[k.id],nowKey);

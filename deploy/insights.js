@@ -41,16 +41,16 @@ function ruleSupplierConcentration(d, out) {
 
   if (share >= T.CONCENTRATION_ACTION) {
     out.push({ severity: "action", title: `${top.name} is ${PCT(share)} of spend`,
-      detail: `Single-source concentration above the ${PCT(T.CONCENTRATION_ACTION)} risk line — qualify a second source to de-risk supply.`,
+      detail: `Single-source concentration above the ${PCT(T.CONCENTRATION_ACTION)} risk line: qualify a second source to de-risk supply.`,
       metric: `${EUR(top.spend)} of ${EUR(total)}` });
   } else if (share >= T.CONCENTRATION_WATCH) {
     out.push({ severity: "watch", title: `${top.name} is ${PCT(share)} of spend`,
-      detail: `Approaching the concentration risk line — monitor dual-sourcing options.`, metric: EUR(top.spend) });
+      detail: `Approaching the concentration risk line: monitor dual-sourcing options.`, metric: EUR(top.spend) });
   }
 
   if (hhi >= T.HHI_CONCENTRATED) {
     out.push({ severity: "watch", title: `Supplier base is highly concentrated (HHI ${hhi})`,
-      detail: `HHI above ${T.HHI_CONCENTRATED} (DOJ/FTC threshold) across ${sups.length} suppliers — limited negotiating leverage and supply resilience.`,
+      detail: `HHI above ${T.HHI_CONCENTRATED} (DOJ/FTC threshold) across ${sups.length} suppliers: limited negotiating leverage and supply resilience.`,
       metric: `HHI ${hhi}` });
   }
 }
@@ -68,7 +68,7 @@ function ruleWeeksOfCover(d, out) {
   if (!risky.length) return;
   risky.sort((a, b) => a.weeks - b.weeks);
   const worst = risky[0];
-  const covered = worst.onOrder > 0 ? ` (replenishment of ${worst.onOrder} due ${worst.eta || "—"})` : " — nothing on order";
+  const covered = worst.onOrder > 0 ? ` (replenishment of ${worst.onOrder} due ${worst.eta || "n/a"})` : ", nothing on order";
   out.push({ severity: "action", title: `${risky.length} SKU${risky.length > 1 ? "s" : ""} below ${T.WEEKS_COVER_ACTION}-week cover`,
     detail: `Worst: ${worst.name} at ${worst.weeks.toFixed(1)} weeks of cover${covered}. Stockout risk at current burn.`,
     metric: `${risky.length} at risk` });
@@ -93,11 +93,11 @@ function ruleForecastAccuracy(d, out) {
   const acc = d.forecast_accuracy;
   if (acc == null) return;
   if (acc < T.FORECAST_WATCH) {
-    out.push({ severity: "watch", title: `Forecast accuracy ${PCT(acc)} — demand is volatile`,
+    out.push({ severity: "watch", title: `Forecast accuracy ${PCT(acc)}: demand is volatile`,
       detail: `Backtested accuracy below ${PCT(T.FORECAST_WATCH)}; widen safety stock on spiky SKUs and lean on the reorder triggers rather than the point forecast.`,
       metric: PCT(acc) });
   } else {
-    out.push({ severity: "info", title: `Forecast accuracy ${PCT(acc)} — backtested`,
+    out.push({ severity: "info", title: `Forecast accuracy ${PCT(acc)}, backtested`,
       detail: `Demand model is tracking actuals within tolerance over the backtest window.`, metric: PCT(acc) });
   }
 }
@@ -108,7 +108,7 @@ function ruleShouldCostGap(d, out) {
   const gap = num(sc.total_gap_to_target);
   if (gap > 0) {
     out.push({ severity: "action", title: `${EUR(gap)} addressable above should-cost target`,
-      detail: `${sc.products_above_target}/${sc.products_with_bom} costed products quote above their commodity-indexed target — that gap is the negotiation headroom to open from.`,
+      detail: `${sc.products_above_target}/${sc.products_with_bom} costed products quote above their commodity-indexed target; that gap is the negotiation headroom to open from.`,
       metric: EUR(gap) });
   }
 }

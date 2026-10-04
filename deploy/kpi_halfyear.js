@@ -3,9 +3,10 @@
 // The page loads it with a <script> tag and a Node script can require() it, so every
 // number on the tab can be re-run on the command line against the same JSON.
 //
-// The backend's targets are yearly (one, two and three years after they were set) and no
-// half-year target exists anywhere in the data. A half-year checkpoint is therefore
-// DERIVED, and the screen says so:
+// Since 04.10.2026 the backend serves each goal with dated steps, one per half-year end up
+// to the fleet plan's horizon (k.goal.steps, services/kpi_goals.py); the line then runs
+// from the first measurement through those steps. Without them (a target a person set
+// as one, two and three years) the checkpoint is DERIVED, and the screen says so:
 //   1. Day zero is the first measurement, the day the backend seeded the targets; year
 //      one, two and three fall 12, 24 and 36 months after it.
 //   2. Straight lines from (day zero, first value) to the year-one target, on to year two,
@@ -72,9 +73,18 @@
     return null;
   }
 
+  // Since the goal model (backend services/kpi_goals.py, 04.10.2026) every goal carries its own
+  // dated steps, one per half-year end up to the fleet plan's horizon. Where they are served,
+  // the line runs through them, so this tab and the steering cards show one goal, not two.
+  // A target a person set (goal.basis "set") has no steps and keeps the yearly reading below.
   function anchors(k, first) {
     const d0 = d(first.as_of);
     const pts = [{ date: d0, value: first.value }];
+    const steps = (k.goal && Array.isArray(k.goal.steps)) ? k.goal.steps.filter((s) => s && s.value != null) : [];
+    if (steps.length) {
+      steps.forEach((s) => { const x = d(s.date); if (x > d0) pts.push({ date: x, value: +s.value }); });
+      return pts;
+    }
     [k.target_y1, k.target_y2, k.target_y3].forEach((t, i) => {
       if (t != null) pts.push({ date: addMonths(d0, 12 * (i + 1)), value: +t });
     });

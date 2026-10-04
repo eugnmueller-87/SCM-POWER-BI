@@ -160,6 +160,34 @@
   .hy .hv{font-size:14px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums;white-space:nowrap}
   .hy .hv.dim{color:#94a3b8;font-weight:600}
   .hy .hn{font-size:10.5px;color:var(--muted);margin-top:2px;line-height:1.3}
+  /* A checkpoint is derived in this cockpit, so it can explain itself. Clicking one writes
+     that derivation into the .hyx line under the grid; nothing navigates, nothing reloads. */
+  .hy[data-why]{cursor:pointer}
+  .hy[data-why]:hover{border-color:#94a3b8;background:#f1f5f9}
+  .hy[data-why].now:hover{border-color:#1f3a8a;background:#e5eaff}
+  .hy[data-why]:focus-visible{outline:2px solid #1f3a8a;outline-offset:2px}
+  .hy[data-why].open{border-color:#1f3a8a;box-shadow:inset 0 0 0 1px #1f3a8a}
+  .hyx{margin-top:6px;font-size:11.5px;line-height:1.5;color:#334155;background:#f8fafc;
+       border-left:3px solid #1f3a8a;border-radius:0 6px 6px 0;padding:7px 10px}
+  .hyx:empty{display:none}
+  .hyx b{color:#0f172a}
+  .hyhint{font-size:10.5px;color:#94a3b8;margin-top:5px}
+  /* A capacity bar opens and says why it is over. Same idea as the half-year cells: the
+     number explains itself where it stands, instead of sending anyone to another tab. */
+  .caprow{cursor:pointer;user-select:none}
+  .caprow:hover b:first-child{color:#1f3a8a}
+  .caprow:focus-visible{outline:2px solid #1f3a8a;outline-offset:2px;border-radius:4px}
+  .capcar{display:inline-block;margin-left:5px;color:#94a3b8;font-size:10px;transition:transform .12s}
+  .caprow[aria-expanded="true"] .capcar{transform:rotate(90deg);color:#1f3a8a}
+  .capbar:hover{border-color:#94a3b8}
+  .capx{margin-top:7px;padding:9px 12px;background:#f8fafc;border-left:3px solid #1f3a8a;
+        border-radius:0 6px 6px 0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 24px}
+  /* display:grid above would beat the hidden attribute's own display:none, so say it here. */
+  .capx[hidden]{display:none}
+  @media(max-width:900px){.capx{grid-template-columns:1fr}}
+  .capx .capl{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+  .capx .capt{font-size:12px;line-height:1.5;color:#334155;margin-bottom:4px;max-width:70ch}
+  .capx .capt.mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11.5px;color:#0f172a}
   .ph{border-bottom:2px dashed #f59e0b;cursor:help}
   .kpi-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
   .kpi-tbl th{background:#fff}
@@ -190,6 +218,20 @@
   .kx .kxt{font-size:12.5px;line-height:1.55;color:#334155;max-width:76ch}
   .kx .kxt.mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11.5px;color:#475569}
   .kx .kxna{border-left:3px solid var(--amber);padding-left:10px}
+  /* The two blocks that answer "what is this and how is it worked out" read first and read
+     big; everything else folds away, so the panel opens short instead of opening long. */
+  .kxlead{margin-top:14px;background:#f8fafc;border-left:3px solid #1f3a8a;border-radius:0 6px 6px 0;padding:9px 12px}
+  .kxlead .kxt{font-size:14px;line-height:1.5;color:#0f172a;max-width:70ch}
+  .kxhow{margin-top:12px}
+  .kxhow .kxt{font-size:13px;line-height:1.55;color:#334155;max-width:76ch}
+  .kxl{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+  .kxmore{margin-top:12px;border-top:1px solid var(--line);padding-top:8px}
+  .kxmore>summary{cursor:pointer;font-size:11.5px;color:var(--muted);font-weight:600;list-style:none;user-select:none}
+  .kxmore>summary::-webkit-details-marker{display:none}
+  .kxmore>summary::before{content:"▸ ";color:#94a3b8}
+  .kxmore[open]>summary::before{content:"▾ "}
+  .kxmore>summary:hover{color:#1f3a8a}
+  .kxmore .kx{margin-top:10px}
   .drawer-body .kx{margin-top:14px;grid-template-columns:1fr}
   .drawer-body .hy4{grid-template-columns:repeat(2,1fr)}
   .kfleet .kf-head{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:flex-start}
@@ -1262,19 +1304,63 @@ function renderCapacity(){
   const totUsed=h.zones.reduce((s,z)=>s+(z.used||0),0);
   const totInb=h.zones.reduce((s,z)=>s+(z.inbound||0),0);
   const totFree=Math.max(0, totCap-totUsed-totInb);
+  // A compartment over 100 % is the one number on this board someone will be asked about in
+  // a meeting, so the bar opens and answers it. The arithmetic and the dwell times come from
+  // the API (storage-headroom and warehouse compartments); this only arranges them and names
+  // which of the two kinds of overflow it is, because that decides who fixes it.
+  const whByCode = {};
+  (RAW.wh && (Array.isArray(RAW.wh) ? RAW.wh : RAW.wh.compartments) || []).forEach(c=>{ whByCode[c.code]=c; });
+  const dnum=(n)=>n==null?null:(Math.round(n*10)/10);
+  const capDetail=(z)=>{
+    const cap=z.capacity||0, used=z.used||0, inb=z.inbound||0, committed=used+inb, over=committed-cap;
+    const c=whByCode[z.code]||{};
+    const L=[];
+    if(c.holds) L.push(`<div class="capl">What sits here</div><div class="capt">${esc(c.holds)}</div>`);
+    // The arithmetic, spelled out, because "124 %" alone has never settled an argument.
+    L.push(`<div class="capl">The arithmetic</div><div class="capt mono">on hand ${NUM(used)} + inbound reserved ${NUM(inb)} = committed ${NUM(committed)}<br>capacity ${NUM(cap)} &rarr; ${over>0?`over by <b>${NUM(over)}</b>`:`${NUM(-over)} free to order`}</div>`);
+    if(over>0){
+      const kind = used>cap
+        ? `<b>Already physically over.</b> ${NUM(used-cap)} units more are standing here than the compartment is rated for, before anything else arrives. This is a flow problem: more comes in than the next station takes out.`
+        : `<b>Not over yet, committed over.</b> On hand is ${pct(used,cap)} % of capacity; it is the ${NUM(inb)} units already ordered and reserved that push it past 100 %. This is an ordering problem, and it is still reversible.`;
+      L.push(`<div class="capl">Why it is over</div><div class="capt">${kind}</div>`);
+      const lever = used>cap
+        ? `Speed up the station after this one, or slow the one before it. Buying shelves does not help: the stock is moving too slowly, not standing in too small a room.`
+        : `Move delivery dates, split the order, or stop ordering into this compartment until it drains. Nothing has to be unloaded yet.`;
+      L.push(`<div class="capl">The lever</div><div class="capt">${lever}</div>`);
+    }
+    // How long things sit, against the target. A target nobody set is said to be a placeholder.
+    const dw=[];
+    if(c.median_days!=null) dw.push(`median ${dnum(c.median_days)} d`);
+    if(c.p90_days!=null) dw.push(`90th percentile ${dnum(c.p90_days)} d`);
+    if(c.oldest_days!=null) dw.push(`oldest ${dnum(c.oldest_days)} d`);
+    if(dw.length || c.target_dwell_days!=null){
+      const tgt = c.target_dwell_days!=null
+        ? ` against a target of ${c.target_dwell_days} days${c.target_placeholder?` <span class="ph" title="placeholder target">placeholder</span>`:""}${c.target_owner?`, owner ${esc(c.target_owner)}`:""}`
+        : ` (no dwell target set)`;
+      const past = c.past_target_units!=null ? ` ${NUM(c.past_target_units)} units are past the target.` : "";
+      L.push(`<div class="capl">How long things sit</div><div class="capt">${dw.join(" · ")||"no dwell measured"}${tgt}.${past}${c.dwell_reason?` ${esc(c.dwell_reason)}`:""}</div>`);
+    }
+    if(c.units_per_week!=null) L.push(`<div class="capl">Flow</div><div class="capt">${NUM(Math.round(c.units_per_week))} units a week${c.turns_per_year!=null?`, ${dnum(c.turns_per_year)} turns a year`:""}${c.throughput_derived?` <span class="ph" title="${esc(c.throughput_basis||"derived, not measured")}">derived</span>`:""}.</div>`);
+    if(c.verdict) L.push(`<div class="capl">The system's verdict</div><div class="capt"><b>${esc(c.verdict)}</b>${c.verdict_reason?`: ${esc(c.verdict_reason)}`:""}</div>`);
+    if(!L.length) return `<div class="capt">No detail served for this compartment.</div>`;
+    return L.join("");
+  };
   const bar=(z)=>{
     const cap=z.capacity||0, used=z.used||0, inb=z.inbound||0, free=Math.max(0,cap-used-inb);
     const committed=used+inb;
+    const id="capx-"+String(z.code||"").replace(/[^A-Za-z0-9-]/g,"");
     return `<div style="margin:10px 0 14px">
-      <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px">
-        <b>${esc(z.code)}</b>
+      <div class="caprow" data-cap="${esc(id)}" role="button" tabindex="0" aria-expanded="false" aria-controls="${esc(id)}"
+           style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px">
+        <b>${esc(z.code)}<span class="capcar">▸</span></b>
         <span style="color:#64748b"><b style="color:${committed>=cap?'#dc2626':'#0f172a'}">${pct(committed,cap)}% committed</b> · ${pct(free,cap)}% free to order · cap ${cap}</span>
       </div>
-      <div style="display:flex;height:18px;border-radius:5px;overflow:hidden;border:1px solid #e2e8f0">
+      <div class="capbar" data-cap="${esc(id)}" style="display:flex;height:18px;border-radius:5px;overflow:hidden;border:1px solid #e2e8f0;cursor:pointer">
         <div title="On hand: ${used}" style="width:${pct(used,cap)}%;background:#1f3a8a"></div>
         <div title="Inbound (reserved): ${inb}" style="width:${pct(inb,cap)}%;background:#f59e0b"></div>
         <div title="Free to order: ${free}" style="width:${pct(free,cap)}%;background:#e2e8f0"></div>
-      </div></div>`;
+      </div>
+      <div class="capx" id="${esc(id)}" hidden>${capDetail(z)}</div></div>`;
   };
   document.getElementById("capBars").innerHTML =
     `<div style="font-size:13px;margin:4px 0 12px;color:#334155">
@@ -1576,7 +1662,17 @@ function kcell(k,a,c,nowKey){
       n = met ? "checkpoint already met" : `${kfmt(Math.abs(c.value-k.current),k.unit,{gap:true})} to go by ${c.short.slice(0,6)}`;
     }
   }
-  return `<div class="hy${now?" now":""}"><div class="hk">${c.key}${now?" · now":""}</div>${v}${n?`<div class="hn">${esc(n)}</div>`:""}</div>`;
+  // The same self-explanation as the fleet hero: a checkpoint derived here says how.
+  let why="";
+  if(c.value==null) why = c.reason ? `<b>${esc(c.key)}</b> has no value: ${esc(c.reason)}.` : "";
+  else {
+    why = `<b>${kfmt(c.value,k.unit)}</b> is read off on ${kdate(c.end)}, not measured.`;
+    if(a.first) why += ` It sits on a straight line from the first measurement <b>${kfmt(a.first.value,k.unit)}</b> (${kdate(a.first.as_of)}) to the yearly target${k.target_y1!=null?` <b>${kfmt(k.target_y1,k.unit)}</b>`:""}, on to year two and year three.`;
+    if(a.placeholder) why += ` The target behind it is a <b>placeholder</b>, seeded 10/20/30 % better than the first value, so this checkpoint is one too.`;
+    if(now && k.current!=null) why += ` Measured today: <b>${kfmt(k.current,k.unit)}</b>.`;
+  }
+  const act = why ? ` data-why="${esc(why)}" role="button" tabindex="0" aria-label="${esc(c.key)}, show how this number is derived"` : "";
+  return `<div class="hy${now?" now":""}"${act}><div class="hk">${c.key}${now?" · now":""}</div>${v}${n?`<div class="hn">${esc(n)}</div>`:""}</div>`;
 }
 function kcard(k,a,word,nowKey,two){
   const edge={good:"e-good",neut:"e-neut",bad:"e-bad",warn:"e-warn"}[(KPI_STATUS[a.status]||KPI_STATUS.open).cls];
@@ -1610,11 +1706,25 @@ function renderFleetGoal(nowKey){
   const goals=F.milestones.map(m=>`<div><b>${NUM(m.fleet)}</b> by ${kdate(m.date)}${m.placeholder?` <span class="ph" title="placeholder milestone">placeholder</span>`:""}</div>`).join("")
     || `<div style="color:#94a3b8">no milestone ahead of today</div>`;
   const owned = F.milestones.length && F.milestones.every(m=>!m.placeholder) ? "owned targets, not placeholders" : "";
+  // Each checkpoint carries its own derivation in data-why, composed here where the context
+  // is, so the click handler only has to show it. A cell with nothing to say stays inert.
   const cells=F.checkpoints.map(c=>{
     const now=c.key===nowKey;
     const v = c.value==null ? `<div class="hv dim">—</div>` : `<div class="hv">${NUM(c.value)}</div>`;
     const n = c.value==null ? (c.reason||"") : (c.kind==="milestone"?"owned milestone":c.kind==="placeholder"?"placeholder milestone":"on the path (derived)");
-    return `<div class="hy${now?" now":""}"><div class="hk">${c.key}${now?" · now":""}</div>${v}<div class="hn">${esc(n)}</div></div>`;
+    let why="";
+    if(c.value==null) why = c.reason ? `<b>${esc(c.key)}</b> has no value: ${esc(c.reason)}.` : "";
+    else if(c.kind==="milestone") why = `<b>${NUM(c.value)}</b> by ${kdate(c.end)} is an <b>owned milestone</b>, set in the capacity plan, not derived here.`;
+    else if(c.kind==="placeholder") why = `<b>${NUM(c.value)}</b> by ${kdate(c.end)} is a <b>placeholder milestone</b>: it stands in until someone sets the real one.`;
+    else {
+      const to = F.milestones.find(m=>m.date>=c.end) || F.milestones[F.milestones.length-1];
+      why = `<b>${NUM(c.value)}</b> is read off the path on ${kdate(c.end)}, not measured. The path runs in a straight line from <b>${NUM(F.fleetNow)}</b> measured ${kdate(F.asOf)}`
+          + (to?` to the milestone <b>${NUM(to.fleet)}</b> by ${kdate(to.date)}`:``)
+          + `, interpolated month by month.`;
+      if(now && F.fleetNow!=null) why += ` Measured today: <b>${NUM(F.fleetNow)}</b>, that is <b>${NUM(Math.abs(c.value-F.fleetNow))}</b> ${F.fleetNow>=c.value?"above":"below"} this checkpoint.`;
+    }
+    const act = why ? ` data-why="${esc(why)}" role="button" tabindex="0" aria-label="${esc(c.key)}, show how this number is derived"` : "";
+    return `<div class="hy${now?" now":""}"${act}><div class="hk">${c.key}${now?" · now":""}</div>${v}<div class="hn">${esc(n)}</div></div>`;
   }).join("");
   let pace="";
   if(F.next){
@@ -1631,6 +1741,8 @@ function renderFleetGoal(nowKey){
       <div class="kf-goal">${goals}<div class="kf-owned">${esc(owned)}</div></div>
     </div>
     <div class="hy4" style="margin-top:14px">${cells}</div>
+    <div class="hyx" id="kfWhy"></div>
+    <div class="hyhint">Click a half-year to see how its number comes about.</div>
     <div class="kf-pace">${pace}</div>
     <div class="chart-box" style="height:210px;margin-top:12px"><canvas id="kpiFleetChart"></canvas></div>
     <div class="kf-basis">${basis}</div>
@@ -1672,13 +1784,24 @@ function kexplainHtml(k,a,nowKey){
       ? `<span class="warn-t">no targets yet: the backend seeds a placeholder from the first measurement once there is one, and it waits for an owner</span>`
       : `<span class="warn-t">placeholder targets, derived from the first measurement (10/20/30 % better), waiting for ${k.owner?esc(k.owner):"an owner"} to set the real ones</span>`;
   const head=`<div class="kxh">${k.basis?`<span class="kbasis ${esc(k.basis)}" title="${esc(KPI_BASIS_HINT[k.basis]||"")}">${esc(k.basis)}</span>`:""}${when}<span>·</span>${target}<span>·</span>${kpill(k,a)}</div>`;
-  const cps=`<div class="hy4">${a.checkpoints.map(c=>kcell(k,a,c,nowKey)).join("")}</div><div class="kxcp">half-year checkpoints derived in this cockpit: a straight line from the first measurement to the yearly targets, read off on 30.06. and 31.12.</div>`;
+  const cps=`<div class="hy4">${a.checkpoints.map(c=>kcell(k,a,c,nowKey)).join("")}</div><div class="hyx"></div><div class="kxcp">Click a half-year for how its number comes about. They are derived in this cockpit: a straight line from the first measurement to the yearly targets, read off on 30.06. and 31.12.</div>`;
   if(!k.calculation) return head+cps+`<div class="kx"><div><div class="kxt" style="color:#94a3b8">This API does not serve the explanation yet (basis, calculation, reads, caveats, why and needs on /api/v1/kpis): the deployed backend is older than this cockpit. The definition it does serve: ${esc(k.definition||"")}</div></div></div>`;
   // Not measurable: the reason and what would make it measurable, side by side.
   const needs=k.current==null
     ? `<div class="kxna"><div class="kxl">Not measurable, and what would make it so</div><div class="kxt"><b>${esc(k.reason||"")}.</b> ${esc(k.needs||"")}</div></div>`
     : blk("What the measurement needs",k.needs);
-  return head+cps+`<div class="kx">${blk("How it is calculated",k.calculation)}${blk("Where the data comes from",k.reads,"mono")}${blk("What it excludes or assumes",k.caveats)}${blk("Why it matters",k.why)}${needs}</div>`;
+  // Reading order, not writing order. Two blocks carry the answer most people came for:
+  // what the number is for, then how it is worked out. The rest is reference and sits behind
+  // a fold, so the panel opens short. The words are still the backend's, only their order
+  // and their prominence are this cockpit's doing.
+  const lead=`<div class="kxlead"><div class="kxl">Why it matters</div><div class="kxt">${esc(k.why||"")}</div></div>`;
+  const how=`<div class="kxhow"><div class="kxl">How it is calculated</div><div class="kxt">${esc(k.calculation||"")}</div></div>`;
+  // A KPI that cannot be measured says so in front of the fold, never behind it.
+  const unmeasurable = k.current==null ? needs : "";
+  const folded = k.current==null ? "" : needs;
+  const rest=`<details class="kxmore"><summary>Data sources, exclusions${k.current==null?"":" and what the measurement needs"}</summary>
+    <div class="kx">${blk("Where the data comes from",k.reads,"mono")}${blk("What it excludes or assumes",k.caveats)}${folded}</div></details>`;
+  return head+cps+unmeasurable+lead+how+rest;
 }
 // A card opens the same explanation in the drawer the scorecard cards use.
 function openKpiDrill(k,a,nowKey){
@@ -2299,6 +2422,59 @@ async function loadData(){
   if(!src || src.error){ showError("API returned: "+(src&&src.error||"empty")); return; }
   renderFromSource(src);
 }
+// A half-year checkpoint explains itself. The derivation was composed where the context
+// was (renderFleetGoal, kcell) and parked in data-why; this only puts it on screen, into
+// the .hyx line that follows the grid the cell sits in. Clicking the open one closes it,
+// so the panel never grows a line nobody asked for. Keyboard: Enter or Space, because the
+// cells carry role="button" and must behave like one.
+function showHalfYearWhy(cell){
+  const grid = cell.closest(".hy4"); if(!grid) return;
+  let slot = grid.nextElementSibling;
+  while(slot && !slot.classList.contains("hyx")) slot = slot.nextElementSibling;
+  if(!slot) return;
+  const wasOpen = cell.classList.contains("open");
+  grid.querySelectorAll(".hy.open").forEach(c=>c.classList.remove("open"));
+  if(wasOpen){ slot.innerHTML=""; return; }          // second click closes
+  cell.classList.add("open");
+  slot.innerHTML = cell.getAttribute("data-why") || "";
+}
+document.addEventListener("click",(e)=>{
+  const cell = e.target && e.target.closest && e.target.closest(".hy[data-why]");
+  if(cell) showHalfYearWhy(cell);
+});
+document.addEventListener("keydown",(e)=>{
+  if(e.key!=="Enter" && e.key!==" ") return;
+  const cell = e.target && e.target.closest && e.target.closest(".hy[data-why]");
+  if(!cell) return;
+  e.preventDefault();                                 // Space would scroll the page
+  showHalfYearWhy(cell);
+});
+
+// A capacity bar opens its own explanation. Clicking the label or the bar both work, because
+// in a meeting people point at the bar. One open at a time, so the list stays scannable.
+function toggleCapDetail(id){
+  const box=document.getElementById(id); if(!box) return;
+  const open=box.hasAttribute("hidden");
+  document.querySelectorAll(".capx").forEach(b=>b.setAttribute("hidden",""));
+  document.querySelectorAll(".caprow[aria-expanded='true']").forEach(r=>r.setAttribute("aria-expanded","false"));
+  if(open){
+    box.removeAttribute("hidden");
+    const row=document.querySelector(`.caprow[data-cap="${CSS.escape(id)}"]`);
+    if(row) row.setAttribute("aria-expanded","true");
+  }
+}
+document.addEventListener("click",(e)=>{
+  const hit = e.target && e.target.closest && e.target.closest(".caprow[data-cap],.capbar[data-cap]");
+  if(hit) toggleCapDetail(hit.getAttribute("data-cap"));
+});
+document.addEventListener("keydown",(e)=>{
+  if(e.key!=="Enter" && e.key!==" ") return;
+  const row = e.target && e.target.closest && e.target.closest(".caprow[data-cap]");
+  if(!row) return;
+  e.preventDefault();
+  toggleCapDetail(row.getAttribute("data-cap"));
+});
+
 // Force a re-read of the API. The board refreshes itself every five minutes, which is
 // fine for watching and useless for demonstrating: inject capacity on a compartment in
 // the console, come back here, and the ring should show it now, not eventually.

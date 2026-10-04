@@ -53,6 +53,12 @@ var SIM = {
   capacity: 0, committed: 0, onHand: 0, inbound: 0, freeToOrder: 0,
   committedPct: 0, dailyIn: 0, dailyOut: 0, daysToDepletion: 0,
   deployed: 0,
+  // Die Flotte, aus /api/v1/fleet/summary. deployed heisst hier weiter so,
+  // weil die Rack-Beleuchtung daran haengt, traegt aber jetzt die vermieteten
+  // Geraete statt einer Summe ueber eine abgeschaltete TCO-Tabelle.
+  fleet: { underMgmt: 0, everReceived: 0, rented: 0, warehouse: 0, left: 0,
+           storage: 0, processing: 0, repair: 0, ready: 0, rest: 0,
+           recycled: 0, returnsDue30: 0, served: false },
   inboundQueue: [],
   truckTimer: 2.5, reqTimer: 3, decomTimer: 9,
   fxOn: true,
@@ -354,8 +360,41 @@ function sync(RAW) {
   SIM.dailyOut = +cf.daily_out || 0;
   SIM.daysToDepletion = +cf.days_to_depletion || 0;
 
-  var tco = RAW.tcoClasses || [];
-  SIM.deployed = tco.reduce(function (s, x) { return s + (+x.assets || 0); }, 0);
+  // Die Flotte. by_status traegt jeden Zustand, den das Lager kennt; was der
+  // Stand nicht liefert, bleibt 0 und die Kachel sagt es, statt eine Null zu
+  // zeigen, die wie eine Messung aussieht.
+  var fs = RAW.fleet || null;
+  var by = (fs && fs.by_status) || {};
+  var rented = +(fs && fs.rented) || 0;
+  var warehouse = +(fs && fs.warehouse) || 0;
+  // Die vier Gruppen decken jeden Lagerzustand ab, den das Backend kennt
+  // (WAREHOUSE_STATUSES). Was trotzdem uebrig bleibt, wird ausgewiesen statt
+  // stillschweigend zu fehlen: eine Aufteilung, die nicht aufgeht, muss es sagen.
+  var storage = (+by.IN_STORAGE || 0) + (+by.RECEIVED || 0);
+  var processing = (+by.RETURNED || 0) + (+by.MDM_RELEASE || 0) + (+by.WIPE_GRADING || 0) + (+by.REFURB || 0);
+  var repair = +by.REPAIR || 0;
+  var ready = (+by.READY_SECOND || 0) + (+by.SELLABLE || 0) + (+by.SWAP_BUFFER || 0);
+  SIM.fleet = {
+    served: !!fs,
+    // Unter Verwaltung heisst beim Kunden plus im Lager. /fleet/summary.total
+    // zaehlt auch verkaufte und verwertete Geraete mit; die sind keine Flotte
+    // mehr und stehen deshalb getrennt.
+    underMgmt: rented + warehouse,
+    everReceived: +(fs && fs.total) || 0,
+    left: Math.max(0, (+(fs && fs.total) || 0) - rented - warehouse),
+    rented: rented,
+    warehouse: warehouse,
+    storage: storage,
+    processing: processing,
+    repair: repair,
+    ready: ready,
+    rest: Math.max(0, warehouse - storage - processing - repair - ready),
+    recycled: +(fs && fs.recycled_12m) || 0,
+    returnsDue30: +(fs && fs.returns_due_30d) || 0
+  };
+  // Die Racks leuchten nach dem, was beim Kunden ist. Vorher summierte das die
+  // Spalte assets der TCO-Tabelle, die abgeschaltet ist: immer 0, immer dunkel.
+  SIM.deployed = SIM.fleet.rented;
 
   SIM.inboundQueue = (RAW.inv || []).filter(function (x) { return x.on_order > 0; })
     .map(function (x) { return { sku: x.name, units: x.on_order, eta: x.eta }; });
@@ -394,7 +433,21 @@ function ddiv() { return Math.max(1, Math.ceil(SIM.deployed / R.rackSlots.length
 // =====================================================================
 // HUD (DOM overlay built inside the container, scoped .tw- classes)
 // =====================================================================
+// Zwei neue Bausteine fuer die Kacheln: eine breite Kachel fuer die Gesamtzahl
+// und eine Unterzeile, die sagt, woraus sie sich zusammensetzt.
+var HUD_CSS = '.tw-wide{grid-column:1/-1}'
+  + '.tw-big{font-size:30px;line-height:1.05;letter-spacing:-0.5px}'
+  + '.tw-sub2{font-size:10px;color:#8b98a8;margin-top:2px;line-height:1.3}';
+function injectHudCss() {
+  if (document.getElementById('tw-hud-css')) return;
+  var el = document.createElement('style');
+  el.id = 'tw-hud-css';
+  el.textContent = HUD_CSS;
+  document.head.appendChild(el);
+}
+
 function buildHUD() {
+  injectHudCss();
   var h = document.createElement('div');
   h.className = 'tower-hud';
   h.innerHTML =
@@ -405,9 +458,19 @@ function buildHUD() {
       '<div class="tw-clock"><span class="tw-pulse"></span> AS OF <b id="tw-asof">—</b></div>' +
     '</div>' +
     '<div class="tw-panel" id="tw-stats">' +
-      '<div class="tw-stat"><div class="tw-lab">Committed units</div><div class="tw-val" id="tw-recv" style="color:#f5a524">0</div></div>' +
-      '<div class="tw-stat"><div class="tw-lab">Deployed assets</div><div class="tw-val" id="tw-dep" style="color:#2dd4bf">0</div></div>' +
+      // Erste Reihe: die Flotte. Gesamt zuerst, dann wo sie steht. Drei Viertel
+      // davon sind beim Kunden, und genau das fehlte auf diesem Schirm.
+      '<div class="tw-stat tw-wide"><div class="tw-lab">Fleet total</div><div class="tw-val tw-big" id="tw-total" style="color:#e9eef5">0</div><div class="tw-sub2" id="tw-total-sub">devices under management</div></div>' +
+      '<div class="tw-stat"><div class="tw-lab">Rented (at customers)</div><div class="tw-val" id="tw-dep" style="color:#2dd4bf">0</div></div>' +
+      '<div class="tw-stat"><div class="tw-lab">In warehouse</div><div class="tw-val" id="tw-wh" style="color:#f5a524">0</div><div class="tw-sub2" id="tw-wh-sub"></div></div>' +
       '<div class="tw-stat"><div class="tw-lab">Inbound (on order)</div><div class="tw-val" id="tw-tr" style="color:#4aa3ff">0</div></div>' +
+      // Zweite Reihe: was im Lager gerade passiert, in der Reihenfolge des Wegs.
+      '<div class="tw-stat"><div class="tw-lab">In storage</div><div class="tw-val" id="tw-stor" style="color:#f5a524">0</div><div class="tw-sub2">new stock, before first rental</div></div>' +
+      '<div class="tw-stat"><div class="tw-lab">In processing</div><div class="tw-val" id="tw-proc" style="color:#4aa3ff">0</div><div class="tw-sub2">returns, MDM hold, wipe, refurb</div></div>' +
+      '<div class="tw-stat"><div class="tw-lab">In repair</div><div class="tw-val" id="tw-rep" style="color:#f5a524">0</div></div>' +
+      '<div class="tw-stat"><div class="tw-lab">Ready to go out</div><div class="tw-val" id="tw-ready" style="color:#3ddc84">0</div><div class="tw-sub2">second life, resale, swap buffer</div></div>' +
+      '<div class="tw-stat"><div class="tw-lab">Recycled (12m)</div><div class="tw-val" id="tw-rec" style="color:#ff5d5d">0</div></div>' +
+      '<div class="tw-stat"><div class="tw-lab">Committed units</div><div class="tw-val" id="tw-recv" style="color:#f5a524">0</div><div class="tw-sub2">warehouse plus on order</div></div>' +
       '<div class="tw-stat"><div class="tw-lab">Free to order</div><div class="tw-val" id="tw-free" style="color:#3ddc84">0</div></div>' +
       '<div class="tw-cap tw-stat" id="tw-capbox">' +
         '<div class="tw-row"><span class="tw-lab">Warehouse capacity</span><span class="tw-val" id="tw-cap" style="font-size:14px">0%</span></div>' +
@@ -417,11 +480,11 @@ function buildHUD() {
     '</div>' +
     '<div class="tw-panel" id="tw-legend">' +
       '<div class="tw-h">Lifecycle state</div>' +
-      '<div class="tw-item"><span class="tw-dot" style="background:#3ddc84;color:#3ddc84"></span>Received / inbound</div>' +
-      '<div class="tw-item"><span class="tw-dot" style="background:#f5a524;color:#f5a524"></span>In storage (warehouse)</div>' +
-      '<div class="tw-item"><span class="tw-dot" style="background:#4aa3ff;color:#4aa3ff"></span>Packed (rack bundle)</div>' +
-      '<div class="tw-item"><span class="tw-dot" style="background:#2dd4bf;color:#2dd4bf"></span>Deployed (datacenter)</div>' +
-      '<div class="tw-item"><span class="tw-dot" style="background:#ff5d5d;color:#ff5d5d"></span>Decommissioned</div>' +
+      '<div class="tw-item"><span class="tw-dot" style="background:#3ddc84;color:#3ddc84"></span>Inbound, on order</div>' +
+      '<div class="tw-item"><span class="tw-dot" style="background:#f5a524;color:#f5a524"></span>In storage, before first rental</div>' +
+      '<div class="tw-item"><span class="tw-dot" style="background:#4aa3ff;color:#4aa3ff"></span>In processing, back from a customer</div>' +
+      '<div class="tw-item"><span class="tw-dot" style="background:#2dd4bf;color:#2dd4bf"></span>Rented, at a customer</div>' +
+      '<div class="tw-item"><span class="tw-dot" style="background:#ff5d5d;color:#ff5d5d"></span>Sold or recycled</div>' +
     '</div>' +
     '<div class="tw-panel" id="tw-log">' +
       '<div class="tw-h"><span>Event stream</span><span style="color:#586478">live findings</span></div>' +
@@ -465,10 +528,32 @@ function updateHUD() {
   if (!R.hud) return;
   var asof = (R.data && R.data.capFlow && R.data.capFlow.as_of) || '—';
   byid('tw-asof').textContent = asof;
-  byid('tw-recv').textContent = SIM.committed;
-  byid('tw-dep').textContent = SIM.deployed;
-  byid('tw-tr').textContent = SIM.inbound;
-  byid('tw-free').textContent = SIM.freeToOrder;
+  var f = SIM.fleet;
+  // Eine Flotte von 400.000 ohne Tausendertrennung liest sich nicht.
+  function n(v) { return (v || 0).toLocaleString('en-US'); }
+  // Eine Null ohne Zahl dahinter ist eine Luege: sagt der Stand nichts, sagt
+  // die Kachel das, statt eine Messung vorzutaeuschen.
+  function q(v) { return f.served ? n(v) : 'n/a'; }
+  byid('tw-total').textContent = q(f.underMgmt);
+  byid('tw-total-sub').textContent = f.served
+    ? n(f.rented) + ' rented, ' + n(f.warehouse) + ' in the warehouse'
+      + (f.left ? '; ' + n(f.left) + ' sold or recycled are not counted here' : '')
+    : '/fleet/summary not served by this deployment';
+  byid('tw-dep').textContent = q(f.rented);
+  byid('tw-wh').textContent = q(f.warehouse);
+  // Die vier Lagerkacheln sollen sich zum Lager addieren. Tun sie es nicht,
+  // sagt die Unterzeile, wie viel fehlt, statt den Rest zu verschlucken.
+  byid('tw-wh-sub').textContent = f.served
+    ? (f.rest ? n(f.rest) + ' in no compartment below' : 'storage, processing, repair and ready add up to this')
+    : '';
+  byid('tw-stor').textContent = q(f.storage);
+  byid('tw-proc').textContent = q(f.processing);
+  byid('tw-rep').textContent = q(f.repair);
+  byid('tw-ready').textContent = q(f.ready);
+  byid('tw-rec').textContent = q(f.recycled);
+  byid('tw-recv').textContent = n(SIM.committed);
+  byid('tw-tr').textContent = n(SIM.inbound);
+  byid('tw-free').textContent = n(SIM.freeToOrder);
   var p = Math.round(SIM.committedPct * 100);
   byid('tw-cap').textContent = p + '%';
   byid('tw-capbar').style.width = Math.min(100, p) + '%';
@@ -481,7 +566,10 @@ var SEV_CLS = { action: 'bad', watch: 'warn', good: 'ok', info: 'dc' };
 function seedLog(RAW) {
   var feed = byid('tw-logfeed'); if (!feed) return;
   feed.innerHTML = '';
-  logLine('control tower online · ' + SIM.committed + '/' + SIM.capacity + ' units committed', 'dc');
+  logLine('control tower online · fleet ' + (SIM.fleet.underMgmt || 0).toLocaleString('en-US')
+    + ' · ' + (SIM.fleet.rented || 0).toLocaleString('en-US') + ' rented · '
+    + SIM.committed.toLocaleString('en-US') + '/' + SIM.capacity.toLocaleString('en-US')
+    + ' warehouse slots committed', 'dc');
   (RAW.ruleIns || []).slice(0, 6).forEach(function (r) {
     logLine(decode(r.title), SEV_CLS[r.severity] || 'ai');
   });

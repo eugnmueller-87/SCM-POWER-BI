@@ -279,6 +279,12 @@ async function refresh() {
     // straight-line path from /fleet/summary and says so on screen.
     const capacityPlan = await safe("capacity-plan", getJSON(token, "/api/v1/capacity-plan"), null);
     const fleetSummary = await safe("fleet/summary", getJSON(token, "/api/v1/fleet/summary"), null);
+    // What the fleet is MADE OF: manufacturer, class, model, each per status. One
+    // call, the whole tree, so a drill-down costs no round trip. New endpoint
+    // (04.10.2026) — an older backend answers 404 and the block hides itself,
+    // which is why it goes through safe() like every other young read.
+    const fleetBreakdown = await safe("fleet/breakdown",
+      getJSON(token, "/api/v1/fleet/breakdown"), null);
 
     // Per-year spend, so the Spend/Sourcing scorecards can slice by year (backend
     // supports ?year=). Fetched upfront per available year and cached, so a year
@@ -320,6 +326,7 @@ async function refresh() {
         storage_headroom: storageHeadroom, capacity_flow: capacityFlow,
         spend_years: spendYears, spend_by_year: spendByYear,
         kpis, capacity_plan: capacityPlan, fleet_summary: fleetSummary,
+        fleet_breakdown: fleetBreakdown,
         warehouse_compartments: warehouseCompartments,
         warehouse_contents: warehouseContentsByCode,
         product_suppliers_from_orders: productSuppliersFromOrders,
@@ -331,6 +338,7 @@ async function refresh() {
       + `${shouldCostBySupplier.length} should-cost rows, ${tcoByClass.length} tco classes, `
       + `${insights.length} insights age ${insightsAgeMin}m, ${kpis.length} kpis, `
       + `capacity plan ${capacityPlan ? "served" : "not served"}, fleet summary ${fleetSummary ? "served" : "not served"}, `
+      + `fleet breakdown ${fleetBreakdown ? (fleetBreakdown.manufacturers || []).length + " makers" : "not served"}, `
       + `warehouse ${whN} compartments / ${Object.keys(warehouseContentsByCode).length} contents / `
       + `${Object.keys(productSuppliersFromOrders).length} models with a supplier in ${whMs} ms)`);
   } catch (e) {

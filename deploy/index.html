@@ -220,6 +220,9 @@
   .kx .kxna{border-left:3px solid var(--amber);padding-left:10px}
   /* The two blocks that answer "what is this and how is it worked out" read first and read
      big; everything else folds away, so the panel opens short instead of opening long. */
+  .kxdrift{margin-top:14px;background:#fffbeb;border-left:3px solid var(--amber);border-radius:0 6px 6px 0;padding:9px 12px}
+  .kxdrift .kxt{font-size:12.5px;line-height:1.55;color:#78350f;max-width:76ch}
+  .kxdrift .kxl{color:#b45309}
   .kxlead{margin-top:14px;background:#f8fafc;border-left:3px solid #1f3a8a;border-radius:0 6px 6px 0;padding:9px 12px}
   .kxlead .kxt{font-size:14px;line-height:1.5;color:#0f172a;max-width:70ch}
   .kxhow{margin-top:12px}
@@ -1644,11 +1647,17 @@ function kfmt(v,unit,opt){
 }
 const kdate=(iso)=>{ if(!iso) return "—"; const s=String(iso).slice(0,10); return s.slice(8,10)+"."+s.slice(5,7)+"."+s.slice(0,4); };
 const PH_TITLE="placeholder target: the backend seeded it 10/20/30 % better than the first measurement and a person has not set it yet; every checkpoint derived from it carries the mark";
+// Two gaps are on screen at once and they are measured against different dates: this pill
+// compares today's value with the line's value TODAY, while the "now" cell says how far it is
+// to that half-year's END. They differ by a few units and read as a contradiction unless the
+// pill says what it measures against. So it says it.
 function kpill(k,a){
   const s=KPI_STATUS[a.status]||KPI_STATUS.open;
-  const txt=(a.status==="ahead"||a.status==="behind") ? `${s.label} by ${kfmt(a.gap,k.unit,{gap:true})}` : s.label;
+  const off=(a.status==="ahead"||a.status==="behind");
+  const txt=off ? `${s.label} by ${kfmt(a.gap,k.unit,{gap:true})} vs the line today` : s.label;
   const backend=k.status?` · backend status: ${k.status}${k.progress_pct!=null?` (${k.progress_pct} % of the one-year distance)`:""}`:"";
-  return `<span class="pill ${s.cls}" title="${esc(s.hint+backend)}">${esc(txt)}</span>`;
+  const hint=off?`${s.hint} Measured against where the line stands today, not against the half-year end: the cell marked "now" says how far it is to that date.${backend}`:s.hint+backend;
+  return `<span class="pill ${s.cls}" title="${esc(hint)}">${esc(txt)}</span>`;
 }
 function kcell(k,a,c,nowKey){
   const now=c.key===nowKey;
@@ -1662,13 +1671,20 @@ function kcell(k,a,c,nowKey){
       n = met ? "checkpoint already met" : `${kfmt(Math.abs(c.value-k.current),k.unit,{gap:true})} to go by ${c.short.slice(0,6)}`;
     }
   }
-  // The same self-explanation as the fleet hero: a checkpoint derived here says how.
+  // The same self-explanation as the fleet hero: a checkpoint derived here says how. It names
+  // the leg it actually sits on, not always year one: a checkpoint in 2027 that quotes the
+  // year-one target reads like an arithmetic error even when the arithmetic is right.
   let why="";
   if(c.value==null) why = c.reason ? `<b>${esc(c.key)}</b> has no value: ${esc(c.reason)}.` : "";
   else {
     why = `<b>${kfmt(c.value,k.unit)}</b> is read off on ${kdate(c.end)}, not measured.`;
-    if(a.first) why += ` It sits on a straight line from the first measurement <b>${kfmt(a.first.value,k.unit)}</b> (${kdate(a.first.as_of)}) to the yearly target${k.target_y1!=null?` <b>${kfmt(k.target_y1,k.unit)}</b>`:""}, on to year two and year three.`;
-    if(a.placeholder) why += ` The target behind it is a <b>placeholder</b>, seeded 10/20/30 % better than the first value, so this checkpoint is one too.`;
+    const pts=a.anchors||[];
+    let seg=null;
+    for(let i=1;i<pts.length;i++){ if(c.end<=pts[i].date){ seg=[pts[i-1],pts[i]]; break; } }
+    if(seg) why += ` It sits on the straight line between <b>${kfmt(seg[0].value,k.unit)}</b> (${kdate(seg[0].date)}) and <b>${kfmt(seg[1].value,k.unit)}</b> (${kdate(seg[1].date)}).`;
+    else if(a.first) why += ` It sits on a straight line that starts at the first measurement <b>${kfmt(a.first.value,k.unit)}</b> (${kdate(a.first.as_of)}).`;
+    if(a.first) why += ` The whole line is anchored to that first measurement of ${kfmt(a.first.value,k.unit)} on ${kdate(a.first.as_of)}.`;
+    if(a.placeholder) why += ` The target behind it is a <b>placeholder</b>, seeded 10/20/30 % better than that first value, so this checkpoint is one too.`;
     if(now && k.current!=null) why += ` Measured today: <b>${kfmt(k.current,k.unit)}</b>.`;
   }
   const act = why ? ` data-why="${esc(why)}" role="button" tabindex="0" aria-label="${esc(c.key)}, show how this number is derived"` : "";
@@ -1794,6 +1810,25 @@ function kexplainHtml(k,a,nowKey){
   // what the number is for, then how it is worked out. The rest is reference and sits behind
   // a fold, so the panel opens short. The words are still the backend's, only their order
   // and their prominence are this cockpit's doing.
+  // The checkpoints are a straight line from the FIRST measurement to targets seeded from that
+  // same first measurement. That holds while the value stays near its anchor. Once it has moved
+  // several times the whole planned improvement, the line is no longer a plan, it is an artefact
+  // of one early reading, and every checkpoint derived from it is too. Say it, loudly: a cockpit
+  // that keeps drawing a tidy line past a value that left it behind is worse than one that stops.
+  let drift="";
+  if(a.first && k.current!=null && k.target_y1!=null){
+    const span=Math.abs(+k.target_y1-a.first.value), moved=Math.abs(+k.current-a.first.value);
+    if(span>0 && moved>2*span){
+      const times=Math.round(moved/span);
+      drift=`<div class="kxdrift"><div class="kxl">The line no longer describes this KPI</div><div class="kxt">
+        Today's value <b>${kfmt(k.current,k.unit)}</b> is <b>${times} times</b> the entire planned improvement away from the
+        first measurement <b>${kfmt(a.first.value,k.unit)}</b> (${kdate(a.first.as_of)}) that every checkpoint and every
+        placeholder target is anchored to. The checkpoints below are still arithmetically correct and
+        practically meaningless: they trace a path from a starting point this measure left long ago.
+        <b>Re-anchor it: a person sets real targets against today's value, or the first measurement is reset.</b>
+      </div></div>`;
+    }
+  }
   const lead=`<div class="kxlead"><div class="kxl">Why it matters</div><div class="kxt">${esc(k.why||"")}</div></div>`;
   const how=`<div class="kxhow"><div class="kxl">How it is calculated</div><div class="kxt">${esc(k.calculation||"")}</div></div>`;
   // A KPI that cannot be measured says so in front of the fold, never behind it.
@@ -1801,7 +1836,7 @@ function kexplainHtml(k,a,nowKey){
   const folded = k.current==null ? "" : needs;
   const rest=`<details class="kxmore"><summary>Data sources, exclusions${k.current==null?"":" and what the measurement needs"}</summary>
     <div class="kx">${blk("Where the data comes from",k.reads,"mono")}${blk("What it excludes or assumes",k.caveats)}${folded}</div></details>`;
-  return head+cps+unmeasurable+lead+how+rest;
+  return head+drift+cps+unmeasurable+lead+how+rest;
 }
 // A card opens the same explanation in the drawer the scorecard cards use.
 function openKpiDrill(k,a,nowKey){

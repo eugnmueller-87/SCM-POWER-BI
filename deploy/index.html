@@ -426,6 +426,67 @@
   .bd-l2 .bd-name{font-weight:400;font-size:12.5px}
   .bd-l2 .bd-chips{margin-top:4px}
   @media(max-width:760px){ .bd-bar{display:none} .bd-pct{min-width:38px} .bd-l1{padding-left:14px} .bd-l2{padding-left:28px} }
+  /* TCO tab: the device's cost by layer, the levers, every model, the rates */
+  .tco-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px}
+  .seg{display:inline-flex;background:#e2e8f0;border-radius:999px;padding:3px}
+  .seg button{border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:600;color:#475569;padding:6px 13px;border-radius:999px;cursor:pointer}
+  .seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(15,23,42,.14)}
+  #tcoFind{margin-left:auto;display:flex;gap:6px}
+  #tcoFind input{font:inherit;font-size:12.5px;padding:7px 13px;border:1px solid var(--line);border-radius:999px;width:230px;background:#fff}
+  #tcoFind button{font:inherit;font-size:12.5px;font-weight:600;border:0;border-radius:999px;padding:7px 15px;background:#1e3a8a;color:#fff;cursor:pointer}
+  .tco-intro{font-size:12.5px;color:var(--muted);margin:0 0 14px;max-width:110ch;line-height:1.5}
+  .tco-empty{color:#475569;font-size:13.5px;line-height:1.6}
+  .h3n{font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;color:#94a3b8;margin-left:6px}
+  .tl-head,.tl-row{display:grid;grid-template-columns:minmax(170px,1.25fr) minmax(80px,2fr) 84px 76px 52px;gap:10px;align-items:center}
+  .tl-head{font-size:10.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px;padding:0 6px 6px;border-bottom:1px solid var(--line)}
+  .tl-head span:nth-child(n+3){text-align:right}
+  .tl-row{padding:7px 6px;border-bottom:1px solid #f1f5f9;font-size:12.5px;cursor:pointer;border-radius:6px}
+  .tl-row:hover{background:#f8fafc}
+  .tl-nm{font-weight:600;color:var(--ink);line-height:1.3}
+  .tl-nm .kbasis{margin-left:0;margin-top:3px;font-size:9px}
+  .tl-track{background:#f1f5f9;border-radius:5px;height:14px;position:relative;overflow:hidden}
+  .tl-fill{position:absolute;left:0;top:0;bottom:0;border-radius:5px;min-width:2px}
+  .tl-v{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;color:var(--ink)}
+  .tl-s{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+  .tl-why{grid-column:2/-1;color:#94a3b8;font-style:italic;font-size:12px}
+  .tl-row.tl-total{cursor:default;border-top:2px solid var(--line);border-bottom:0;font-weight:700;margin-top:2px}
+  .tl-row.tl-total:hover{background:none}
+  .tl-row.credit .tl-v{color:#15803d}
+  .lever{padding:11px 0;border-bottom:1px solid #f1f5f9;font-size:13px;line-height:1.5;color:#334155}
+  .lever:last-child{border-bottom:0}
+  .lever .lk{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:3px}
+  .lever b{color:var(--ink)}
+  .tco-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  /* a grid item never shrinks below its content unless told: without this the wide model
+     table pushes its card past the page edge instead of scrolling inside it */
+  #page-tco .grid > .card{min-width:0}
+  #tcoModels th{cursor:pointer;white-space:nowrap;user-select:none}
+  #tcoModels th.sorted{color:var(--ink)}
+  #tcoModels td{white-space:nowrap}
+  #tcoModels tr.mrow{cursor:pointer}
+  #tcoModels tr.mrow:hover td{filter:brightness(.97)}
+  #tcoModels td.pos{color:#15803d;font-weight:700}#tcoModels td.neg{color:#b91c1c;font-weight:700}
+  #tcoModels td.mdl{font-weight:600;color:var(--ink)}
+  #tcoRates td{vertical-align:top}
+  #tcoRates .rnote{font-size:11px;color:#94a3b8;margin-top:2px;white-space:normal;max-width:52ch}
+  .life{list-style:none;margin:4px 0 18px;padding:0 0 0 4px;border-left:2px solid #e2e8f0}
+  .life li{position:relative;padding:3px 0 9px 16px;font-size:12.5px;line-height:1.45;color:#334155;display:flex;gap:8px;align-items:baseline}
+  .life li .t{flex:1;min-width:0}
+  .life li::before{content:"";position:absolute;left:-7px;top:7px;width:10px;height:10px;border-radius:50%;background:var(--dot,#94a3b8);box-shadow:0 0 0 2px #fff}
+  .life .d{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .life .amt{font-variant-numeric:tabular-nums;font-weight:600;color:var(--ink);white-space:nowrap}
+  .dk{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:16px 0 6px}
+  .comp td{font-size:12px}
+  .comp .cl{font-weight:600;color:var(--ink)}
+  .comp .cn{font-size:11px;color:#94a3b8;white-space:normal}
+  .serials{display:flex;flex-wrap:wrap;gap:6px}
+  .serials button{font:inherit;font-size:12px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 11px;cursor:pointer;color:#1e3a8a;font-weight:600}
+  .serials button:hover{background:#eef2ff}
+  .serials .sg{font-size:10.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px;width:100%;margin-top:6px}
+  @media(max-width:900px){ #page-tco .kpis{grid-template-columns:1fr 1fr} #page-tco .main{grid-template-columns:1fr} }
+  @media(max-width:520px){ #page-tco .kpis{grid-template-columns:1fr} #page-tco .kpi .value{font-size:30px} }
+  @media(max-width:900px){ #tcoFind{margin-left:0;width:100%} #tcoFind input{flex:1;width:auto}
+    .tl-head,.tl-row{grid-template-columns:minmax(120px,1.4fr) 76px 66px 46px} .tl-head span:nth-child(2),.tl-bar{display:none} .tl-why{grid-column:1/-1} }
 </style>
 </head>
 <body>
@@ -660,34 +721,58 @@
       <table id="scTable"><thead><tr><th>Product</th><th class="num">Floor</th><th class="num">Target</th><th class="num">Quote</th><th class="num">Gap→target</th><th class="num">Gap %</th></tr></thead><tbody></tbody></table></div></div>
   </section>
 
+  <!-- ===================== TCO: what one rented device costs over its life (GET /tco/devices) =====================
+       Every number on this tab comes from the API; the words that explain a layer or a rate are
+       the API's too (services/tco_device.py). Nothing here types a figure. -->
   <section class="page" id="page-tco">
-    <div class="scsec">🧾 Total Cost of Ownership — beyond the sticker price</div>
-    <div class="grid kpis">
-      <div class="card kpi"><div class="label">Portfolio TCO</div><div class="value" id="tcoTotal">–</div><span class="pill neut" id="tcoN">over – assets</span></div>
-      <div class="card kpi"><div class="label">Total Cost %</div><div class="value" id="tcoTotalPct">–</div><span class="pill neut">ΣTCO ÷ baseline</span></div>
-      <div class="card kpi"><div class="label">TSCMC %</div><div class="value" id="tcoTscmc">–</div><span class="pill good">excl. acquisition (SCOR)</span></div>
-      <div class="card kpi"><div class="label">OpEx Share</div><div class="value" id="tcoOpexShare">–</div><span class="pill warn">run-cost vs TCO</span></div>
-    </div>
-    <div class="grid main">
-      <div class="card"><h3>TCO by layer, per asset class <span style="font-weight:400;text-transform:none;font-size:11px">(stacked €)</span></h3><div class="chart-box tall"><canvas id="tcoStack"></canvas></div></div>
-      <div class="card">
-        <h3>What this is</h3>
-        <p style="font-size:13px;color:#475569;line-height:1.6">
-          <strong>TCO = acquisition + landed + deployment + lifetime OpEx + end-of-life
-          − recovery.</strong> Acquisition is what we actually paid; the rest is the cost
-          of <em>owning and running</em> the box over a 5-year life.
-        </p>
-        <p style="font-size:13px;color:#475569;line-height:1.6">
-          <strong>TSCMC %</strong> (Total Supply-Chain Management Cost) deliberately
-          <em>excludes</em> acquisition — by the SCOR/APQC definition it measures the cost
-          of operating the chain, not the hardware itself. On power-hungry GPU nodes,
-          lifetime OpEx can rival or exceed the purchase price — which is exactly the
-          number a sticker-price comparison misses.
-        </p>
+    <div class="scsec">🧾 Total cost of ownership, per device <span id="tcoAsOf" style="font-weight:400;text-transform:none;letter-spacing:0;color:#94a3b8"></span></div>
+    <div class="tco-bar">
+      <div class="seg" id="tcoCohort" role="tablist">
+        <button data-c="finished" class="on" title="devices sold or recycled: the whole life is known">Finished lives</button>
+        <button data-c="fleet" title="every serial, with what it has cost so far">Whole fleet to date</button>
       </div>
+      <div class="seg" id="tcoFamily">
+        <button data-f="" class="on">All devices</button>
+        <button data-f="Smartphone">Smartphones</button>
+        <button data-f="Tablet">Tablets</button>
+        <button data-f="Laptop">Laptops</button>
+      </div>
+      <form id="tcoFind" autocomplete="off">
+        <input id="tcoFindIn" type="search" placeholder="One device: serial number" aria-label="Serial number">
+        <button type="submit">Open</button>
+      </form>
     </div>
-    <div class="grid"><div class="card"><h3>Per-class detail <span style="font-weight:400;text-transform:none;font-size:11px">(avg per asset)</span></h3>
-      <table id="tcoTable"><thead><tr><th>Class</th><th class="num">Assets</th><th class="num">Acquisition</th><th class="num">OpEx</th><th class="num">Landed+Deploy</th><th class="num">EOL−Recovery</th><th class="num">Avg TCO</th></tr></thead><tbody></tbody></table></div></div>
+    <p class="tco-intro" id="tcoIntro"></p>
+    <div class="tco-empty card" id="tcoEmpty" hidden></div>
+    <div id="tcoBody">
+      <div class="grid kpis">
+        <div class="card kpi"><div class="label">TCO per device</div><div class="value" id="tcoNet">–</div><span class="pill neut" id="tcoNetP">–</span></div>
+        <div class="card kpi"><div class="label">Cost per month in service</div><div class="value" id="tcoMonth">–</div><span class="pill neut" id="tcoMonthP">–</span></div>
+        <div class="card kpi"><div class="label">Rent per month</div><div class="value" id="tcoRent">–</div><span class="pill neut" id="tcoRentP">–</span></div>
+        <div class="card kpi"><div class="label" id="tcoMarginL">Margin per month</div><div class="value" id="tcoMargin">–</div><span class="pill neut" id="tcoMarginP">–</span></div>
+      </div>
+      <div class="grid main">
+        <div class="card">
+          <h3>Where the money goes, per device <span class="h3n" id="tcoLayersSub"></span></h3>
+          <div class="tl-head"><span>Layer</span><span></span><span>per device</span><span>per month</span><span>share</span></div>
+          <div id="tcoLayers"></div>
+        </div>
+        <div class="card">
+          <h3>Where to get better</h3>
+          <div id="tcoLevers"></div>
+        </div>
+      </div>
+      <div class="grid" style="margin-top:18px"><div class="card">
+        <h3 style="display:flex;flex-wrap:wrap;align-items:center;gap:8px">Every model, full TCO
+          <span class="seg" id="tcoUnit" style="text-transform:none;letter-spacing:0"><button data-u="device" class="on">Layers per device</button><button data-u="month">Layers per month on rent</button></span>
+          <span class="h3n">click a column to sort, a row to open the model and its serials · the darker a layer cell, the more euros in it</span></h3>
+        <div class="tco-scroll"><table id="tcoModels" class="kpi-tbl"><thead></thead><tbody></tbody></table></div>
+      </div></div>
+      <div class="grid" style="margin-top:18px"><div class="card">
+        <h3>The rates behind the numbers <span class="h3n">quantities are counted in the data; a rate is a public price with its source, or a placeholder with the role that sets it</span></h3>
+        <div class="tco-scroll"><table id="tcoRates" class="kpi-tbl"><thead><tr><th>Rate</th><th class="num">Smartphone</th><th class="num">Tablet</th><th class="num">Laptop</th><th>Unit</th><th>Owner</th><th>Basis</th></tr></thead><tbody></tbody></table></div>
+      </div></div>
+    </div>
   </section>
 
   <!-- ===================== ORDERS (inbound pipeline + capacity coverage) ===================== -->
@@ -875,6 +960,9 @@ function buildModel(src){
       total:num(x.tco_total), avg:num(x.avg_tco),
     })),
     tcoPortfolio: D.tco_portfolio || null,
+    // The device fleet's TCO (GET /tco/devices): both populations, per class and per model,
+    // the layers in the order of a device's life, the rates with their owner or source.
+    tcoDev: D.tco_devices || null,
     // KPIs tab: the backend's KPI list, its capacity plan (absent on a deployment that
     // does not serve it yet) and the fleet summary the derived path falls back to.
     kpis: arr(D.kpis), plan: D.capacity_plan || null, fleet: D.fleet_summary || null,
@@ -2448,41 +2536,311 @@ function renderShouldCost(){
   document.querySelector("#scTable tbody").innerHTML = body;
 }
 
+// ---------- TCO tab: what one rented device costs over its life, and what it earns ----------
+// Reads RAW.tcoDev (GET /tco/devices) and, on demand, one serial (/api/tco/device) and a
+// model's serials (/api/tco/serials). Every figure is the API's, and every sentence that
+// explains one is built from the API's own words and numbers. A figure the data cannot carry
+// says why instead of showing a zero. The datacenter waterfall that stood here answered empty
+// over a device fleet; its endpoints stay behind TCO_ENABLED in server.js.
+const TCO = { cohort:"finished", family:"", sort:null, dir:1, unit:"device", wired:false };
+const EURc = n => (n<0?"−":"")+"€"+Math.abs(Number(n)).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+const EURi = n => (n<0?"−":"")+"€"+Math.abs(Number(n)).toLocaleString("en-US",{maximumFractionDigits:0});
+const has = v => v!==null && v!==undefined && v!=="" && isFinite(v);
+const tEsc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const tLink = s => tEsc(s).replace(/(https?:\/\/[^\s)<]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>');
+const TCO_COLOR = {acquisition:"#1e3a8a",inbound:"#0891b2",enrolment:"#7c3aed",outbound:"#a78bfa",software:"#2563eb",
+  support:"#f59e0b",returns:"#fb923c",service:"#ef4444",warehouse:"#94a3b8",financing:"#0f766e",eol:"#10b981"};
+// Column heads for the model table: the API's labels are sentences, a column needs a word.
+// The full label stays in the head's tooltip.
+const TCO_SHORT = {acquisition:"Bought",inbound:"Inbound",enrolment:"Enrol",outbound:"Ship out",software:"Software",
+  support:"Support",returns:"Returns",service:"Repair, refurb",warehouse:"Off rent",financing:"Financing",eol:"Resale"};
+const FAMILY_PLURAL = {Smartphone:"smartphones",Tablet:"tablets",Laptop:"laptops"};
+
+function tcoBadge(basis){
+  if(basis==="measured") return `<span class="kbasis measured" title="counted in the data: order lines, contracts, invoices, sales">measured</span>`;
+  if(basis && basis.indexOf("public source")>=0) return `<span class="kbasis derived" title="the quantity is counted in the data; the rate is a public price with its source">sourced rate</span>`;
+  return `<span class="kbasis placeholder" title="the quantity is counted in the data; the rate is a placeholder until the role that owns it sets it">placeholder rate</span>`;
+}
+// A layer wears the basis of the component that carries most of its money: end of life is
+// the measured resale, not the small recycling rate beside it. The drawer badges each one.
+function tcoLayerBadge(lay){
+  if(lay.total===null) return "";
+  const cs=(lay.components||[]).filter(c=>c.total!==null);
+  if(!cs.length) return "";
+  const main=cs.slice().sort((a,b)=>Math.abs(b.total)-Math.abs(a.total))[0];
+  return tcoBadge(main.basis);
+}
+function tcoCohort(){ const T=RAW.tcoDev; return T && T.cohorts ? T.cohorts[TCO.cohort] : null; }
+function tcoSel(){ const C=tcoCohort(); if(!C) return null; return TCO.family ? (C.classes||[]).find(c=>c.key===TCO.family) : C.portfolio; }
+function tcoModelsSel(){ const C=tcoCohort(); return C ? (C.models||[]).filter(m=>!TCO.family || m.family===TCO.family) : []; }
+function tcoLayerDef(id){ return ((RAW.tcoDev||{}).layers||[]).find(l=>l.id===id) || {}; }
+function tcoWho(g){ return g.kind==="portfolio" ? "all devices" : (FAMILY_PLURAL[g.key]||g.label); }
+// the noun after a count: "4,312 devices", "1,135 tablets"
+function tcoNoun(g){ return g.kind==="portfolio" ? "devices" : (FAMILY_PLURAL[g.key]||g.label); }
+
+function wireTCO(){
+  if(TCO.wired) return; TCO.wired=true;
+  document.querySelectorAll("#tcoCohort button").forEach(b=>b.onclick=()=>{TCO.cohort=b.dataset.c; TCO.sort=null; renderTCO();});
+  document.querySelectorAll("#tcoFamily button").forEach(b=>b.onclick=()=>{TCO.family=b.dataset.f; renderTCO();});
+  document.querySelectorAll("#tcoUnit button").forEach(b=>b.onclick=()=>{TCO.unit=b.dataset.u; renderTCO();});
+  document.getElementById("tcoFind").onsubmit=e=>{e.preventDefault(); const v=document.getElementById("tcoFindIn").value.trim(); if(v) openTcoDevice(v);};
+}
+
 function renderTCO(){
-  const rows = RAW.tcoClasses||[], pf = RAW.tcoPortfolio;
-  // KPI cards from the portfolio rollup
-  document.getElementById("tcoTotal").textContent = pf ? EUR(pf.tco_total) : "–";
-  document.getElementById("tcoN").textContent = "over "+(pf? pf.assets : "–")+" assets";
-  document.getElementById("tcoTotalPct").textContent = pf ? PCT(pf.total_cost_pct) : "–";
-  document.getElementById("tcoTscmc").textContent = pf ? PCT(pf.tscmc_pct) : "–";
-  const opexShare = pf && pf.tco_total ? pf.subtotals.opex/pf.tco_total : 0;
-  document.getElementById("tcoOpexShare").textContent = pf ? PCT(opexShare) : "–";
-  if(!rows.length){
-    if(charts.tcoStack){charts.tcoStack.destroy();charts.tcoStack=null;}
-    document.querySelector("#tcoTable tbody").innerHTML="<tr><td colspan='7' style='color:#94a3b8'>No TCO data — run the TCO generator in SCM Master.</td></tr>";
+  wireTCO();
+  document.querySelectorAll("#tcoCohort button").forEach(b=>b.classList.toggle("on", b.dataset.c===TCO.cohort));
+  document.querySelectorAll("#tcoFamily button").forEach(b=>b.classList.toggle("on", b.dataset.f===TCO.family));
+  document.querySelectorAll("#tcoUnit button").forEach(b=>b.classList.toggle("on", b.dataset.u===TCO.unit));
+  const T=RAW.tcoDev, empty=document.getElementById("tcoEmpty"), body=document.getElementById("tcoBody");
+  if(!T || T.scenario!=="daas" || !tcoCohort() || !tcoSel()){
+    body.hidden=true; empty.hidden=false;
+    empty.textContent = T && T.reason ? T.reason
+      : "The device TCO has not been read yet. The cockpit asks SCM Master for it on its own, slower clock; it appears with the next read.";
+    document.getElementById("tcoIntro").textContent=""; document.getElementById("tcoAsOf").textContent="";
     return;
   }
-  // Stacked bar: TCO layers per class
-  const labels = rows.map(r=>r.cls);
-  if(charts.tcoStack)charts.tcoStack.destroy();
-  charts.tcoStack=new Chart(document.getElementById("tcoStack"),{type:"bar",
-    data:{labels,datasets:[
-      {label:"Acquisition",data:rows.map(r=>r.acq),backgroundColor:"#2563eb"},
-      {label:"Landed",data:rows.map(r=>r.landed),backgroundColor:"#06b6d4"},
-      {label:"Deployment",data:rows.map(r=>r.deploy),backgroundColor:"#8b5cf6"},
-      {label:"OpEx (5y)",data:rows.map(r=>r.opex),backgroundColor:"#f59e0b"},
-      {label:"EOL",data:rows.map(r=>r.eol),backgroundColor:"#ef4444"},
-      {label:"Recovery (credit)",data:rows.map(r=>r.rec),backgroundColor:"#10b981"},
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{tooltip:{callbacks:{label:c=>c.dataset.label+": "+EUR(c.raw)+(c.raw<0?" (subtracted from TCO)":"")}}},
-      scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:v=>"€"+(v/1000)+"k"}}}}});
-  // Per-class table
-  const body = rows.map(r=>
-    `<tr><td>${r.cls}</td><td class="num">${r.assets}</td><td class="num">${EUR(r.acq)}</td>`
-    +`<td class="num">${EUR(r.opex)}</td><td class="num">${EUR(r.landed+r.deploy)}</td>`
-    +`<td class="num">${EUR(r.eol+r.rec)}</td><td class="num">${EUR(r.avg)}</td></tr>`).join("");
-  document.querySelector("#tcoTable tbody").innerHTML = body;
+  body.hidden=false; empty.hidden=true;
+  const C=tcoCohort(), g=tcoSel();
+  document.getElementById("tcoAsOf").textContent = `· as of ${T.as_of}`;
+  document.getElementById("tcoIntro").textContent = `${C.label}: ${C.description} ${T.basis||""}`;
+  renderTcoTiles(g); renderTcoLayers(g); renderTcoLevers(g); renderTcoModels(g); renderTcoRates();
+}
+
+function tcoTile(id, value, pill, cls){
+  document.getElementById(id).textContent=value;
+  const p=document.getElementById(id+"P"); p.textContent=pill; p.className="pill "+(cls||"neut");
+}
+function renderTcoTiles(g){
+  const fin=TCO.cohort==="finished";
+  document.getElementById("tcoMarginL").textContent = fin ? "Margin per month" : "Margin to date, per month";
+  if(g.reason){ ["tcoNet","tcoMonth","tcoRent","tcoMargin"].forEach(id=>tcoTile(id,"–",g.reason)); return; }
+  tcoTile("tcoNet", has(g.per_device.net)?EURi(g.per_device.net):"–",
+    has(g.per_device.gross)?`${EURi(g.per_device.gross)} cost, ${EURi(g.per_device.credit)} back from resale`:"–");
+  tcoTile("tcoMonth", has(g.per_month.net)?EURc(g.per_month.net):"–",
+    has(g.months_per_device)?`${g.months_per_device} months on rent per device · ${NUM(g.devices)} ${tcoNoun(g)}`:(g.per_month_reason||"–"));
+  const r=g.rent;
+  if(!r){ tcoTile("tcoRent","–","rent not served by this API version"); tcoTile("tcoMargin","–","needs the rent"); return; }
+  tcoTile("tcoRent", has(r.per_month)?EURc(r.per_month):"–",
+    r.reason ? r.reason : `average over ${NUM(r.contracts_with_rent)} contracts`+(r.note?", some carry no rent":""));
+  if(has(r.margin_per_month)){
+    tcoTile("tcoMargin", EURc(r.margin_per_month),
+      fin ? `${PCT(r.margin_share)} of the rent stays after the whole-life cost`
+          : "acquisition is paid on day one; most rent and resale is still to come",
+      fin ? (r.margin_per_month>=0?"good":"bad") : "warn");
+  } else tcoTile("tcoMargin","–", r.reason||"no rent recorded");
+}
+
+function renderTcoLayers(g){
+  const el=document.getElementById("tcoLayers"), sub=document.getElementById("tcoLayersSub");
+  if(g.reason){ el.innerHTML=`<p class="tl-why">${tEsc(g.reason)}</p>`; sub.textContent=""; return; }
+  const gross=g.gross;
+  sub.textContent=`${NUM(g.devices)} ${tcoNoun(g)} · ${NUM(g.contracts)} rentals`+(has(g.returns)?` · ${NUM(g.returns)} returns`:"")+" · click a layer for its sources";
+  const rows=g.layers.map(l=>{
+    if(l.total===null) return `<div class="tl-row" data-l="${l.id}"><div class="tl-nm">${tEsc(l.label)}</div><div class="tl-why">${tEsc(l.reason)}</div></div>`;
+    const w = gross ? Math.min(100, Math.abs(l.total)/gross*100) : 0;
+    return `<div class="tl-row${l.total<0?" credit":""}" data-l="${l.id}" title="${tEsc(tcoLayerDef(l.id).description||"")}">`
+      +`<div class="tl-nm">${tEsc(l.label)}<br>${tcoLayerBadge(l)}</div>`
+      +`<div class="tl-bar"><div class="tl-track"><div class="tl-fill" style="width:${w.toFixed(2)}%;background:${TCO_COLOR[l.id]||"#94a3b8"}"></div></div></div>`
+      +`<div class="tl-v">${has(l.per_device)?EURc(l.per_device):"–"}</div>`
+      +`<div class="tl-s">${has(l.per_month)?EURc(l.per_month):"–"}</div>`
+      +`<div class="tl-s">${gross?PCT(Math.abs(l.total)/gross):"–"}</div></div>`;
+  }).join("");
+  el.innerHTML = rows + `<div class="tl-row tl-total"><div class="tl-nm">Net TCO per device</div><div class="tl-bar"></div>`
+    +`<div class="tl-v">${has(g.per_device.net)?EURc(g.per_device.net):"–"}</div><div class="tl-s">${has(g.per_month.net)?EURc(g.per_month.net):"–"}</div><div class="tl-s"></div></div>`;
+  el.querySelectorAll(".tl-row[data-l]").forEach(r=>r.onclick=()=>openTcoLayer(g, r.dataset.l));
+}
+
+function renderTcoLevers(g){
+  const el=document.getElementById("tcoLevers"), T=RAW.tcoDev, fin=TCO.cohort==="finished";
+  if(g.reason){ el.innerHTML=`<p class="tl-why">${tEsc(g.reason)}</p>`; return; }
+  const L=Object.fromEntries(g.layers.map(l=>[l.id,l])), out=[];
+  // what the device costs once it is bought: the three biggest running and handling layers
+  const top=g.layers.filter(l=>l.id!=="acquisition" && l.id!=="eol" && has(l.per_device)).sort((a,b)=>b.per_device-a.per_device).slice(0,3);
+  if(top.length && has(g.per_device.gross) && L.acquisition && has(L.acquisition.per_device)){
+    out.push(`<div class="lever"><div class="lk">After the purchase price</div><b>${EURc(g.per_device.gross-L.acquisition.per_device)}</b> per device goes on owning, running and handling it. The three biggest: ${top.map(l=>`<b>${tEsc(l.label)}</b> ${EURc(l.per_device)}`).join(", ")}.</div>`);
+  }
+  // every rental cycle: the handling and shipping that recur with each rental
+  const swaps=((L.support||{}).components||[]).filter(c=>c.id==="swaps" && has(c.total)).reduce((s,c)=>s+c.total,0);
+  const cyc=["enrolment","outbound","returns"].map(id=>L[id]).filter(l=>l && has(l.total));
+  if(cyc.length && g.contracts){
+    const per=(cyc.reduce((s,l)=>s+l.total,0)+swaps)/g.contracts;
+    out.push(`<div class="lever"><div class="lk">Every rental cycle</div><b>${EURc(per)}</b> per rental in handling and shipping: enrolment, the parcel out, the return trip, intake, grading, the wipe, and the swaps after a defect. It recurs with every cycle: one euro off it is worth ${EURi(g.contracts)} across the ${NUM(g.contracts)} rentals counted here.</div>`);
+  }
+  // financing: what one point of the capital rate is worth
+  const cap=(T.rates||[]).find(r=>r.id==="capital");
+  if(L.financing && has(L.financing.per_device) && L.financing.per_device>0 && cap && cap.value){
+    out.push(`<div class="lever"><div class="lk">Financing</div>The money in the device costs <b>${EURc(L.financing.per_device)}</b> per device at ${PCT(cap.value)} a year. Each point of the capital rate moves that by ${EURc(L.financing.per_device/(cap.value*100))}; every day off rent adds to it.</div>`);
+  }
+  // margin by model, read on the finished lives
+  const ms=tcoModelsSel().filter(m=>m.rent && has(m.rent.margin_per_month));
+  if(fin && ms.length>=2){
+    const s=ms.slice().sort((a,b)=>a.rent.margin_per_month-b.rent.margin_per_month), best=s[s.length-1];
+    out.push(`<div class="lever"><div class="lk">Thinnest margin per month</div>${s.slice(0,3).map(m=>`<b>${tEsc(m.label)}</b> ${EURc(m.rent.margin_per_month)}`).join(", ")}. The best: <b>${tEsc(best.label)}</b> ${EURc(best.rent.margin_per_month)}.</div>`);
+  } else if(!fin){
+    out.push(`<div class="lever"><div class="lk">Margin</div>A model's margin is read on its finished lives: switch to <b>Finished lives</b>. To date, acquisition is paid and most rent and resale is still to come.</div>`);
+  }
+  // the second life
+  const rs=g.resale||{};
+  if(has(rs.credit_share_of_acquisition)){
+    const low=tcoModelsSel().filter(m=>m.resale && has(m.resale.credit_share_of_acquisition))
+      .sort((a,b)=>a.resale.credit_share_of_acquisition-b.resale.credit_share_of_acquisition).slice(0,2);
+    out.push(`<div class="lever"><div class="lk">Second life</div>Resale gives back <b>${PCT(rs.credit_share_of_acquisition)}</b> of what the sold devices were bought for.${low.length?` Lowest: ${low.map(m=>`${tEsc(m.label)} ${PCT(m.resale.credit_share_of_acquisition)}`).join(", ")}.`:""}</div>`);
+  }
+  // how firm the numbers are
+  const rates=T.rates||[], ph=rates.filter(r=>r.placeholder);
+  out.push(`<div class="lever"><div class="lk">How firm these numbers are</div>${rates.length-ph.length} of ${rates.length} rates come from a public source, ${ph.length} are placeholders with the role that sets them (table below). Acquisition, repairs, refurbishments, rent and resale are counted in the data, not rated.</div>`);
+  el.innerHTML=out.join("");
+}
+
+function renderTcoModels(g){
+  const T=RAW.tcoDev, ms=tcoModelsSel(), fin=TCO.cohort==="finished", pm=TCO.unit==="month";
+  const per=pm?"per_month":"per_device";
+  const lay=(m,id)=>{ const l=(m.layers||[]).find(x=>x.id===id); return l && has(l[per]) ? l[per] : null; };
+  // The verdict first, so it is on screen without scrolling; then the layers that make it up.
+  const cols=[
+    {k:"model",t:"Model",v:m=>m.label,txt:true},
+    {k:"devices",t:"Devices",v:m=>m.devices,f:NUM},
+    {k:"months",t:"Months on rent",v:m=>m.months_per_device,f:v=>Number(v).toFixed(1)},
+    {k:"net",t:"Net TCO",title:"net whole-life cost per device",v:m=>m.per_device&&m.per_device.net,f:EURi,strong:true},
+    {k:"netm",t:"Cost / month",title:"net cost per device-month on rent",v:m=>m.per_month&&m.per_month.net,f:EURc},
+    {k:"rentm",t:"Rent / month",v:m=>m.rent&&m.rent.per_month,f:EURc},
+    {k:"marm",t:fin?"Margin / month":"Margin to date / month",v:m=>m.rent&&m.rent.margin_per_month,f:EURc,sign:true},
+    {k:"rec",t:"Resale back",title:"resale proceeds over what the sold devices were bought for",v:m=>m.resale&&m.resale.credit_share_of_acquisition,f:PCT,sep:true},
+    ...(T.layers||[]).map(l=>({k:"l_"+l.id,t:TCO_SHORT[l.id]||l.label,title:l.label+": "+l.description,v:m=>lay(m,l.id),
+      f:pm?EURc:EURi,heat:l.id!=="eol"&&l.id!=="acquisition"})),
+  ];
+  if(!TCO.sort){ TCO.sort = fin ? "marm" : "netm"; TCO.dir = fin ? 1 : -1; }
+  const col=cols.find(c=>c.k===TCO.sort)||cols[0];
+  const rows=ms.slice().sort((a,b)=>{
+    const x=col.v(a), y=col.v(b);
+    if(col.txt) return TCO.dir*String(x).localeCompare(String(y));
+    if(!has(x)) return 1; if(!has(y)) return -1; return TCO.dir*(x-y);
+  });
+  // One euro scale for every layer cell, not one per column: a cell is as dark as the money in
+  // it, so a few euros stay pale wherever they sit and the big layers stand out across models.
+  // The purchase price and the resale credit are left unshaded; they are the frame, not a lever.
+  const heatCols=cols.filter(c=>c.heat);
+  const hmax=Math.max(0,...ms.flatMap(m=>heatCols.map(c=>c.v(m)).filter(has)));
+  const cell=(c,m)=>{
+    const v=c.v(m), sep=c.sep?" style=\"border-right:2px solid var(--line)\"":"";
+    if(c.txt) return `<td class="mdl">${tEsc(v)}<div class="kd">${tEsc(m.family||"")}</div></td>`;
+    if(!has(v)) return `<td class="num" style="color:#cbd5e1">–</td>`;
+    let st=sep;
+    if(c.heat && hmax>0 && v>0) st=` style="background:rgba(239,68,68,${(0.30*Math.min(1,v/hmax)).toFixed(3)})"`;
+    return `<td class="num${c.sign?(v>=0?" pos":" neg"):""}${c.strong?" kn":""}"${st}>${c.f(v)}</td>`;
+  };
+  document.querySelector("#tcoModels thead").innerHTML="<tr>"+cols.map(c=>
+    `<th class="${c.txt?"":"num"}${c.k===TCO.sort?" sorted":""}" data-k="${c.k}" title="${tEsc(c.title||"")}">${tEsc(c.t)}${c.k===TCO.sort?(TCO.dir>0?" ▲":" ▼"):""}</th>`).join("")+"</tr>";
+  const tb=document.querySelector("#tcoModels tbody");
+  if(!rows.length){ tb.innerHTML=`<tr><td colspan="${cols.length}" style="color:#94a3b8">No model of this selection in ${tEsc(tcoCohort().label.toLowerCase())}.</td></tr>`; return; }
+  const foot=g && !g.reason ? `<tr class="grp"><td>All ${tEsc(tcoWho(g))}</td>`+cols.slice(1).map(c=>{ const v=c.v(g); return `<td class="num"${c.sep?" style=\"border-right:2px solid var(--line)\"":""}>${has(v)?c.f(v):"–"}</td>`; }).join("")+"</tr>" : "";
+  tb.innerHTML=rows.map((m,i)=>`<tr class="mrow" data-i="${i}">${cols.map(c=>cell(c,m)).join("")}</tr>`).join("")+foot;
+  tb.querySelectorAll("tr.mrow").forEach(tr=>tr.onclick=()=>openTcoModel(rows[+tr.dataset.i]));
+  document.querySelectorAll("#tcoModels th[data-k]").forEach(th=>th.onclick=()=>{
+    const k=th.dataset.k; if(TCO.sort===k) TCO.dir=-TCO.dir; else { TCO.sort=k; TCO.dir=(k==="model"||k==="marm")?1:-1; }
+    renderTcoModels(g);
+  });
+}
+
+function renderTcoRates(){
+  const T=RAW.tcoDev, tb=document.querySelector("#tcoRates tbody");
+  const fmt=(r,v)=>!has(v) ? "–" : (r.id==="capital" ? PCT(v)+" a year" : EURc(v));
+  tb.innerHTML=(T.rates||[]).map(r=>{
+    const vals=["Smartphone","Tablet","Laptop"].map(f=>r.by_family ? fmt(r, r.by_family[f]) : fmt(r, r.value));
+    const basis=r.placeholder ? `<span class="kbasis placeholder">placeholder</span>`
+      : `<span class="kbasis derived">public source</span><div class="rnote">${tLink(r.source||"")}</div>`;
+    return `<tr><td><div class="kn">${tEsc(r.label)}</div><div class="rnote">${tEsc(r.note)}</div></td>${vals.map(v=>`<td class="num">${v}</td>`).join("")}`
+      +`<td>${tEsc(r.unit)}</td><td>${tEsc(r.owner)}</td><td>${basis}</td></tr>`;
+  }).join("");
+}
+
+// ---- the drawer: one layer's sources, one model with its serials, one device's life ----
+function openTcoDrawer(title, value, sub, html){
+  document.getElementById("dwTitle").textContent=title;
+  document.getElementById("dwValue").textContent=value;
+  document.getElementById("dwSub").textContent=sub;
+  document.getElementById("dwBody").innerHTML=html;
+  document.getElementById("drawer").classList.add("open");
+  document.getElementById("drawerBg").classList.add("open");
+}
+function tcoRateText(c){
+  if(!has(c.rate)) return "";
+  return c.rate_id==="capital" ? ` × ${PCT(c.rate)} a year ÷ 365` : ` × ${EURc(c.rate)}`;
+}
+function tcoCompRows(lay){
+  return (lay.components||[]).map(c=>{
+    const calc = c.total===null ? "" : (has(c.quantity)?`${NUM(c.quantity)} ${tEsc(c.unit)}`:"")+tcoRateText(c);
+    const note = c.total===null ? c.reason : c.note;
+    return `<tr class="comp"><td><div class="cl">${tEsc(c.label)}</div>${tcoBadge(c.basis)}${note?`<div class="cn">${tEsc(note)}</div>`:""}</td>`
+      +`<td class="cn">${calc}</td><td class="num">${c.total===null?"–":EURc(c.total)}</td></tr>`;
+  }).join("");
+}
+function tcoLayersTable(layers, withComponents){
+  return `<table class="kpi-tbl"><thead><tr><th>${withComponents?"Component":"Layer"}</th><th>${withComponents?"Quantity × rate":"per month"}</th><th class="num">${withComponents?"Total":"per device"}</th></tr></thead><tbody>`
+    + layers.map(l=> withComponents
+        ? `<tr class="grp"><td colspan="2">${tEsc(l.label)}</td><td class="num">${l.total===null?"–":EURc(l.total)}</td></tr>`+tcoCompRows(l)
+        : `<tr><td><div class="cl">${tEsc(l.label)}</div>${l.total===null?`<div class="cn">${tEsc(l.reason)}</div>`:tcoLayerBadge(l)}</td><td class="cn">${has(l.per_month)?EURc(l.per_month)+" a month":""}</td><td class="num">${has(l.per_device)?EURc(l.per_device):"–"}</td></tr>`).join("")
+    + `</tbody></table>`;
+}
+function tcoRentHtml(x){
+  const r=x.rent;
+  if(!r) return `<p class="cn">Rent is not served by this API version.</p>`;
+  if(r.reason) return `<p class="cn">${tEsc(r.reason)}</p>`;
+  return `<table class="kpi-tbl"><tbody>
+    <tr><td>Rent earned per device</td><td class="num">${EURc(r.per_device)}</td></tr>
+    <tr><td>Net TCO per device</td><td class="num">${has(x.per_device.net)?EURc(x.per_device.net):"–"}</td></tr>
+    <tr><td><b>Margin per device</b></td><td class="num ${r.margin_per_device>=0?"pos":"neg"}"><b>${has(r.margin_per_device)?EURc(r.margin_per_device):"–"}</b></td></tr>
+    <tr><td>Rent per month · margin per month</td><td class="num">${has(r.per_month)?EURc(r.per_month):"–"} · ${has(r.margin_per_month)?EURc(r.margin_per_month):"–"}</td></tr>
+    </tbody></table>${r.note?`<p class="cn">${tEsc(r.note)}</p>`:""}`;
+}
+function openTcoLayer(g, lid){
+  const lay=g.layers.find(l=>l.id===lid); if(!lay) return;
+  openTcoDrawer(lay.label, lay.total===null ? "not measured" : (has(lay.per_device)?EURc(lay.per_device)+" per device":EURc(lay.total)),
+    `${tcoCohort().label} · ${tcoWho(g)}`+(lay.total===null?"":` · ${EURi(lay.total)} in total`),
+    `<p style="font-size:13px;color:#475569;line-height:1.55;margin-top:0">${tEsc(tcoLayerDef(lid).description||"")}</p>`
+    +`<table class="kpi-tbl"><thead><tr><th>Component</th><th>Quantity × rate</th><th class="num">Total</th></tr></thead><tbody>${tcoCompRows(lay)}</tbody></table>`);
+}
+async function openTcoModel(m){
+  openTcoDrawer(m.label, has(m.per_device.net)?EURi(m.per_device.net)+" per device":"–",
+    `${tcoCohort().label} · ${NUM(m.devices)} devices`+(has(m.months_per_device)?` · ${m.months_per_device} months on rent each`:""),
+    `<div class="dk">Open one device of this model</div><div class="serials" id="tcoSerials"><span class="cn">reading serials…</span></div>`
+    +`<div class="dk">The device's life in layers, per device</div>${tcoLayersTable(m.layers,false)}`
+    +`<div class="dk">What it earns</div>${tcoRentHtml(m)}`);
+  let s=null;
+  try{ s=await (await fetch("/api/tco/serials?product_id="+encodeURIComponent(m.key))).json(); }catch(e){ s={error:e.message}; }
+  const box=document.getElementById("tcoSerials"); if(!box) return;
+  if(!s || !s.serials){ box.innerHTML=`<span class="cn">${tEsc((s&&s.error)||"no serials served")}</span>`; return; }
+  const groups={finished:"Finished lives",rented:"On rent now",on_hand:"In the warehouse"};
+  box.innerHTML=Object.keys(groups).map(k=>{ const xs=s.serials.filter(x=>x.group===k);
+    return xs.length ? `<div class="sg">${groups[k]}</div>`+xs.map(x=>`<button data-s="${tEsc(x.serial_number)}">${tEsc(x.serial_number)}</button>`).join("") : ""; }).join("")
+    || `<span class="cn">No serial of this model on file.</span>`;
+  box.querySelectorAll("button[data-s]").forEach(b=>b.onclick=()=>openTcoDevice(b.dataset.s));
+}
+async function openTcoDevice(serial){
+  openTcoDrawer(serial, "…", "reading this device's life", "");
+  let d=null;
+  try{ d=await (await fetch("/api/tco/device?serial="+encodeURIComponent(serial))).json(); }catch(e){ d={error:e.message}; }
+  if(!d || d.error || !d.layers){
+    openTcoDrawer(serial, "not found", "no device with this serial number or id",
+      `<p class="cn">No device with this serial number or id. A row in the model table opens a few serials of that model to start from.</p>`);
+    return;
+  }
+  const dot={received:"#1e3a8a",rental:"#2563eb",repair:"#ef4444",refurb:"#fb923c",sold:"#10b981",recycled:"#94a3b8"};
+  const life=(d.life||[]).map(ev=>{
+    let txt=ev.kind, amt="";
+    if(ev.kind==="received"){ txt="Received"; if(has(ev.amount)) amt="−"+EURc(ev.amount); }
+    else if(ev.kind==="rental"){ txt=`Rental ${ev.cycle}: ${NUM(ev.days)} days`+(ev.end?` to ${ev.end}`:", running")+(ev.reason?`, ended ${tEsc(ev.reason)}`:"")+(has(ev.rent_eur_month)?` · ${EURc(ev.rent_eur_month)} a month`:""); if(has(ev.amount)) amt="+"+EURc(ev.amount); }
+    else if(ev.kind==="repair"||ev.kind==="refurb"){ txt=ev.kind==="repair"?"Repair":"Refurbishment"; if(has(ev.amount)) amt="−"+EURc(ev.amount); }
+    else if(ev.kind==="sold"){ txt="Sold"+(ev.channel?" via "+tEsc(String(ev.channel).replace(/_/g," ")):""); if(has(ev.amount)) amt="+"+EURc(ev.amount); }
+    else if(ev.kind==="recycled"){ txt="Recycled"; }
+    return `<li style="--dot:${dot[ev.kind]||"#94a3b8"}"><span class="d">${tEsc(ev.date)}</span><span class="t">${txt}</span><span class="amt">${amt}</span></li>`;
+  }).join("");
+  const state=String(d.status||"").toLowerCase().replace(/_/g," ");
+  openTcoDrawer(d.serial_number, has(d.net)?EURc(d.net)+" net TCO":"–",
+    `${d.label} · ${state}`+(d.grade?` · grade ${d.grade}`:"")+(d.finished?" · whole life":" · to date"),
+    `<div class="dk">Its life</div><ul class="life">${life||"<li>No dated event on file.</li>"}</ul>`
+    +`<div class="dk">What it earned</div>${tcoRentHtml(d)}`
+    +`<div class="dk">Every layer of its cost</div>${tcoLayersTable(d.layers,true)}`);
 }
 
 // tabs

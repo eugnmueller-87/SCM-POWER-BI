@@ -40,6 +40,12 @@ const FETCH_TIMEOUT_MS = (process.env.FETCH_TIMEOUT_SECONDS ? +process.env.FETCH
 // it reports on. So these two calls are OFF until the backend has a read that aggregates
 // in the database; TCO_ENABLED=1 turns them back on once it does.
 const TCO_ENABLED = process.env.TCO_ENABLED === "1";
+// The device TCO (/tco/devices) is the fleet's own cost read: grouped in the database,
+// about six seconds over 431,200 serials, and it moves once a day, not every five
+// minutes. So it runs on its own clock like the insights, keeps the last good answer
+// between runs and through a failed one, and the TCO tab reads that. This is the read
+// the TCO tab was missing: the two datacenter calls above answer empty over a device fleet.
+const TCO_DEVICES_TTL_MS = (process.env.TCO_DEVICES_TTL_SECONDS ? +process.env.TCO_DEVICES_TTL_SECONDS : 21600) * 1000;
 // AI insights call the LLM, so they're the only refresh step that costs tokens.
 // They reason over slowly-changing analytics, so re-running them every data
 // refresh (every 5 min = 288 calls/day) burns tokens for no new information.
@@ -50,6 +56,8 @@ const INSIGHTS_TTL_MS = (process.env.INSIGHTS_TTL_SECONDS ? +process.env.INSIGHT
 let cache = { generated_at: null, data: null, error: null };
 // Last successfully-fetched insights + when, so we only re-call the LLM when stale.
 let insightsCache = { at: 0, value: [] };
+// Last good device TCO and when it was read.
+let tcoDevicesCache = { at: 0, value: null };
 // Last good KPI list. The backend measures its 32 KPIs once a day and serves the day's
 // snapshot, so the read is cheap when warm (about 50 ms) but the first read of a day
 // takes the measurement (10 s against the demo fleet). A read that times out keeps the
@@ -246,6 +254,14 @@ async function refresh() {
     const tcoPortfolio = TCO_ENABLED
       ? await safe("tco/portfolio", getJSON(token, "/api/v1/tco/portfolio?baseline=50000000"), null)
       : null;
+    // The device TCO, on its own clock (TCO_DEVICES_TTL_MS). A failed or timed-out read
+    // keeps the last good answer and backs off a full TTL; only a daas answer replaces it.
+    if (Date.now() - tcoDevicesCache.at >= TCO_DEVICES_TTL_MS) {
+      const fresh = await safe("tco/devices", getJSON(token, "/api/v1/tco/devices"), null);
+      if (fresh && fresh.scenario) tcoDevicesCache = { at: Date.now(), value: fresh };
+      else tcoDevicesCache.at = Date.now();
+    }
+    const tcoDevices = tcoDevicesCache.value;
     // Forward warehouse capacity: free space net of inbound already on the way, so
     // the cockpit can show committed vs free as a % of max and block over-ordering.
     const storageHeadroom = await safe("storage-headroom",
@@ -322,7 +338,7 @@ async function refresh() {
         spend_total: spendTotal, inventory, insights, forecast,
         rule_insights: ruleInsights, forecast_accuracy: forecastAccuracy,
         should_cost_savings: shouldCostSavings, should_cost_by_supplier: shouldCostBySupplier,
-        tco_by_class: tcoByClass, tco_portfolio: tcoPortfolio,
+        tco_by_class: tcoByClass, tco_portfolio: tcoPortfolio, tco_devices: tcoDevices,
         storage_headroom: storageHeadroom, capacity_flow: capacityFlow,
         spend_years: spendYears, spend_by_year: spendByYear,
         kpis, capacity_plan: capacityPlan, fleet_summary: fleetSummary,
@@ -336,6 +352,7 @@ async function refresh() {
     const whN = warehouseCompartments && warehouseCompartments.compartments ? warehouseCompartments.compartments.length : 0;
     console.log(`[refresh] ok @ ${cache.generated_at} (${forecast.length} forecast rows, `
       + `${shouldCostBySupplier.length} should-cost rows, ${tcoByClass.length} tco classes, `
+      + `device tco ${tcoDevices ? tcoDevices.scenario + " as of " + tcoDevices.as_of : "not served"}, `
       + `${insights.length} insights age ${insightsAgeMin}m, ${kpis.length} kpis, `
       + `capacity plan ${capacityPlan ? "served" : "not served"}, fleet summary ${fleetSummary ? "served" : "not served"}, `
       + `fleet breakdown ${fleetBreakdown ? (fleetBreakdown.manufacturers || []).length + " makers" : "not served"}, `
@@ -424,6 +441,22 @@ const server = http.createServer(async (req, res) => {
       null);
     res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
     res.end(JSON.stringify(gap || { error: "unavailable" }));
+    return;
+  }
+
+  // One device's whole-life TCO: /api/tco/device?serial=<serial or asset id>.
+  // A few serials of one model to open: /api/tco/serials?product_id=<id>.
+  // Both are index reads on the backend, so they go live, not through the refresh cache.
+  if (url === "/api/tco/device" || url === "/api/tco/serials") {
+    const token = await login().catch(() => null);
+    const qs = new URLSearchParams(req.url.split("?")[1] || "");
+    const key = url === "/api/tco/device" ? (qs.get("serial") || "").trim() : (qs.get("product_id") || "").trim();
+    const path = url === "/api/tco/device"
+      ? `/api/v1/tco/devices/serial/${encodeURIComponent(key)}`
+      : `/api/v1/tco/devices/models/${encodeURIComponent(key)}/serials`;
+    const body = await safe(url, token && key ? getJSON(token, path) : Promise.reject(new Error("no key/token")), null);
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    res.end(JSON.stringify(body || { error: key ? "not found" : "no serial given" }));
     return;
   }
 

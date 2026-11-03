@@ -1,6 +1,6 @@
 # SCM Master Tool — Procurement & Supply Chain Analytics Cockpit
 
-[![Live Dashboard](https://img.shields.io/badge/Live_Dashboard-online-22c55e?style=flat&logo=railway&logoColor=white)](https://scm-power-bi-production.up.railway.app)
+[![Static demo](https://img.shields.io/badge/Static_demo-GitHub_Pages-22c55e?style=flat&logo=github&logoColor=white)](https://eugnmueller-87.github.io/SCM-POWER-BI/deploy/)
 [![Power BI](https://img.shields.io/badge/Power_BI-report-F2C811?style=flat&logo=powerbi&logoColor=black)](Order_Accuracy_Forecast_2026.pbix)
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat&logo=python&logoColor=white)](requirements.txt)
 [![Ruff](https://img.shields.io/badge/lint-ruff-D7FF64?style=flat&logo=ruff&logoColor=black)](ruff.toml)
@@ -13,7 +13,7 @@
 [![Orders](https://img.shields.io/badge/Orders-inbound_%2B_delivery_perf-0ea5e9?style=flat)](deploy/index.html)
 [![Forecast](https://img.shields.io/badge/Forecast-WMAPE_%2B_bias-10b981?style=flat)](deploy/index.html)
 [![Slides](https://img.shields.io/badge/Slides-live_deck-FF4088?style=flat&logo=googleslides&logoColor=white)](https://eugnmueller-87.github.io/SCM-POWER-BI/Presentation/scm-cockpit-deck.html)
-[![Deployed on Railway](https://img.shields.io/badge/Deployed-Railway-0B0D0E?style=flat&logo=railway&logoColor=white)](https://scm-power-bi-production.up.railway.app)
+![Railway](https://img.shields.io/badge/Railway-paused_since_Nov_2026-lightgrey?style=flat&logo=railway&logoColor=white)
 [![Data](https://img.shields.io/badge/data-synthetic_%2B_public-8b5cf6?style=flat)](sources.md)
 [![Recommendation](https://img.shields.io/badge/recommendation-pilot-eab308?style=flat)](implementation/solution_proposal.md)
 [![License](https://img.shields.io/badge/license-educational-lightgrey?style=flat)](research/01_data_assumptions.md)
@@ -45,9 +45,11 @@ backend so the numbers always agree.
 > set, so it can never place a live PO by accident. In production you'd swap the sandbox login
 > for a dedicated read-scoped service account.
 
-## 🚀 Live dashboard
+## 🚀 The cockpit
 
-### ▶︎ **[scm-power-bi-production.up.railway.app](https://scm-power-bi-production.up.railway.app)**
+### ▶︎ **[Open the static demo](https://eugnmueller-87.github.io/SCM-POWER-BI/deploy/)**
+
+> **Status, November 2026:** the hosted cockpit on Railway is paused. The static demo runs the same page in your browser on the snapshot exported on 04.07.2026, before the rental-fleet scenario. The Control Tower, overview, spend and forecast read the real numbers of that day; the orders, decision log and TCO drill-downs, the refresh and the AI commentary need the live backend and say so.
 
 A fully interactive cockpit that opens on a **3D Control Tower** home screen (a real-time
 logistics view of the live supply chain) and drills into **8 analytics tabs** — Overview ·
@@ -135,7 +137,7 @@ decision to its inputs and, when placed, its purchase order via the provenance c
 
 ![SCM Master live cockpit walkthrough](https://raw.githubusercontent.com/eugnmueller-87/SCM-POWER-BI/main/clip/hosted-dashboard.gif)
 
-> The live, hosted cockpit in motion — [**scm-power-bi-production.up.railway.app**](https://scm-power-bi-production.up.railway.app).
+> The hosted cockpit in motion, recorded while it ran live on Railway (paused since November 2026).
 > For the full-quality clip with audio, ▶︎ **[open `clip/hosted-dashboard.mp4`](https://github.com/eugnmueller-87/SCM-POWER-BI/blob/main/clip/hosted-dashboard.mp4)**.
 
 ### 2 · Power BI report (lab deliverable)
@@ -165,7 +167,7 @@ decision to its inputs and, when placed, its purchase order via the provenance c
 > **accuracy ≈ 58%** (WMAPE), with a near-zero bias (**−2.6%**). The pooled figure is dragged
 > down by two intermittent, near-zero-demand categories (GPU, Compute) where any miss is huge
 > in % terms — the **steady, high-volume categories run 72–76% accurate**. This is the honest
-> number, not a cherry-pick: the [Forecast tab](https://scm-power-bi-production.up.railway.app)
+> number, not a cherry-pick: the [Forecast tab](https://eugnmueller-87.github.io/SCM-POWER-BI/deploy/)
 > shows it per category and per year, and explains the weak spots.
 
 | Category | Accuracy (1 − WMAPE) | Read |
@@ -210,7 +212,7 @@ The full stack:
    forecast accuracy, should-cost and TCO. This is the single source of truth both
    front-ends read.
 
-3. **A live web cockpit** ([hosted here](https://scm-power-bi-production.up.railway.app)) —
+3. **A live web cockpit** ([static demo](https://eugnmueller-87.github.io/SCM-POWER-BI/deploy/); hosted on Railway until November 2026) —
    a coded, branded dashboard (Node server + Chart.js) that logs into the API server-side,
    caches and **auto-refreshes** the data, and renders an interactive board no spreadsheet
    could match:
@@ -337,7 +339,7 @@ whether to invest in AI for procurement & supply-chain.
 | **6c. Public evidence data** | [`data/processed/ai_adoption_evidence.csv`](data/processed/ai_adoption_evidence.csv) | Cited public AI-adoption / chip-risk figures powering the market-evidence layer. |
 | **7. Live API connection** | [`dashboard/live_api_connection.md`](dashboard/live_api_connection.md) | Paste-ready Power Query (M) to connect Power BI to the deployed backend — auto-login on every refresh (OAuth2 → Bearer). |
 | **8. Built dashboard** | [`Order_Accuracy_Forecast_2026.pbix`](Order_Accuracy_Forecast_2026.pbix) | The Power BI report itself, wired to the live API. *(Git LFS)* |
-| **9. Live web cockpit** | [`deploy/`](deploy/) → [**hosted**](https://scm-power-bi-production.up.railway.app) | Node server + Chart.js + **Babylon.js**. Server-side API login, in-memory cache, auto-refresh. A **3D Control Tower** home screen ([`deploy/tower.js`](deploy/tower.js)) + **8 tabs** (Overview, SC Scorecard, Spend, Inventory, **Orders**, Forecast, Should-Cost, TCO) + a hidden **Autonomy** decision-loop/audit panel. Cross-filtering, click-to-drill KPIs, reorder alerts, **inbound-order pipeline + delivery-performance tracking**, forecast diagnostics (WMAPE + bias), should-cost margin lever, TCO. Environment-aware (demo + isolated prod). Deployed on Railway. |
+| **9. Live web cockpit** | [`deploy/`](deploy/) → [**static demo**](https://eugnmueller-87.github.io/SCM-POWER-BI/deploy/) | Node server + Chart.js + **Babylon.js**. Server-side API login, in-memory cache, auto-refresh. A **3D Control Tower** home screen ([`deploy/tower.js`](deploy/tower.js)) + **8 tabs** (Overview, SC Scorecard, Spend, Inventory, **Orders**, Forecast, Should-Cost, TCO) + a hidden **Autonomy** decision-loop/audit panel. Cross-filtering, click-to-drill KPIs, reorder alerts, **inbound-order pipeline + delivery-performance tracking**, forecast diagnostics (WMAPE + bias), should-cost margin lever, TCO. Environment-aware (demo + isolated prod). Deployed on Railway. |
 
 ## Architecture: the LLM advises, deterministic code decides
 
@@ -434,7 +436,7 @@ SCM-POWER-BI/
 - [x] Hype-vs-value layer + research notes
 - [x] Live API connection guide (`dashboard/live_api_connection.md`) — verified against the deployed backend
 - [x] **`.pbix` built in Power BI Desktop** — wired to the live API, forecast-accuracy measures + visuals live
-- [x] **Live web cockpit deployed** — [hosted on Railway](https://scm-power-bi-production.up.railway.app), auto-refreshing, with drill-downs + reorder alerts + forecast diagnostics
+- [x] **Live web cockpit deployed** — hosted on Railway until November 2026, now a [static demo](https://eugnmueller-87.github.io/SCM-POWER-BI/deploy/); auto-refreshing while live, with drill-downs + reorder alerts + forecast diagnostics
 - [x] **3D Control Tower home screen** — Babylon.js WebGL (PBR · IBL · SSAO · bloom), wired live to `/api/v1` (numbers live, motion illustrated; crates ∝ warehouse capacity, racks = rented share, real POs + over-order guard, simulated log lines marked SIM); engine only mounts on its tab
 - [x] **Orders tab** — inbound pipeline (delivered vs incoming, current year), per-PO line-item contents, "covers gap" per order, and **delivery performance** (promised vs actual ETA, slip, accuracy %)
 - [x] **Autonomy panel** — the agent's decision loop (intake → live gate → tier) + a persistent append-only audit trail with provenance drill-down; fail-closed, dry-run by default

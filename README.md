@@ -19,7 +19,7 @@
 [![License](https://img.shields.io/badge/license-educational-lightgrey?style=flat)](research/01_data_assumptions.md)
 [![Last commit](https://img.shields.io/github/last-commit/eugnmueller-87/SCM-POWER-BI?style=flat&logo=github)](https://github.com/eugnmueller-87/SCM-POWER-BI/commits/main)
 [![Commit activity](https://img.shields.io/github/commit-activity/m/eugnmueller-87/SCM-POWER-BI?style=flat&logo=github)](https://github.com/eugnmueller-87/SCM-POWER-BI/commits/main)
-[![Repo size](https://img.shields.io/github/repo-size/eugnmueller-87/SCM-POWER-BI?style=flat)](https://github.com/eugnmueller-87/SCM-POWER-BI)
+[![Code size](https://img.shields.io/github/languages/code-size/eugnmueller-87/SCM-POWER-BI?style=flat)](https://github.com/eugnmueller-87/SCM-POWER-BI)
 
 An executive-facing cockpit for **procurement & supply-chain analytics**, built for a
 mid-to-large cloud/hosting company (profile: DACH, Microsoft-365 ecosystem,
